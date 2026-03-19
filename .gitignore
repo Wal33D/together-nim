@@ -4,3 +4,4 @@ nimcache/
 *.dll
 *.so
 *.dylib
+.scriptorium/
