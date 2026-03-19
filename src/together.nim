@@ -7,6 +7,7 @@ import game
 import constants
 import systems/renderer
 import systems/input
+import systems/audio
 
 proc main() =
   if sdl2.init(INIT_VIDEO or INIT_AUDIO) != SdlSuccess:
@@ -32,6 +33,8 @@ proc main() =
 
   # Enable alpha blending
   sdlRenderer.setDrawBlendMode(BlendMode_Blend)
+
+  initAudio()
 
   var g = newGame()
   var running = true
@@ -61,6 +64,7 @@ proc main() =
     renderGame(sdlRenderer, g)
     sdlRenderer.present()
 
+  shutdownAudio()
   sdlRenderer.destroy()
   window.destroy()
   sdl2.quit()

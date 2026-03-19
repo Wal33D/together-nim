@@ -11,6 +11,7 @@ type
   PhysicsResult* = object
     deadCharacters*: seq[string]
     exitedCharacters*: seq[string]
+    landedCharacters*: seq[string]
 
 proc intersects*(a, b: Rect): bool =
   a.x < b.x + b.w and
@@ -57,7 +58,7 @@ proc applyJump*(c: var Character) =
     c.triggerJump()
 
 proc updatePhysics*(characters: var seq[Character], level: Level, dt: float): PhysicsResult =
-  result = PhysicsResult(deadCharacters: @[], exitedCharacters: @[])
+  result = PhysicsResult(deadCharacters: @[], exitedCharacters: @[], landedCharacters: @[])
 
   for i in 0..<characters.len:
     var c = characters[i]
@@ -116,6 +117,7 @@ proc updatePhysics*(characters: var seq[Character], level: Level, dt: float): Ph
     # Trigger landing animation on touchdown
     if not wasGrounded and c.grounded:
       c.triggerLanding()
+      result.landedCharacters.add(c.id)
 
     # Hazard detection
     block hazardCheck:

@@ -5,7 +5,7 @@ NIM_FLAGS ?= --hints:off --warnings:off
 build: together
 
 together: src/together.nim
-	nim c -o:together -d:release src/together.nim
+	nim c -o:together -d:release -d:withAudio src/together.nim
 
 test:
 	@files=$$(ls tests/test_*.nim 2>/dev/null); \

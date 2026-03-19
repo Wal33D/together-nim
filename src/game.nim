@@ -7,6 +7,7 @@ import systems/levels
 import systems/physics
 import systems/camera
 import systems/atmosphere
+import systems/audio
 
 type
   GameState* = enum
@@ -144,10 +145,18 @@ proc update*(game: var Game, dt: float) =
             game.characters[i].vx = 0
             game.characters[i].vy = 0
             game.characters[i].dead = false
+            playSound(soundDeath)
 
-      # Mark exits
+      # Landing sound
+      if result.landedCharacters.len > 0:
+        playSound(soundLand)
+
+      # Mark exits — play chime when a character newly reaches their exit
       for i in 0..<game.characters.len:
+        let wasAtExit = game.characters[i].atExit
         game.characters[i].atExit = game.characters[i].id in result.exitedCharacters
+        if game.characters[i].atExit and not wasAtExit:
+          playSound(soundExitReached)
 
       # Check win — all characters at their exits
       if game.characters.len > 0:
@@ -156,9 +165,10 @@ proc update*(game: var Game, dt: float) =
           if not c.atExit:
             allAtExit = false
             break
-        if allAtExit:
+        if allAtExit and game.state == playing:
           game.state = levelWin
           game.levelWinTimer = 0.0
+          playSound(soundLevelComplete)
 
       # Update camera to follow active character
       if game.activeCharacterIndex < game.characters.len:
