@@ -8,9 +8,10 @@ import constants
 import systems/renderer
 import systems/input
 import systems/audio
+import systems/gamepad
 
 proc main() =
-  if sdl2.init(INIT_VIDEO or INIT_AUDIO) != SdlSuccess:
+  if sdl2.init(INIT_VIDEO or INIT_AUDIO or INIT_GAMECONTROLLER) != SdlSuccess:
     echo "SDL2 init failed: ", sdl2.getError()
     quit(1)
 
@@ -35,6 +36,7 @@ proc main() =
   sdlRenderer.setDrawBlendMode(BlendMode_Blend)
 
   initAudio()
+  openFirstController()
 
   var g = newGame()
   var running = true
@@ -54,6 +56,13 @@ proc main() =
         running = false
       of KeyDown, KeyUp:
         g.handleInput(event)
+      of ControllerButtonDown, ControllerButtonUp:
+        let isDown = event.kind == ControllerButtonDown
+        g.handleControllerButton(event.cbutton.button, isDown)
+      of ControllerAxisMotion:
+        g.handleControllerAxis(event.caxis.axis, event.caxis.value)
+      of ControllerDeviceAdded, ControllerDeviceRemoved:
+        g.handleControllerDevice(event)
       else:
         discard
 
@@ -64,6 +73,7 @@ proc main() =
     renderGame(sdlRenderer, g)
     sdlRenderer.present()
 
+  closeController()
   shutdownAudio()
   sdlRenderer.destroy()
   window.destroy()

@@ -152,11 +152,14 @@ proc renderMenu(renderer: RendererPtr, game: Game) =
   let ctrlScale = 1
   let ctrl1 = "Arrow keys: move   Space: jump"
   let ctrl2 = "1-6: switch character   ESC: pause"
+  let ctrl3 = "Gamepad: A=jump, Bumpers=switch, Start=pause"
   let ctrl1W = textWidth(ctrl1, ctrlScale)
   let ctrl2W = textWidth(ctrl2, ctrlScale)
+  let ctrl3W = textWidth(ctrl3, ctrlScale)
   renderer.setDrawColor(80, 80, 110, 255)
-  drawText(renderer, ctrl1, centerX - ctrl1W div 2, 410, ctrlScale)
-  drawText(renderer, ctrl2, centerX - ctrl2W div 2, 428, ctrlScale)
+  drawText(renderer, ctrl1, centerX - ctrl1W div 2, 400, ctrlScale)
+  drawText(renderer, ctrl2, centerX - ctrl2W div 2, 418, ctrlScale)
+  drawText(renderer, ctrl3, centerX - ctrl3W div 2, 436, ctrlScale)
 
 proc renderAtmosphere(renderer: RendererPtr, atm: Atmosphere) =
   ## Draw gradient background, light shafts, and floating particles.
