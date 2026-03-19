@@ -117,6 +117,11 @@ const level5* = Level(
   ],
   buttons: @[],
   doors: @[],
+  movingPlatforms: @[
+    MovingPlatform(startX: 410.0, startY: 460.0, endX: 620.0, endY: 460.0,
+                   width: 100.0, height: 20.0, speed: 0.3,
+                   x: 410.0, y: 460.0, prevX: 410.0, prevY: 460.0, forward: true),
+  ],
   levelWidth: 1200.0,
   levelHeight: 500.0,
 )
@@ -167,6 +172,11 @@ const level7* = Level(
   ],
   doors: @[
     Door(id: 1, x: 430.0, y: 380.0, width: 20.0, height: 80.0, isOpen: false),
+  ],
+  movingPlatforms: @[
+    MovingPlatform(startX: 850.0, startY: 460.0, endX: 850.0, endY: 300.0,
+                   width: 100.0, height: 20.0, speed: 0.35,
+                   x: 850.0, y: 460.0, prevX: 850.0, prevY: 460.0, forward: true),
   ],
   levelWidth: 1000.0,
   levelHeight: 500.0,
@@ -232,6 +242,11 @@ const level9* = Level(
   doors: @[
     Door(id: 1, x: 330.0, y: 380.0, width: 20.0, height: 80.0, isOpen: false),
     Door(id: 2, x: 650.0, y: 380.0, width: 20.0, height: 80.0, isOpen: false),
+  ],
+  movingPlatforms: @[
+    MovingPlatform(startX: 300.0, startY: 460.0, endX: 620.0, endY: 460.0,
+                   width: 80.0, height: 20.0, speed: 0.4,
+                   x: 300.0, y: 460.0, prevX: 300.0, prevY: 460.0, forward: true),
   ],
   levelWidth: 1000.0,
   levelHeight: 500.0,

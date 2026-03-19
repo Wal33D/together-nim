@@ -221,7 +221,7 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
   if game.currentLevel < 0 or game.currentLevel >= allLevels.len:
     return
 
-  let level = allLevels[game.currentLevel]
+  let level = game.currentLevelState
 
   # Atmospheric background — rendered BEFORE platforms
   renderAtmosphere(renderer, game.atmosphere)
@@ -238,6 +238,14 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
     renderer.setDrawColor(120, 120, 145, 255)
     drawFilledRect(renderer, p.x.cint - camX, p.y.cint - camY, p.width.cint, 2)
     renderer.setDrawColor(90, 90, 110, 255)
+
+  # Moving platforms (lighter gray to distinguish)
+  for mp in level.movingPlatforms:
+    renderer.setDrawColor(130, 130, 155, 255)
+    drawFilledRect(renderer, mp.x.cint - camX, mp.y.cint - camY, mp.width.cint, mp.height.cint)
+    # Top edge highlight
+    renderer.setDrawColor(160, 160, 185, 255)
+    drawFilledRect(renderer, mp.x.cint - camX, mp.y.cint - camY, mp.width.cint, 2)
 
   # Hazards (red spikes)
   renderer.setDrawColor(200, 50, 50, 255)

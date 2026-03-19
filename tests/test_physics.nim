@@ -264,6 +264,67 @@ suite "wall jump (Cara)":
     chars[0].vy = 300.0  # falling fast
     chars[0].grounded = false
     let wall = Platform(x: 100.0, y: 0.0, width: 20.0, height: 200.0)
-    var level = Level(platforms: @[wall], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    var level = Level(platforms: @[wall], hazards: @[], exits: @[], buttons: @[], doors: @[], movingPlatforms: @[])
     discard updatePhysics(chars, level, FIXED_TIMESTEP)
     check chars[0].vy <= 120.0
+
+suite "moving platforms":
+  test "moving platform position updates with time":
+    var mp = newMovingPlatform(0.0, 0.0, 100.0, 0.0, 80.0, 20.0, 1.0)
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[],
+                      movingPlatforms: @[mp])
+    var chars: seq[Character] = @[]
+    discard updatePhysics(chars, level, 0.5)
+    # After 0.5s at speed 1.0, currentT should be 0.5 → x = 50
+    check level.movingPlatforms[0].x > 0.0
+    check level.movingPlatforms[0].x < 100.0
+
+  test "moving platform ping-pongs at end":
+    var mp = newMovingPlatform(0.0, 0.0, 100.0, 0.0, 80.0, 20.0, 1.0)
+    mp.currentT = 0.95
+    mp.x = 95.0
+    mp.prevX = 95.0
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[],
+                      movingPlatforms: @[mp])
+    var chars: seq[Character] = @[]
+    discard updatePhysics(chars, level, 0.1)
+    # Should have reached end and reversed
+    check level.movingPlatforms[0].forward == false
+
+  test "moving platform ping-pongs at start":
+    var mp = newMovingPlatform(0.0, 0.0, 100.0, 0.0, 80.0, 20.0, 1.0)
+    mp.currentT = 0.05
+    mp.forward = false
+    mp.x = 5.0
+    mp.prevX = 5.0
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[],
+                      movingPlatforms: @[mp])
+    var chars: seq[Character] = @[]
+    discard updatePhysics(chars, level, 0.1)
+    # Should have reached start and reversed
+    check level.movingPlatforms[0].forward == true
+
+  test "character lands on moving platform":
+    var mp = newMovingPlatform(100.0, 400.0, 100.0, 400.0, 200.0, 20.0, 0.0)
+    var chars = @[newCharacter("pip")]
+    chars[0].x = 150.0
+    chars[0].y = 400.0 - float(chars[0].height) - 1.0
+    chars[0].vy = 200.0
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[],
+                      movingPlatforms: @[mp])
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    check chars[0].grounded == true
+
+  test "character rides moving platform horizontally":
+    var mp = newMovingPlatform(100.0, 400.0, 300.0, 400.0, 200.0, 20.0, 1.0)
+    var chars = @[newCharacter("pip")]
+    chars[0].x = 150.0
+    chars[0].y = 400.0 - float(chars[0].height)
+    chars[0].grounded = true
+    chars[0].vy = 0.0
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[],
+                      movingPlatforms: @[mp])
+    let startX = chars[0].x
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    # Platform moved right, character should have moved with it
+    check chars[0].x > startX

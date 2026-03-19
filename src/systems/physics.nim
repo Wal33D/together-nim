@@ -62,6 +62,26 @@ proc resolveCollision(c: var Character, rect: Rect) =
           c.vy = 120.0
     c.vx = 0.0
 
+proc updateMovingPlatforms*(level: var Level, dt: float) =
+  for i in 0..<level.movingPlatforms.len:
+    var mp = level.movingPlatforms[i]
+    mp.prevX = mp.x
+    mp.prevY = mp.y
+    # Ping-pong interpolation
+    if mp.forward:
+      mp.currentT += mp.speed * dt
+      if mp.currentT >= 1.0:
+        mp.currentT = 1.0
+        mp.forward = false
+    else:
+      mp.currentT -= mp.speed * dt
+      if mp.currentT <= 0.0:
+        mp.currentT = 0.0
+        mp.forward = true
+    mp.x = mp.startX + (mp.endX - mp.startX) * mp.currentT
+    mp.y = mp.startY + (mp.endY - mp.startY) * mp.currentT
+    level.movingPlatforms[i] = mp
+
 proc applyJump*(c: var Character) =
   if c.grounded:
     c.vy = c.jumpForce()
@@ -71,6 +91,9 @@ proc applyJump*(c: var Character) =
 
 proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float): PhysicsResult =
   result = PhysicsResult(deadCharacters: @[], exitedCharacters: @[], landedCharacters: @[])
+
+  # Update moving platforms
+  updateMovingPlatforms(level, dt)
 
   # Reset all doors to closed; buttons will re-open them below
   for d in 0..<level.doors.len:
@@ -120,6 +143,22 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
       let pRect = Rect(x: platform.x, y: platform.y, w: platform.width, h: platform.height)
       if intersects(toRect(c), pRect):
         resolveCollision(c, pRect)
+
+    # Moving platform collision + riding
+    for mp in level.movingPlatforms:
+      let mpRect = Rect(x: mp.x, y: mp.y, w: mp.width, h: mp.height)
+      if intersects(toRect(c), mpRect):
+        resolveCollision(c, mpRect)
+    # Apply riding displacement: if grounded, check if standing on a moving platform
+    if c.grounded:
+      for mp in level.movingPlatforms:
+        let feetY = c.y + float(c.height)
+        let onTop = feetY >= mp.y - 1.0 and feetY <= mp.y + 2.0
+        let overlapX = c.x + float(c.width) > mp.x and c.x < mp.x + mp.width
+        if onTop and overlapX:
+          c.x += mp.x - mp.prevX
+          c.y += mp.y - mp.prevY
+          break
 
     # Closed door collision
     for door in level.doors:
