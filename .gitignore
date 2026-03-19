@@ -5,3 +5,4 @@ nimcache/
 *.so
 *.dylib
 .scriptorium/
+.claude/
