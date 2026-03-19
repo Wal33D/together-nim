@@ -6,10 +6,9 @@ import times
 import game
 import constants
 import systems/renderer
+import systems/input
 
 proc main() =
-  echo "Together - starting up..."
-
   if sdl2.init(INIT_VIDEO or INIT_AUDIO) != SdlSuccess:
     echo "SDL2 init failed: ", sdl2.getError()
     quit(1)
@@ -18,20 +17,21 @@ proc main() =
     "Together",
     SDL_WINDOWPOS_CENTERED,
     SDL_WINDOWPOS_CENTERED,
-    DEFAULT_WIDTH, DEFAULT_HEIGHT,
-    SDL_WINDOW_SHOWN or SDL_WINDOW_RESIZABLE
+    DEFAULT_WIDTH.cint, DEFAULT_HEIGHT.cint,
+    SDL_WINDOW_SHOWN
   )
   if window == nil:
     echo "Window creation failed: ", sdl2.getError()
     quit(1)
 
-  let renderer = createRenderer(window, -1,
+  let sdlRenderer = createRenderer(window, -1,
     Renderer_Accelerated or Renderer_PresentVsync)
-  if renderer == nil:
+  if sdlRenderer == nil:
     echo "Renderer creation failed: ", sdl2.getError()
     quit(1)
 
-  echo "Together is running. Close the window to exit."
+  # Enable alpha blending
+  sdlRenderer.setDrawBlendMode(BlendMode_Blend)
 
   var g = newGame()
   var running = true
@@ -49,8 +49,8 @@ proc main() =
       case event.kind
       of QuitEvent:
         running = false
-      of KeyDown:
-        g.handleKey(event.key.keysym.scancode.cint)
+      of KeyDown, KeyUp:
+        g.handleInput(event)
       else:
         discard
 
@@ -58,13 +58,12 @@ proc main() =
       g.update(FIXED_TIMESTEP)
       accumulator -= FIXED_TIMESTEP
 
-    renderGame(renderer, g)
-    renderer.present()
+    renderGame(sdlRenderer, g)
+    sdlRenderer.present()
 
-  renderer.destroy()
+  sdlRenderer.destroy()
   window.destroy()
   sdl2.quit()
-  echo "Together - goodbye."
 
 when isMainModule:
   main()

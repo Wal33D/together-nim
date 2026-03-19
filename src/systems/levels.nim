@@ -1,20 +1,20 @@
-## Level definitions for Together (Act 1: Awakening)
+## Level definitions for Together
 
 import "../entities/level"
 
 const level1* = Level(
   id: 1,
   name: "Awakening",
-  narration: "Pip woke up.",
+  narration: "Pip woke up. This was unusual, because Pip had never been asleep.",
   characters: @["pip"],
   platforms: @[
-    Platform(x: 0.0,   y: 620.0, width: 1280.0, height: 20.0),  # ground
-    Platform(x: 200.0, y: 480.0, width: 200.0,  height: 20.0),  # mid platform
-    Platform(x: 500.0, y: 360.0, width: 200.0,  height: 20.0),  # upper platform
+    Platform(x: 0.0,   y: 460.0, width: 280.0, height: 20.0),   # ground left
+    Platform(x: 350.0, y: 420.0, width: 100.0, height: 20.0),   # stepping stone
+    Platform(x: 520.0, y: 460.0, width: 280.0, height: 20.0),   # ground right
   ],
   hazards: @[],
   exits: @[
-    Exit(x: 1180.0, y: 570.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 720.0, y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
   ],
   buttons: @[],
   doors: @[],
@@ -22,20 +22,19 @@ const level1* = Level(
 
 const level2* = Level(
   id: 2,
-  name: "Higher Ground",
-  narration: "Pip discovers her double jump.",
+  name: "First Steps",
+  narration: "Pip discovered she could jump again. Higher this time.",
   characters: @["pip"],
   platforms: @[
-    Platform(x: 0.0,   y: 620.0, width: 400.0,  height: 20.0),  # ground left
-    Platform(x: 500.0, y: 480.0, width: 180.0,  height: 20.0),  # mid 1
-    Platform(x: 750.0, y: 340.0, width: 180.0,  height: 20.0),  # mid 2 (requires double jump)
-    Platform(x: 1000.0, y: 200.0, width: 280.0, height: 20.0),  # high platform
+    Platform(x: 0.0,   y: 460.0, width: 200.0, height: 20.0),   # ground
+    Platform(x: 250.0, y: 420.0, width: 80.0,  height: 20.0),   # step 1
+    Platform(x: 380.0, y: 460.0, width: 420.0, height: 20.0),   # ground right
   ],
   hazards: @[
-    Hazard(x: 400.0, y: 600.0, width: 100.0, height: 20.0),     # gap with spikes
+    Hazard(x: 200.0, y: 470.0, width: 50.0, height: 10.0),
   ],
   exits: @[
-    Exit(x: 1180.0, y: 150.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 720.0, y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
   ],
   buttons: @[],
   doors: @[],
@@ -43,25 +42,69 @@ const level2* = Level(
 
 const level3* = Level(
   id: 3,
-  name: "Together",
-  narration: "Pip finds Luca. Together they can reach new places.",
-  characters: @["pip", "luca"],
+  name: "Questions",
+  narration: "How high could she go? Pip wanted to find out.",
+  characters: @["pip"],
   platforms: @[
-    Platform(x: 0.0,   y: 620.0, width: 500.0,  height: 20.0),  # ground left
-    Platform(x: 600.0, y: 620.0, width: 680.0,  height: 20.0),  # ground right
-    Platform(x: 250.0, y: 460.0, width: 200.0,  height: 20.0),  # mid left
-    Platform(x: 700.0, y: 320.0, width: 200.0,  height: 20.0),  # high right (luca floats here)
-    Platform(x: 500.0, y: 180.0, width: 280.0,  height: 20.0),  # top center
+    Platform(x: 0.0,   y: 460.0, width: 150.0, height: 20.0),   # ground
+    Platform(x: 200.0, y: 400.0, width: 80.0,  height: 20.0),   # stair 1
+    Platform(x: 350.0, y: 320.0, width: 80.0,  height: 20.0),   # stair 2
+    Platform(x: 500.0, y: 240.0, width: 80.0,  height: 20.0),   # stair 3
+    Platform(x: 650.0, y: 160.0, width: 120.0, height: 20.0),   # top
   ],
-  hazards: @[
-    Hazard(x: 500.0, y: 600.0, width: 100.0, height: 20.0),     # gap
-  ],
+  hazards: @[],
   exits: @[
-    Exit(x: 80.0,   y: 570.0, width: 40.0, height: 50.0, characterId: "pip"),
-    Exit(x: 1180.0, y: 130.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 680.0, y: 110.0, width: 40.0, height: 50.0, characterId: "pip"),
   ],
   buttons: @[],
   doors: @[],
 )
 
-const allLevels*: array[3, Level] = [level1, level2, level3]
+const level4* = Level(
+  id: 4,
+  name: "Becoming",
+  narration: "She was pink. She was small. She was brave.",
+  characters: @["pip"],
+  platforms: @[
+    Platform(x: 0.0,   y: 460.0, width: 120.0, height: 20.0),
+    Platform(x: 180.0, y: 400.0, width: 80.0,  height: 20.0),
+    Platform(x: 320.0, y: 340.0, width: 80.0,  height: 20.0),
+    Platform(x: 200.0, y: 260.0, width: 80.0,  height: 20.0),   # double jump needed
+    Platform(x: 380.0, y: 200.0, width: 80.0,  height: 20.0),
+    Platform(x: 550.0, y: 260.0, width: 80.0,  height: 20.0),
+    Platform(x: 650.0, y: 460.0, width: 150.0, height: 20.0),
+  ],
+  hazards: @[
+    Hazard(x: 120.0, y: 470.0, width: 530.0, height: 10.0),     # pit
+  ],
+  exits: @[
+    Exit(x: 700.0, y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
+  ],
+  buttons: @[],
+  doors: @[],
+)
+
+const level5* = Level(
+  id: 5,
+  name: "Two Minds",
+  narration: "Luca was yellow. Luca could float. Together they understood more.",
+  characters: @["pip", "luca"],
+  platforms: @[
+    Platform(x: 0.0,   y: 260.0, width: 240.0, height: 20.0),   # start platform (high)
+    Platform(x: 300.0, y: 340.0, width: 110.0, height: 20.0),   # pip route (double jump)
+    Platform(x: 300.0, y: 410.0, width: 110.0, height: 20.0),   # luca route (float down)
+    Platform(x: 500.0, y: 460.0, width: 110.0, height: 20.0),   # landing
+    Platform(x: 630.0, y: 460.0, width: 170.0, height: 20.0),   # end ground
+  ],
+  hazards: @[
+    Hazard(x: 420.0, y: 470.0, width: 70.0, height: 10.0),
+  ],
+  exits: @[
+    Exit(x: 680.0, y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 750.0, y: 410.0, width: 40.0, height: 50.0, characterId: "luca"),
+  ],
+  buttons: @[],
+  doors: @[],
+)
+
+const allLevels*: array[5, Level] = [level1, level2, level3, level4, level5]

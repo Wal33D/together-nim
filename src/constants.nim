@@ -1,30 +1,39 @@
 ## Core constants for Together
 
 # Physics
-const GRAVITY* = 980.0
-const JUMP_VELOCITY* = -450.0
-const MAX_FALL_SPEED* = 800.0
+const GRAVITY* = 800.0
+const FLOAT_GRAVITY* = 320.0       # Luca: 40% gravity
+const GRACEFUL_GRAVITY* = 600.0    # Ivy: 75% gravity
+const JUMP_VELOCITY* = -380.0
+const MAX_FALL_SPEED* = 600.0
 const TERMINAL_VELOCITY* = MAX_FALL_SPEED
+const GRACEFUL_TERMINAL* = 400.0
+const FRICTION* = 0.85
+const AIR_RESISTANCE* = 0.95
+const MOVE_SPEED* = 165.0
+const TIME_SCALE* = 0.83           # Contemplative feel
 
 # Window
-const DEFAULT_WIDTH* = 1280
-const DEFAULT_HEIGHT* = 720
+const DEFAULT_WIDTH* = 800
+const DEFAULT_HEIGHT* = 500
 
 # Timing
 const FIXED_TIMESTEP* = 1.0 / 60.0
 
-# Character dimensions
-const CHAR_WIDTH* = 32
-const CHAR_HEIGHT* = 48
+# Coyote & jump buffer
+const COYOTE_TIME* = 0.14          # 140ms grace period
+const FELIX_COYOTE_TIME* = 0.25    # 250ms for Felix
+const JUMP_BUFFER_TIME* = 0.14
+const JUMP_CUT_FACTOR* = 0.55
 
-# Character colors (R, G, B) for 6 characters
+# Character colors (matching original)
 type Color* = tuple[r, g, b: uint8]
 
-const CHAR_COLORS*: array[6, Color] = [
-  (r: 220'u8, g:  60'u8, b:  60'u8),  # 0: Red
-  (r:  60'u8, g: 120'u8, b: 220'u8),  # 1: Blue
-  (r:  60'u8, g: 200'u8, b:  80'u8),  # 2: Green
-  (r: 220'u8, g: 180'u8, b:  40'u8),  # 3: Yellow
-  (r: 180'u8, g:  60'u8, b: 220'u8),  # 4: Purple
-  (r: 220'u8, g: 140'u8, b:  40'u8),  # 5: Orange
-]
+const PIP_COLOR*:   Color = (r: 255'u8, g: 107'u8, b: 157'u8)  # #FF6B9D
+const LUCA_COLOR*:  Color = (r: 255'u8, g: 217'u8, b:  61'u8)  # #FFD93D
+const BRUNO_COLOR*: Color = (r: 107'u8, g:  68'u8, b:  35'u8)  # #6B4423
+const CARA_COLOR*:  Color = (r: 255'u8, g: 159'u8, b: 243'u8)  # #FF9FF3
+const FELIX_COLOR*: Color = (r: 212'u8, g: 165'u8, b: 116'u8)  # #D4A574
+const IVY_COLOR*:   Color = (r: 168'u8, g: 216'u8, b: 234'u8)  # #A8D8EA
+
+const BG_COLOR*: Color = (r: 26'u8, g: 26'u8, b: 46'u8)
