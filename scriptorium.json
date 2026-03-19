@@ -1,0 +1,24 @@
+{
+  "agents": {
+    "architect": {
+      "model": "claude-sonnet-4-6"
+    },
+    "coding": {
+      "model": "claude-sonnet-4-6"
+    },
+    "manager": {
+      "model": "claude-sonnet-4-6"
+    },
+    "reviewer": {
+      "model": "claude-sonnet-4-6"
+    }
+  },
+  "concurrency": {
+    "maxAgents": 2
+  },
+  "timeouts": {
+    "codingAgentHardTimeoutMs": 14400000,
+    "codingAgentNoOutputTimeoutMs": 300000,
+    "codingAgentMaxAttempts": 3
+  }
+}
