@@ -21,3 +21,5 @@ Implement `src/systems/renderer.nim`:
 - Character bar shows available characters
 - Game is playable with visual feedback
 - `make test` passes
+
+**Worktree:** /var/folders/ys/98yrt60d6dz7l3ml2s6p45480000gn/T/scriptorium/together-nim-31dcad70cc70b542/worktrees/tickets/0008-renderer

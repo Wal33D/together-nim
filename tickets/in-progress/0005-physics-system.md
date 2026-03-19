@@ -21,3 +21,5 @@ Implement `src/systems/physics.nim`:
 - Exit overlap detected
 - Unit tests for collision detection and gravity
 - `make test` passes
+
+**Worktree:** /var/folders/ys/98yrt60d6dz7l3ml2s6p45480000gn/T/scriptorium/together-nim-31dcad70cc70b542/worktrees/tickets/0005-physics-system
