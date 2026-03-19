@@ -14,3 +14,5 @@ Implement basic shared types that other modules will import.
 - `src/constants.nim` compiles and exports all constants
 - Unit test in `tests/test_constants.nim` validates key values
 - `make test` passes
+
+**Worktree:** /var/folders/ys/98yrt60d6dz7l3ml2s6p45480000gn/T/scriptorium/together-nim-31dcad70cc70b542/worktrees/tickets/0001-constants-and-types
