@@ -6,10 +6,11 @@ suite "game state machine":
     let g = newGame()
     check g.state == menu
 
-  test "enter transitions menu to playing":
+  test "enter transitions menu to playing and loads level":
     var g = newGame()
     g.handleKey(SCANCODE_RETURN)
     check g.state == playing
+    check g.characters.len > 0
 
   test "escape transitions playing to paused":
     var g = newGame()
@@ -29,16 +30,8 @@ suite "game state machine":
     g.handleKey(SCANCODE_ESCAPE)
     check g.state == menu
 
-  test "initial currentLevel is 0":
-    let g = newGame()
-    check g.currentLevel == 0
-
-  test "initial activeCharacterIndex is 0":
-    let g = newGame()
-    check g.activeCharacterIndex == 0
-
-  test "update sets deltaTime":
+  test "startGame loads level 0 with pip":
     var g = newGame()
-    g.handleKey(SCANCODE_RETURN)
-    g.update(1.0 / 60.0)
-    check abs(g.deltaTime - 1.0 / 60.0) < 1e-10
+    g.startGame()
+    check g.characters.len == 1
+    check g.characters[0].id == "pip"

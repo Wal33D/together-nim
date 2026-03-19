@@ -184,38 +184,56 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
       drawFilledRect(renderer, d.x.cint, d.y.cint, d.width.cint, d.height.cint)
   renderer.setDrawBlendMode(BlendMode_None)
 
-  # Buttons
+  # Buttons — bright yellow when pressed (any character overlaps), dim otherwise
   for b in level.buttons:
-    renderer.setDrawColor(255, 220, 50, 255)
+    var pressed = false
+    for ch in game.characters:
+      let chRight  = ch.x + float(ch.width)
+      let chBottom = ch.y + float(ch.height)
+      let bRight   = b.x + b.width
+      let bBottom  = b.y + b.height
+      if ch.x < bRight and chRight > b.x and ch.y < bBottom and chBottom > b.y:
+        pressed = true
+        break
+    if pressed:
+      renderer.setDrawColor(255, 255, 80, 255)
+    else:
+      renderer.setDrawColor(100, 80, 20, 255)
     drawFilledRect(renderer, b.x.cint, b.y.cint, b.width.cint, b.height.cint)
 
   # Exits (character-colored outlines with gentle glow)
   renderer.setDrawBlendMode(BlendMode_Blend)
   for e in level.exits:
-    let c = newCharacter(e.characterId).color
+    # Look up the character index so we can use the palette consistently
+    var exitColor: Color = (r: 128'u8, g: 128'u8, b: 128'u8)
+    for i, charId in level.characters:
+      if charId == e.characterId:
+        exitColor = CHAR_COLORS[game.characters[i].colorIndex mod 6]
+        break
     # Glow behind
-    renderer.setDrawColor(c.r, c.g, c.b, 40)
+    renderer.setDrawColor(exitColor.r, exitColor.g, exitColor.b, 40)
     drawFilledRect(renderer, (e.x - 4).cint, (e.y - 4).cint,
                    (e.width + 8).cint, (e.height + 8).cint)
     # Outline
-    renderer.setDrawColor(c.r, c.g, c.b, 200)
+    renderer.setDrawColor(exitColor.r, exitColor.g, exitColor.b, 200)
     drawOutlineRect(renderer, e.x.cint, e.y.cint, e.width.cint, e.height.cint)
   renderer.setDrawBlendMode(BlendMode_None)
 
   # Characters
   for i, ch in game.characters:
     let isActive = i == game.activeCharacterIndex
+    let chColor = CHAR_COLORS[ch.colorIndex mod 6]
 
     # Selection glow behind active character
     if isActive:
       renderer.setDrawBlendMode(BlendMode_Blend)
-      renderer.setDrawColor(ch.color.r, ch.color.g, ch.color.b, 30)
+      renderer.setDrawColor(chColor.r, chColor.g, chColor.b, 30)
       drawFilledRect(renderer, (ch.x - 6).cint, (ch.y - 6).cint,
                      cint(ch.width + 12), cint(ch.height + 12))
       renderer.setDrawBlendMode(BlendMode_None)
 
     # Character body
-    renderer.setDrawColor(ch.color.r, ch.color.g, ch.color.b, 255)
+    renderer.setDrawColor(chColor.r, chColor.g, chColor.b, 255)
     drawFilledRect(renderer, ch.x.cint, ch.y.cint, ch.width.cint, ch.height.cint)
 
     # Active character border
@@ -246,9 +264,9 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
                  cint(totalBarW + 16), cint(barH + 8))
   renderer.setDrawBlendMode(BlendMode_None)
 
-  for i, charId in level.characters:
+  for i in 0..<level.characters.len:
     let cx = barStartX + i * (barH + barSpacing)
-    let c = newCharacter(charId).color
+    let c = CHAR_COLORS[game.characters[i].colorIndex mod 6]
 
     # Highlight active
     if i == game.activeCharacterIndex:

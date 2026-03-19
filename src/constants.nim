@@ -37,3 +37,12 @@ const FELIX_COLOR*: Color = (r: 212'u8, g: 165'u8, b: 116'u8)  # #D4A574
 const IVY_COLOR*:   Color = (r: 168'u8, g: 216'u8, b: 234'u8)  # #A8D8EA
 
 const BG_COLOR*: Color = (r: 26'u8, g: 26'u8, b: 46'u8)
+
+# Ordered palette for consistent color lookup by index
+const CHAR_COLORS*: array[6, Color] = [
+  PIP_COLOR, LUCA_COLOR, BRUNO_COLOR, CARA_COLOR, FELIX_COLOR, IVY_COLOR
+]
+
+# Default character dimensions (used for AABB when per-character size is unavailable)
+const CHAR_WIDTH*  = 24
+const CHAR_HEIGHT* = 24

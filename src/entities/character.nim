@@ -11,6 +11,7 @@ type
     id*: string
     x*, y*: float
     width*, height*: int
+    colorIndex*: int
     color*: Color
     vx*, vy*: float
     grounded*: bool
@@ -48,32 +49,32 @@ proc newCharacter*(id: string): Character =
   result.contentment = 0.0
   case id
   of "pip":
-    result.width = 24; result.height = 24
-    result.color = PIP_COLOR
+    result.width = 30; result.height = 30
+    result.colorIndex = 0; result.color = (r: 255'u8, g: 182'u8, b: 193'u8)
     result.ability = doubleJump
   of "luca":
-    result.width = 28; result.height = 28
-    result.color = LUCA_COLOR
+    result.width = 25; result.height = 40
+    result.colorIndex = 1; result.color = LUCA_COLOR
     result.ability = floatAbility
   of "bruno":
-    result.width = 40; result.height = 40
-    result.color = BRUNO_COLOR
+    result.width = 50; result.height = 50
+    result.colorIndex = 2; result.color = BRUNO_COLOR
     result.ability = heavy
   of "cara":
-    result.width = 20; result.height = 20
-    result.color = CARA_COLOR
+    result.width = 20; result.height = 45
+    result.colorIndex = 3; result.color = CARA_COLOR
     result.ability = wallJump
   of "felix":
-    result.width = 20; result.height = 50
-    result.color = FELIX_COLOR
+    result.width = 35; result.height = 35
+    result.colorIndex = 4; result.color = FELIX_COLOR
     result.ability = coyoteTime
   of "ivy":
-    result.width = 28; result.height = 28
-    result.color = IVY_COLOR
+    result.width = 28; result.height = 42
+    result.colorIndex = 5; result.color = (r: 0'u8, g: 128'u8, b: 128'u8)
     result.ability = gracefulFall
   else:
     result.width = 24; result.height = 24
-    result.color = (r: 128'u8, g: 128'u8, b: 128'u8)
+    result.colorIndex = 0; result.color = (r: 128'u8, g: 128'u8, b: 128'u8)
     result.ability = doubleJump
 
 proc moveSpeed*(c: Character): float =
