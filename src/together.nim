@@ -2,6 +2,9 @@
 ## Rebuilt in Nim with SDL2
 
 import sdl2
+import times
+import game
+import constants
 
 proc main() =
   echo "Together - starting up..."
@@ -14,7 +17,7 @@ proc main() =
     "Together",
     SDL_WINDOWPOS_CENTERED,
     SDL_WINDOWPOS_CENTERED,
-    1280, 720,
+    DEFAULT_WIDTH, DEFAULT_HEIGHT,
     SDL_WINDOW_SHOWN or SDL_WINDOW_RESIZABLE
   )
   if window == nil:
@@ -29,15 +32,30 @@ proc main() =
 
   echo "Together is running. Close the window to exit."
 
+  var g = newGame()
   var running = true
   var event = defaultEvent
+  var accumulator = 0.0
+  var lastTime = epochTime()
+
   while running:
+    let currentTime = epochTime()
+    let frameTime = min(currentTime - lastTime, 0.25)
+    lastTime = currentTime
+    accumulator += frameTime
+
     while pollEvent(event):
       case event.kind
       of QuitEvent:
         running = false
+      of KeyDown:
+        g.handleKey(event.key.keysym.scancode.cint)
       else:
         discard
+
+    while accumulator >= FIXED_TIMESTEP:
+      g.update(FIXED_TIMESTEP)
+      accumulator -= FIXED_TIMESTEP
 
     renderer.setDrawColor(26, 26, 46, 255)
     renderer.clear()
