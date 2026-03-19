@@ -19,3 +19,8 @@ Implement `src/systems/input.nim`:
 - `make test` passes
 
 **Worktree:** /var/folders/ys/98yrt60d6dz7l3ml2s6p45480000gn/T/scriptorium/together-nim-31dcad70cc70b542/worktrees/tickets/0007-input-system
+
+## Prediction
+- predicted_difficulty: easy
+- predicted_duration_minutes: 13
+- reasoning: Single-file implementation mapping SDL key events to game actions with straightforward logic; key-held state tracking adds minor complexity but no cross-module integration risk.
