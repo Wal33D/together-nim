@@ -1,10 +1,10 @@
 {
   "agents": {
     "architect": {
-      "model": "claude-sonnet-4-6"
+      "model": "claude-opus-4-6"
     },
     "coding": {
-      "model": "claude-sonnet-4-6"
+      "model": "claude-opus-4-6"
     },
     "manager": {
       "model": "claude-sonnet-4-6"
