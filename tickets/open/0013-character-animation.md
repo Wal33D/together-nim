@@ -1,21 +1,20 @@
-# Implement character squash/stretch and idle sway animation
+# Implement squash/stretch and idle sway animation
 
 **Area:** effects
-**Depends:** 0002, 0005
 
-Implement `src/systems/animation.nim`:
-- `CharacterAnim` type with fields: scaleX, scaleY (default 1.0), swayOffset, swayTimer
-- `updateAnimation(anim, character, dt)` proc:
-  - **Squash on land:** when character transitions to grounded, set scaleX=1.3, scaleY=0.7; lerp back to 1.0 over 0.15 seconds
-  - **Stretch on jump:** when character leaves ground (vy < 0), set scaleX=0.8, scaleY=1.25; lerp back to 1.0 over 0.2 seconds
-  - **Idle sway:** while grounded and not moving horizontally, oscillate scaleX between 0.98 and 1.02 using a sine wave (period ~2 seconds)
-- `applyAnim(anim, baseRect): Rect` — return a scaled rect centered on the character's feet
+Characters in entities/character.nim already have squashX, squashY, idleTimer, landingTimer, contentment fields and animation procs (updateAnimation, triggerLanding, triggerJump, drawWidth, drawHeight, drawX, drawY, idleSway).
 
-The renderer should use `applyAnim` when drawing characters (wire up in renderer, no renderer ticket changes needed beyond calling this).
+Wire these into the game:
+1. In physics.nim: call `triggerLanding()` when a character transitions from airborne to grounded
+2. In physics.nim or game.nim: call `triggerJump()` when jump is triggered in input.nim
+3. In game.nim update: call `updateAnimation(c, dt)` for each character every frame
+4. In renderer.nim: use `drawX()`, `drawY()`, `drawWidth()`, `drawHeight()` instead of raw x,y,width,height when rendering characters
+5. In renderer.nim: apply `idleSway()` as a slight y-offset when drawing idle characters
+6. In renderer.nim: render contentment glow (bright additive overlay at low alpha) when contentment > 0.3
 
 ## Acceptance criteria
-- Squash visibly widens/shortens the character sprite on landing
-- Stretch visibly narrows/elongates the character on jumping
-- Idle sway is subtle and continuous
-- Unit test: trigger land event, verify scaleY < 1.0 immediately after, verify it returns to 1.0 after sufficient time steps
+- Characters squash on landing and stretch on jump
+- Idle characters gently sway
+- Characters glow warmly when at their exit
+- Visual feel is smooth and alive
 - `make test` passes

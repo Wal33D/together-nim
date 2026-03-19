@@ -1,17 +1,21 @@
-# Implement particle system with landing dust
+# Implement particle system with landing dust and exit sparkles
 
 **Area:** effects
-**Depends:** 0008, 0002
 
-Implement `src/systems/particles.nim`:
-- `Particle` type with: x, y, vx, vy, lifetime, maxLifetime, color, size
-- `ParticleEmitter` type holding a seq of Particle
-- `updateParticles(emitter, dt)` proc — advance positions, decay lifetime, remove dead particles
-- `renderParticles(renderer, emitter)` proc — draw each particle as a small filled rect, alpha-faded by remaining lifetime
-- `emitLandingDust(emitter, x, y, color)` proc — spawn 6–10 small gray/tan particles fanning outward when a character lands (call when character transitions to grounded)
+Create `src/systems/particles.nim`:
+- Particle type: x, y, vx, vy, life, maxLife, color, size
+- ParticleSystem type: seq of particles, max 200
+- `emit(system, x, y, count, color, spread, speed)` — spawn burst of particles
+- `update(system, dt)` — move particles, reduce life, remove dead ones
+- `render(renderer, system)` — draw particles as small filled rects with alpha fade
+
+Integrate into game:
+- On character landing (when grounded transitions from false to true): emit 6 gray dust particles at character feet
+- When character is at exit: emit 1 sparkle particle per frame in exit color
+- Call update in game.update() and render in renderer after characters
 
 ## Acceptance criteria
-- Particles spawn, move, and fade out correctly
-- Landing dust appears at the character's feet when they land on a platform
-- Unit test: emit particles, step forward, verify count decreases as lifetime expires
+- Landing creates dust puff
+- Exits sparkle when character is in them
+- Particles fade out and die
 - `make test` passes
