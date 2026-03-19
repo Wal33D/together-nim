@@ -115,3 +115,40 @@ he character bar iterates `game.characters` directly. All three render sites (ch
 - Backend: claude-code
 - Exit Code: 137
 - Wall Time: 5m0s
+
+## Merge Queue Failure
+- Summary: Fix color consistency and button pressed state in renderer: remove charColor() name-based palette and use CHAR_COLORS[colorIndex] everywhere (exits and character bar), and detect button pressed state via character AABB overlap in the renderer.\n- Failed gate: git merge master (ff-only and no-ff both failed)\n
+### Merge Output
+```text
+Merge made by the 'ort' strategy.
+ .gitignore              |   2 +-
+ src/systems/physics.nim | 147 +++++++++++++++++++++++++++++++++++++++
+ tests/test_physics.nim  | 178 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 326 insertions(+), 1 deletion(-)
+ create mode 100644 src/systems/physics.nim
+ create mode 100644 tests/test_physics.nim
+```
+
+### Quality Check Output
+```text
+error: Your local changes to the following files would be overwritten by merge:
+	src/systems/renderer.nim
+Please commit your changes or stash them before you merge.
+Aborting
+Merge with strategy ort failed.
+```
+
+## Metrics
+- wall_time_seconds: 754
+- coding_wall_seconds: 448
+- test_wall_seconds: 0
+- attempt_count: 1
+- outcome: reopened
+- failure_reason: test_failure
+- model: claude-sonnet-4-6
+- stdout_bytes: 314725
+
+## Post-Analysis
+- actual_difficulty: hard
+- prediction_accuracy: accurate
+- brief_summary: Predicted hard, actual was hard with 1 attempt(s) in 12m34s.
