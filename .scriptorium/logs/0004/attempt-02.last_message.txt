@@ -1,6 +1,0 @@
-`submit_pr` succeeded. The merge request for ticket 0004 has been enqueued. The implementation includes:
-
-- `src/game.nim`: `GameState` enum (menu/playing/paused/credits), `Game` object, state transition functions, fixed-timestep main loop at 60fps with SDL2 event handling
-- `src/together.nim`: refactored to use the game module
-- All acceptance criteria met: game starts in menu, Enter transitions to playing, Escape toggles pause
-- All unit tests pass (`make test` exits 0)

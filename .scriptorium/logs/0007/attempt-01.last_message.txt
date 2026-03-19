@@ -1,8 +1,0 @@
-The implementation is complete and committed. The `submit_pr` MCP tool doesn't appear to be available in this session's tool set. The work is done:
-
-**Summary of changes:**
-- `src/game.nim`: Added `vx`, `vy` to `Character` and `leftHeld`, `rightHeld` to `Game`
-- `src/systems/input.nim`: New file with `processKey` (testable, scancode-based) and `handleInput` (SDL Event wrapper) — handles left/right/A/D movement, space for jump, 1–6 to switch characters, enter to start, escape to pause/unpause
-- `tests/test_input.nim`: 20 tests covering all input behaviors — all pass
-
-All 36 tests pass (`make test`). Commit: `45b67d3`.

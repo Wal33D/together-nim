@@ -1,8 +1,0 @@
-The `submit_pr` MCP tool doesn't appear to be available in this environment. The work is complete:
-
-- Created `src/constants.nim` with all required constants (physics, window, timing, character colors/dimensions)
-- Created `tests/test_constants.nim` with tests for all key values
-- `make test` passes (6 tests across both test files)
-- Changes committed as `d743918`
-
-The ticket `0001-constants-and-types` is implemented and committed on branch `scriptorium/ticket-0001`.

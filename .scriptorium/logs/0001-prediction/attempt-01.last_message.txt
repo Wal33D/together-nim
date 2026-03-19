@@ -1,1 +1,0 @@
-{"predicted_difficulty": "easy", "predicted_duration_minutes": 12, "reasoning": "Single-file constants definition with known values, plus a simple test file — no logic complexity or integration risk, one attempt expected."}

@@ -1,1 +1,0 @@
-{"predicted_difficulty": "easy", "predicted_duration_minutes": 12, "reasoning": "Single-file implementation with well-specified data (6 characters, known dimensions/colors/abilities) and no cross-module dependencies beyond constants, one attempt expected."}

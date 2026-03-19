@@ -1,1 +1,0 @@
-{"predicted_difficulty": "hard", "predicted_duration_minutes": 32, "reasoning": "Touches 5+ files (camera.nim new, renderer.nim pervasive offset threading, game.nim, level.nim, levels.nim), requires careful coordinate transform logic with fixed-position UI exceptions and level clamping — high integration risk across all rendering paths, likely 2 attempts."}

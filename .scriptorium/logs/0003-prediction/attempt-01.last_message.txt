@@ -1,1 +1,0 @@
-{"predicted_difficulty": "medium", "predicted_duration_minutes": 18, "reasoning": "Two new files with straightforward data type definitions and static level data, plus one unit test; moderate effort but low integration risk and no complex logic."}

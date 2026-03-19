@@ -1,1 +1,0 @@
-{"predicted_difficulty": "medium", "predicted_duration_minutes": 20, "reasoning": "New particle system file plus integration into 2-3 existing modules (game loop, renderer, character landing detection), moderate logic complexity with alpha-fade math and lifecycle management, one attempt likely sufficient."}

@@ -1,5 +1,0 @@
-`submit_pr` succeeded — the merge request has been enqueued. The ticket is complete:
-
-- `src/constants.nim` exports all physics, window, timing, and character constants
-- `tests/test_constants.nim` validates key values
-- `make test` passes all suites
