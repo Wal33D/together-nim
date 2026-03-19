@@ -83,3 +83,8 @@ render correctly (background, platforms, hazards, doors, buttons, exits, charact
 1. **Color inconsistency between character rendering and exits/bar**: Characters in the game world are rendered using `CHAR_COLORS[ch.colorIndex]` (the generic Red/Blue/Green/Yellow/Purple/Orange palette from `constants.nim`), but exits and the character bar both use a separate `charColor(id)` proc with completely different hardcoded name-based colors (pip=pink, luca=bright-yellow, etc.). This means a character will look red in the world but have a pink exit and pink bar icon — breaking the visual connection. Fix by using `CHAR_COLORS[game.characters[i].colorIndex]` consistently everywhere. For exits, look up the exit character in `level.characters` to find its index into `game.characters`, then use that character's `colorIndex`.
 
 2. **Buttons do not show pressed/unpressed state**: The ticket requires "Buttons as small colored rectangles (lit when pressed)", but the `Button` type in `level.nim` has no `isPressed` field and `Game` does not track button states, so all buttons always render as yellow. Either add an `isPressed` field to `Button` and update it in the game logic (e.g., in the physics/interaction system), or track pressed button IDs in `Game`, and use that state in the renderer to show a visually distinct color when pressed (e.g., bright yellow when pressed, dim/dark yellow when not).
+
+## Prediction
+- predicted_difficulty: hard
+- predicted_duration_minutes: 32
+- reasoning: New renderer file touching 8+ distinct game element types across multiple integrated modules, with review requiring fixes to color consistency and button state logic — 2 attempts plus review cycle.
