@@ -34,6 +34,7 @@ proc processKey*(game: var Game, scancode: cint, isDown: bool) =
             c.vy = c.jumpForce()
             c.grounded = false
             c.jumpCount += 1
+            c.triggerJump()
         # Coyote time for Felix
         elif c.ability == coyoteTime:
           if c.grounded or c.coyoteTimer < FELIX_COYOTE_TIME:
@@ -41,11 +42,13 @@ proc processKey*(game: var Game, scancode: cint, isDown: bool) =
             c.grounded = false
             c.jumpCount = 1
             c.coyoteTimer = FELIX_COYOTE_TIME + 1  # consume coyote
+            c.triggerJump()
         else:
           if c.grounded:
             c.vy = c.jumpForce()
             c.grounded = false
             c.jumpCount = 1
+            c.triggerJump()
         game.characters[game.activeCharacterIndex] = c
       # Skip narration on space
       if game.narrationActive:

@@ -54,6 +54,7 @@ proc applyJump*(c: var Character) =
     c.vy = c.jumpForce()
     c.grounded = false
     c.jumpCount = 1
+    c.triggerJump()
 
 proc updatePhysics*(characters: var seq[Character], level: Level, dt: float): PhysicsResult =
   result = PhysicsResult(deadCharacters: @[], exitedCharacters: @[])
@@ -111,6 +112,10 @@ proc updatePhysics*(characters: var seq[Character], level: Level, dt: float): Ph
     # Keep coyote time from last grounded frame
     if wasGrounded and not c.grounded:
       c.coyoteTimer = 0.0  # just left ground, start coyote window
+
+    # Trigger landing animation on touchdown
+    if not wasGrounded and c.grounded:
+      c.triggerLanding()
 
     # Hazard detection
     block hazardCheck:

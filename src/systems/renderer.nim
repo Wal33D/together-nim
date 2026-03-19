@@ -229,30 +229,40 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
     let isActive = i == game.activeCharacterIndex
     let chColor = CHAR_COLORS[ch.colorIndex mod 6]
 
+    let dx = ch.drawX().cint - camX
+    let dy = (ch.drawY() + ch.idleSway()).cint - camY
+    let dw = ch.drawWidth().cint
+    let dh = ch.drawHeight().cint
+
     # Selection glow behind active character
     if isActive:
       renderer.setDrawBlendMode(BlendMode_Blend)
       renderer.setDrawColor(chColor.r, chColor.g, chColor.b, 30)
-      drawFilledRect(renderer, (ch.x - 6).cint - camX, (ch.y - 6).cint - camY,
-                     cint(ch.width + 12), cint(ch.height + 12))
+      drawFilledRect(renderer, dx - 6, dy - 6, dw + 12, dh + 12)
       renderer.setDrawBlendMode(BlendMode_None)
 
     # Character body
     renderer.setDrawColor(chColor.r, chColor.g, chColor.b, 255)
-    drawFilledRect(renderer, ch.x.cint - camX, ch.y.cint - camY, ch.width.cint, ch.height.cint)
+    drawFilledRect(renderer, dx, dy, dw, dh)
 
     # Active character border
     if isActive:
       renderer.setDrawColor(255, 255, 255, 255)
-      drawOutlineRect(renderer, (ch.x - 1).cint - camX, (ch.y - 1).cint - camY,
-                      cint(ch.width + 2), cint(ch.height + 2))
+      drawOutlineRect(renderer, dx - 1, dy - 1, dw + 2, dh + 2)
 
     # Exit glow on character when at exit
     if ch.atExit:
       renderer.setDrawBlendMode(BlendMode_Blend)
       renderer.setDrawColor(255, 255, 200, 60)
-      drawFilledRect(renderer, (ch.x - 3).cint - camX, (ch.y - 3).cint - camY,
-                     cint(ch.width + 6), cint(ch.height + 6))
+      drawFilledRect(renderer, dx - 3, dy - 3, dw + 6, dh + 6)
+      renderer.setDrawBlendMode(BlendMode_None)
+
+    # Contentment glow — warm additive overlay when at or near exit
+    if ch.contentment > 0.3:
+      let alpha = uint8(min(80.0, ch.contentment * 100.0))
+      renderer.setDrawBlendMode(BlendMode_Add)
+      renderer.setDrawColor(255, 220, 80, alpha)
+      drawFilledRect(renderer, dx, dy, dw, dh)
       renderer.setDrawBlendMode(BlendMode_None)
 
   # --- UI: fixed screen positions (not affected by camera) ---

@@ -157,6 +157,10 @@ proc update*(game: var Game, dt: float) =
         updateCamera(game.camera, ch.x, ch.y, float(ch.width), float(ch.height),
                      level.levelWidth, level.levelHeight)
 
+    # Update animations for all characters
+    for i in 0..<game.characters.len:
+      updateAnimation(game.characters[i], scaledDt)
+
     # Narration typewriter
     if game.narrationActive:
       game.narrationTimer += scaledDt
