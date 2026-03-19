@@ -16,6 +16,10 @@ const TIME_SCALE* = 0.83           # Contemplative feel
 # Window
 const DEFAULT_WIDTH* = 800
 const DEFAULT_HEIGHT* = 500
+const SCANCODE_F11* = 68.cint
+
+# Save file
+const SAVE_FILE* = "together_save.json"
 
 # Timing
 const FIXED_TIMESTEP* = 1.0 / 60.0
