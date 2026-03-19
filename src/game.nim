@@ -6,6 +6,7 @@ import entities/level
 import systems/levels
 import systems/physics
 import systems/camera
+import systems/atmosphere
 
 type
   GameState* = enum
@@ -25,6 +26,7 @@ type
     narrationActive*: bool
     levelWinTimer*: float
     camera*: Camera
+    atmosphere*: Atmosphere
 
 const
   SCANCODE_RETURN* = 40.cint
@@ -46,6 +48,12 @@ proc loadLevel*(game: var Game, idx: int) =
     c.spawnX = c.x
     c.spawnY = c.y
     game.characters.add(c)
+  # Atmosphere — use colors from this level's characters
+  var atmColors: seq[Color] = @[]
+  for c in game.characters:
+    atmColors.add(CHAR_COLORS[c.colorIndex mod 6])
+  game.atmosphere = newAtmosphere(atmColors)
+
   # Narration
   game.narrationText = level.narration
   game.narrationRevealed = 0
@@ -69,6 +77,7 @@ proc newGame*(): Game =
     narrationRevealed: 0,
     narrationActive: false,
     camera: newCamera(),
+    atmosphere: newAtmosphere(@[]),
   )
 
 proc startGame*(game: var Game) =
@@ -160,6 +169,9 @@ proc update*(game: var Game, dt: float) =
     # Update animations for all characters
     for i in 0..<game.characters.len:
       updateAnimation(game.characters[i], scaledDt)
+
+    # Update atmospheric background effects
+    game.atmosphere.update(scaledDt)
 
     # Narration typewriter
     if game.narrationActive:
