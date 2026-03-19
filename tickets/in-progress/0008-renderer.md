@@ -70,3 +70,16 @@ Updating together.nim to use renderGame"},{"content":"Run make test to verify","
 ```text
 render correctly (background, platforms, hazards, doors, buttons, exits, characters with active outline, and character bar), and `make test` passes. The merge request has been submitted.","stop_reason":"end_turn","session_id":"7a892a9a-4e06-4e69-9d84-6b6d9b36f93a","total_cost_usd":0.7327879999999999,"usage":{"input_tokens":46,"cache_creation_input_tokens":31865,"cache_read_input_tokens":1220460,"output_tokens":7715,"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":31865,"ephemeral_5m_input_tokens":0},"inference_geo":"","iterations":[],"speed":"standard"},"modelUsage":{"claude-sonnet-4-6":{"inputTokens":46,"outputTokens":7715,"cacheReadInputTokens":1220460,"cacheCreationInputTokens":31865,"webSearchRequests":0,"costUSD":0.6014947499999999,"contextWindow":200000,"maxOutputTokens":32000},"claude-haiku-4-5-20251001":{"inputTokens":67,"outputTokens":3383,"cacheReadInputTokens":499050,"cacheCreationInputTokens":51525,"webSearchRequests":0,"costUSD":0.13129325,"contextWindow":200000,"maxOutputTokens":32000}},"permission_denials":[],"fast_mode_state":"off","uuid":"04536b87-7092-4c53-819c-30abec06a2c2"}
 ```
+
+## Review
+**Review:** changes requested
+- Model: claude-sonnet-4-6
+- Backend: claude-code
+- Exit Code: 0
+- Wall Time: 4m46s
+
+**Review Feedback:** Two issues need to be addressed:
+
+1. **Color inconsistency between character rendering and exits/bar**: Characters in the game world are rendered using `CHAR_COLORS[ch.colorIndex]` (the generic Red/Blue/Green/Yellow/Purple/Orange palette from `constants.nim`), but exits and the character bar both use a separate `charColor(id)` proc with completely different hardcoded name-based colors (pip=pink, luca=bright-yellow, etc.). This means a character will look red in the world but have a pink exit and pink bar icon — breaking the visual connection. Fix by using `CHAR_COLORS[game.characters[i].colorIndex]` consistently everywhere. For exits, look up the exit character in `level.characters` to find its index into `game.characters`, then use that character's `colorIndex`.
+
+2. **Buttons do not show pressed/unpressed state**: The ticket requires "Buttons as small colored rectangles (lit when pressed)", but the `Button` type in `level.nim` has no `isPressed` field and `Game` does not track button states, so all buttons always render as yellow. Either add an `isPressed` field to `Button` and update it in the game logic (e.g., in the physics/interaction system), or track pressed button IDs in `Game`, and use that state in the renderer to show a visually distinct color when pressed (e.g., bright yellow when pressed, dim/dark yellow when not).
