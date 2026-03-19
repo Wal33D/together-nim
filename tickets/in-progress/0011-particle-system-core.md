@@ -19,3 +19,5 @@ Integrate into game:
 - Exits sparkle when character is in them
 - Particles fade out and die
 - `make test` passes
+
+**Worktree:** /var/folders/ys/98yrt60d6dz7l3ml2s6p45480000gn/T/scriptorium/together-nim-31dcad70cc70b542/worktrees/tickets/0011-particle-system-core

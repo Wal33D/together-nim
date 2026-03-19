@@ -18,3 +18,5 @@ The character bar and narration should render at FIXED screen positions (not aff
 - Switching characters pans camera to new target
 - Works with current 5 levels
 - `make test` passes
+
+**Worktree:** /var/folders/ys/98yrt60d6dz7l3ml2s6p45480000gn/T/scriptorium/together-nim-31dcad70cc70b542/worktrees/tickets/0009-camera-system
