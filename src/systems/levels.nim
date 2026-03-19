@@ -121,4 +121,156 @@ const level5* = Level(
   levelHeight: 500.0,
 )
 
-const allLevels*: array[5, Level] = [level1, level2, level3, level4, level5]
+const level6* = Level(
+  id: 6,
+  name: "The Weight of Things",
+  narration: "Bruno was brown. Bruno was big. Bruno was heavy. He couldn't jump very high.",
+  characters: @["pip", "luca", "bruno"],
+  platforms: @[
+    Platform(x: 0.0,   y: 460.0, width: 200.0, height: 20.0),   # start ground
+    Platform(x: 300.0, y: 460.0, width: 150.0, height: 20.0),   # button platform
+    Platform(x: 520.0, y: 460.0, width: 280.0, height: 20.0),   # far ground
+    Platform(x: 680.0, y: 400.0, width: 120.0, height: 20.0),   # exit ledge
+  ],
+  hazards: @[
+    Hazard(x: 200.0, y: 470.0, width: 100.0, height: 10.0),     # pit before button
+  ],
+  exits: @[
+    Exit(x: 690.0, y: 350.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 740.0, y: 350.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 340.0, y: 410.0, width: 40.0, height: 50.0, characterId: "bruno"),
+  ],
+  buttons: @[
+    Button(x: 310.0, y: 440.0, width: 40.0, height: 20.0, doorId: 1, requiresHeavy: true),
+  ],
+  doors: @[
+    Door(id: 1, x: 510.0, y: 380.0, width: 20.0, height: 80.0, isOpen: false),
+  ],
+  levelWidth: 800.0,
+  levelHeight: 500.0,
+)
+
+const level7* = Level(
+  id: 7,
+  name: "What Bruno Holds",
+  narration: "'I slow everyone down,' Bruno said. 'No,' Pip replied. 'You hold everything together.'",
+  characters: @["pip", "luca", "bruno"],
+  platforms: @[
+    Platform(x: 0.0,   y: 460.0, width: 250.0, height: 20.0),   # start area
+    Platform(x: 420.0, y: 460.0, width: 380.0, height: 20.0),   # exit area
+    Platform(x: 180.0, y: 400.0, width: 80.0,  height: 20.0),   # button platform
+  ],
+  hazards: @[],
+  exits: @[
+    Exit(x: 680.0, y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 740.0, y: 410.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 200.0, y: 350.0, width: 40.0, height: 50.0, characterId: "bruno"),
+  ],
+  buttons: @[
+    Button(x: 190.0, y: 380.0, width: 40.0, height: 20.0, doorId: 2, requiresHeavy: true),
+  ],
+  doors: @[
+    Door(id: 2, x: 400.0, y: 380.0, width: 20.0, height: 80.0, isOpen: false),
+  ],
+  levelWidth: 800.0,
+  levelHeight: 500.0,
+)
+
+const level8* = Level(
+  id: 8,
+  name: "Walls",
+  narration: "Cara was small. Cara was light pink. Cara could climb where others could not.",
+  characters: @["pip", "bruno", "cara"],
+  platforms: @[
+    Platform(x: 0.0,   y: 460.0, width: 200.0, height: 20.0),   # start ground
+    Platform(x: 260.0, y: 460.0, width: 200.0, height: 20.0),   # mid ground
+    Platform(x: 530.0, y: 460.0, width: 270.0, height: 20.0),   # far ground
+    Platform(x: 530.0, y: 240.0, width: 120.0, height: 20.0),   # high button platform
+    Platform(x: 680.0, y: 340.0, width: 120.0, height: 20.0),   # exit ledge
+  ],
+  hazards: @[
+    Hazard(x: 200.0, y: 470.0, width: 60.0, height: 10.0),
+  ],
+  exits: @[
+    Exit(x: 280.0, y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 560.0, y: 410.0, width: 40.0, height: 50.0, characterId: "bruno"),
+    Exit(x: 690.0, y: 290.0, width: 40.0, height: 50.0, characterId: "cara"),
+  ],
+  buttons: @[
+    Button(x: 545.0, y: 220.0, width: 40.0, height: 20.0, doorId: 3, requiresHeavy: false),
+  ],
+  doors: @[
+    Door(id: 3, x: 460.0, y: 380.0, width: 20.0, height: 80.0, isOpen: false),
+  ],
+  levelWidth: 800.0,
+  levelHeight: 500.0,
+)
+
+const level9* = Level(
+  id: 9,
+  name: "Apart",
+  narration: "Four shapes. Four colors. They were beginning to understand.",
+  characters: @["pip", "luca", "bruno", "cara"],
+  platforms: @[
+    Platform(x: 0.0,   y: 460.0, width: 200.0, height: 20.0),   # start ground
+    Platform(x: 260.0, y: 380.0, width: 80.0,  height: 20.0),   # luca float platform
+    Platform(x: 350.0, y: 460.0, width: 200.0, height: 20.0),   # mid ground
+    Platform(x: 380.0, y: 300.0, width: 80.0,  height: 20.0),   # cara wall-jump target
+    Platform(x: 610.0, y: 460.0, width: 190.0, height: 20.0),   # exit ground
+    Platform(x: 680.0, y: 340.0, width: 120.0, height: 20.0),   # upper exit ledge
+  ],
+  hazards: @[
+    Hazard(x: 200.0, y: 470.0, width: 60.0, height: 10.0),
+    Hazard(x: 550.0, y: 470.0, width: 60.0, height: 10.0),
+  ],
+  exits: @[
+    Exit(x: 630.0, y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 270.0, y: 330.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 680.0, y: 410.0, width: 40.0, height: 50.0, characterId: "bruno"),
+    Exit(x: 700.0, y: 290.0, width: 40.0, height: 50.0, characterId: "cara"),
+  ],
+  buttons: @[
+    Button(x: 360.0, y: 440.0, width: 40.0, height: 20.0, doorId: 4, requiresHeavy: true),
+    Button(x: 390.0, y: 280.0, width: 40.0, height: 20.0, doorId: 5, requiresHeavy: false),
+  ],
+  doors: @[
+    Door(id: 4, x: 600.0, y: 380.0, width: 20.0, height: 80.0, isOpen: false),
+    Door(id: 5, x: 660.0, y: 260.0, width: 20.0, height: 80.0, isOpen: false),
+  ],
+  levelWidth: 800.0,
+  levelHeight: 500.0,
+)
+
+const level10* = Level(
+  id: 10,
+  name: "Trust",
+  narration: "Trust was not a feeling. Trust was a choice.",
+  characters: @["pip", "luca", "bruno", "cara"],
+  platforms: @[
+    Platform(x: 0.0,   y: 460.0, width: 180.0, height: 20.0),   # pip start area
+    Platform(x: 240.0, y: 460.0, width: 160.0, height: 20.0),   # button area (bruno)
+    Platform(x: 480.0, y: 460.0, width: 320.0, height: 20.0),   # exit area
+    Platform(x: 0.0,   y: 300.0, width: 150.0, height: 20.0),   # upper start (cara/luca)
+    Platform(x: 600.0, y: 340.0, width: 120.0, height: 20.0),   # upper exit ledge
+  ],
+  hazards: @[
+    Hazard(x: 180.0, y: 470.0, width: 60.0, height: 10.0),
+    Hazard(x: 400.0, y: 470.0, width: 80.0, height: 10.0),
+  ],
+  exits: @[
+    Exit(x: 680.0, y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 730.0, y: 410.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 500.0, y: 410.0, width: 40.0, height: 50.0, characterId: "bruno"),
+    Exit(x: 610.0, y: 290.0, width: 40.0, height: 50.0, characterId: "cara"),
+  ],
+  buttons: @[
+    Button(x: 250.0, y: 440.0, width: 40.0, height: 20.0, doorId: 6, requiresHeavy: true),
+  ],
+  doors: @[
+    Door(id: 6, x: 470.0, y: 380.0, width: 20.0, height: 80.0, isOpen: false),
+  ],
+  levelWidth: 800.0,
+  levelHeight: 500.0,
+)
+
+const allLevels*: array[10, Level] = [level1, level2, level3, level4, level5, level6, level7, level8, level9, level10]
