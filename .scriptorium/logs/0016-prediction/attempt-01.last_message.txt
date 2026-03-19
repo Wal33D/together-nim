@@ -1,0 +1,1 @@
+{"predicted_difficulty": "hard", "predicted_duration_minutes": 32, "reasoning": "Two distinct mechanics (button/door interaction requiring mutable Level state threading, plus wall-jump detection with sliding physics) touching physics.nim plus likely game.nim/level.nim for state changes, moderate integration risk across character-specific collision logic warranting 2+ attempts."}

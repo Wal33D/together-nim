@@ -1,0 +1,14 @@
+The merge queue entry has been created and committed to the plan branch. The physics system implementation (ticket 0005) is complete:
+
+- `src/systems/physics.nim` implemented with:
+  - `updatePhysics(characters, level, dt)` 
+  - Gravity application
+  - AABB `intersects(a, b: Rect): bool`
+  - Platform collision resolution with grounded detection
+  - Hazard collision detection
+  - Exit zone detection
+  - Basic jump mechanics
+  - Character-specific physics stubs
+
+- Full unit tests in `tests/test_physics.nim` — all passing
+- Merge queue entry created at `queue/merge/pending/0001-0005.md` on the plan branch for the orchestrator to pick up

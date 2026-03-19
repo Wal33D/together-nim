@@ -1,0 +1,1 @@
+{"predicted_difficulty": "hard", "predicted_duration_minutes": 32, "reasoning": "Single new file but dense physics logic — AABB resolution, per-character stubs, gravity, and 4 distinct collision types — plus unit tests required; likely 2 attempts due to edge cases in platform resolution and grounded detection."}

@@ -4,5 +4,5 @@ nimcache/
 *.dll
 *.so
 *.dylib
-.scriptorium/
+
 .claude/
