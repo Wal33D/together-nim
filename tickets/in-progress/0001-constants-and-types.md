@@ -16,3 +16,8 @@ Implement basic shared types that other modules will import.
 - `make test` passes
 
 **Worktree:** /var/folders/ys/98yrt60d6dz7l3ml2s6p45480000gn/T/scriptorium/together-nim-31dcad70cc70b542/worktrees/tickets/0001-constants-and-types
+
+## Prediction
+- predicted_difficulty: easy
+- predicted_duration_minutes: 12
+- reasoning: Single-file constants definition with known values, plus a simple test file — no logic complexity or integration risk, one attempt expected.
