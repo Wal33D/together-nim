@@ -20,3 +20,8 @@ The character bar and narration should render at FIXED screen positions (not aff
 - `make test` passes
 
 **Worktree:** /var/folders/ys/98yrt60d6dz7l3ml2s6p45480000gn/T/scriptorium/together-nim-31dcad70cc70b542/worktrees/tickets/0009-camera-system
+
+## Prediction
+- predicted_difficulty: hard
+- predicted_duration_minutes: 32
+- reasoning: Touches 5+ files (camera.nim new, renderer.nim pervasive offset threading, game.nim, level.nim, levels.nim), requires careful coordinate transform logic with fixed-position UI exceptions and level clamping — high integration risk across all rendering paths, likely 2 attempts.
