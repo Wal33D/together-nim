@@ -18,6 +18,8 @@ const level1* = Level(
   ],
   buttons: @[],
   doors: @[],
+  levelWidth: 800.0,
+  levelHeight: 500.0,
 )
 
 const level2* = Level(
@@ -38,6 +40,8 @@ const level2* = Level(
   ],
   buttons: @[],
   doors: @[],
+  levelWidth: 800.0,
+  levelHeight: 500.0,
 )
 
 const level3* = Level(
@@ -58,6 +62,8 @@ const level3* = Level(
   ],
   buttons: @[],
   doors: @[],
+  levelWidth: 800.0,
+  levelHeight: 500.0,
 )
 
 const level4* = Level(
@@ -72,16 +78,19 @@ const level4* = Level(
     Platform(x: 200.0, y: 260.0, width: 80.0,  height: 20.0),   # double jump needed
     Platform(x: 380.0, y: 200.0, width: 80.0,  height: 20.0),
     Platform(x: 550.0, y: 260.0, width: 80.0,  height: 20.0),
-    Platform(x: 650.0, y: 460.0, width: 150.0, height: 20.0),
+    Platform(x: 650.0, y: 460.0, width: 200.0, height: 20.0),   # landing
+    Platform(x: 870.0, y: 460.0, width: 130.0, height: 20.0),   # far ground
   ],
   hazards: @[
     Hazard(x: 120.0, y: 470.0, width: 530.0, height: 10.0),     # pit
   ],
   exits: @[
-    Exit(x: 700.0, y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 920.0, y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
   ],
   buttons: @[],
   doors: @[],
+  levelWidth: 1000.0,
+  levelHeight: 500.0,
 )
 
 const level5* = Level(
@@ -90,21 +99,26 @@ const level5* = Level(
   narration: "Luca was yellow. Luca could float. Together they understood more.",
   characters: @["pip", "luca"],
   platforms: @[
-    Platform(x: 0.0,   y: 260.0, width: 240.0, height: 20.0),   # start platform (high)
-    Platform(x: 300.0, y: 340.0, width: 110.0, height: 20.0),   # pip route (double jump)
-    Platform(x: 300.0, y: 410.0, width: 110.0, height: 20.0),   # luca route (float down)
-    Platform(x: 500.0, y: 460.0, width: 110.0, height: 20.0),   # landing
-    Platform(x: 630.0, y: 460.0, width: 170.0, height: 20.0),   # end ground
+    Platform(x: 0.0,    y: 260.0, width: 240.0, height: 20.0),   # start platform (high)
+    Platform(x: 300.0,  y: 340.0, width: 110.0, height: 20.0),   # pip route (double jump)
+    Platform(x: 300.0,  y: 410.0, width: 110.0, height: 20.0),   # luca route (float down)
+    Platform(x: 500.0,  y: 460.0, width: 110.0, height: 20.0),   # landing
+    Platform(x: 630.0,  y: 460.0, width: 170.0, height: 20.0),   # mid ground
+    Platform(x: 850.0,  y: 380.0, width: 100.0, height: 20.0),   # upper bridge
+    Platform(x: 1000.0, y: 460.0, width: 200.0, height: 20.0),   # far ground
   ],
   hazards: @[
-    Hazard(x: 420.0, y: 470.0, width: 70.0, height: 10.0),
+    Hazard(x: 420.0, y: 470.0, width: 70.0,  height: 10.0),
+    Hazard(x: 800.0, y: 470.0, width: 50.0,  height: 10.0),
   ],
   exits: @[
-    Exit(x: 680.0, y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
-    Exit(x: 750.0, y: 410.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 1080.0, y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 1140.0, y: 410.0, width: 40.0, height: 50.0, characterId: "luca"),
   ],
   buttons: @[],
   doors: @[],
+  levelWidth: 1200.0,
+  levelHeight: 500.0,
 )
 
 const allLevels*: array[5, Level] = [level1, level2, level3, level4, level5]

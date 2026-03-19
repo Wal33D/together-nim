@@ -36,3 +36,5 @@ type
     exits*: seq[Exit]
     buttons*: seq[Button]
     doors*: seq[Door]
+    levelWidth*: float
+    levelHeight*: float
