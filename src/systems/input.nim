@@ -46,6 +46,22 @@ proc processKey*(game: var Game, scancode: cint, isDown: bool) =
             c.coyoteTimer = FELIX_COYOTE_TIME + 1  # consume coyote
             c.triggerJump()
             playSound(soundJump)
+        # Wall jump for Cara
+        elif c.ability == wallJump:
+          if c.grounded:
+            c.vy = c.jumpForce()
+            c.grounded = false
+            c.jumpCount = 1
+            c.triggerJump()
+            playSound(soundJump)
+          elif c.wallTouching:
+            c.vy = c.jumpForce()
+            c.vx = float(c.wallTouchDir) * c.moveSpeed()
+            c.grounded = false
+            c.wallTouching = false
+            c.jumpCount = 1
+            c.triggerJump()
+            playSound(soundJump)
         else:
           if c.grounded:
             c.vy = c.jumpForce()

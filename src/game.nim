@@ -28,6 +28,7 @@ type
     levelWinTimer*: float
     camera*: Camera
     atmosphere*: Atmosphere
+    currentLevelState*: Level
 
 const
   SCANCODE_RETURN* = 40.cint
@@ -39,6 +40,7 @@ proc loadLevel*(game: var Game, idx: int) =
     return
   game.currentLevel = idx
   let level = allLevels[idx]
+  game.currentLevelState = level
   game.characters = @[]
   game.activeCharacterIndex = 0
   for i, charId in level.characters:
@@ -133,8 +135,8 @@ proc update*(game: var Game, dt: float) =
 
     # Physics
     if game.currentLevel >= 0 and game.currentLevel < allLevels.len:
-      let level = allLevels[game.currentLevel]
-      let result = updatePhysics(game.characters, level, scaledDt)
+      let result = updatePhysics(game.characters, game.currentLevelState, scaledDt)
+      let level = game.currentLevelState
 
       # Handle deaths — respawn at spawn point
       for deadId in result.deadCharacters:

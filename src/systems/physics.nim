@@ -46,8 +46,20 @@ proc resolveCollision(c: var Character, rect: Rect) =
   else:
     if overlapLeft < overlapRight:
       c.x = rect.x - float(c.width)
+      # Cara wall-slide: touching wall on the right while airborne
+      if c.ability == wallJump and not c.grounded:
+        c.wallTouching = true
+        c.wallTouchDir = -1  # wall is to the right, push away left
+        if c.vy > 120.0:
+          c.vy = 120.0
     else:
       c.x = rect.x + rect.w
+      # Cara wall-slide: touching wall on the left while airborne
+      if c.ability == wallJump and not c.grounded:
+        c.wallTouching = true
+        c.wallTouchDir = 1  # wall is to the left, push away right
+        if c.vy > 120.0:
+          c.vy = 120.0
     c.vx = 0.0
 
 proc applyJump*(c: var Character) =
@@ -57,8 +69,12 @@ proc applyJump*(c: var Character) =
     c.jumpCount = 1
     c.triggerJump()
 
-proc updatePhysics*(characters: var seq[Character], level: Level, dt: float): PhysicsResult =
+proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float): PhysicsResult =
   result = PhysicsResult(deadCharacters: @[], exitedCharacters: @[], landedCharacters: @[])
+
+  # Reset all doors to closed; buttons will re-open them below
+  for d in 0..<level.doors.len:
+    level.doors[d].isOpen = false
 
   for i in 0..<characters.len:
     var c = characters[i]
@@ -93,9 +109,11 @@ proc updatePhysics*(characters: var seq[Character], level: Level, dt: float): Ph
     c.x += c.vx * dt
     c.y += c.vy * dt
 
-    # Reset grounded before collision resolution
+    # Reset grounded and wall-touch before collision resolution
     let wasGrounded = c.grounded
     c.grounded = false
+    c.wallTouching = false
+    c.wallTouchDir = 0
 
     # Platform collision
     for platform in level.platforms:
@@ -137,5 +155,15 @@ proc updatePhysics*(characters: var seq[Character], level: Level, dt: float): Ph
         let eRect = Rect(x: exit.x, y: exit.y, w: exit.width, h: exit.height)
         if intersects(toRect(c), eRect):
           result.exitedCharacters.add(c.id)
+
+    # Button/door interaction — grounded character on button opens matching door
+    if c.grounded:
+      for button in level.buttons:
+        let bRect = Rect(x: button.x, y: button.y, w: button.width, h: button.height)
+        if intersects(toRect(c), bRect):
+          if not button.requiresHeavy or c.ability == heavy:
+            for d in 0..<level.doors.len:
+              if level.doors[d].id == button.doorId:
+                level.doors[d].isOpen = true
 
     characters[i] = c

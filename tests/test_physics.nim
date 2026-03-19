@@ -44,7 +44,7 @@ suite "gravity":
     var chars = @[newCharacter("pip")]
     chars[0].x = 100.0
     chars[0].y = 0.0
-    let level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[])
     let dt = FIXED_TIMESTEP
     discard updatePhysics(chars, level, dt)
     check chars[0].vy > 0.0
@@ -53,7 +53,7 @@ suite "gravity":
     var chars = @[newCharacter("pip")]
     chars[0].x = 100.0
     chars[0].y = 0.0
-    let level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[])
     let dt = FIXED_TIMESTEP
     discard updatePhysics(chars, level, dt)
     let vy1 = chars[0].vy
@@ -63,7 +63,7 @@ suite "gravity":
   test "vy is clamped to MAX_FALL_SPEED":
     var chars = @[newCharacter("pip")]
     chars[0].vy = MAX_FALL_SPEED - 1.0
-    let level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[])
     discard updatePhysics(chars, level, 1.0)
     check chars[0].vy <= MAX_FALL_SPEED
 
@@ -75,7 +75,7 @@ suite "platform collision":
     chars[0].x = 100.0
     chars[0].y = platY - float(chars[0].height) - 1.0
     chars[0].vy = 200.0  # falling
-    let level = Level(
+    var level = Level(
       platforms: @[Platform(x: 0.0, y: platY, width: 1280.0, height: 20.0)],
       hazards: @[], exits: @[], buttons: @[], doors: @[]
     )
@@ -88,7 +88,7 @@ suite "platform collision":
     var chars = @[newCharacter("pip")]
     chars[0].x = 100.0
     chars[0].y = 0.0
-    let level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[])
     discard updatePhysics(chars, level, FIXED_TIMESTEP)
     check chars[0].grounded == false
 
@@ -98,7 +98,7 @@ suite "platform collision":
     chars[0].y = 380.0
     chars[0].vy = 500.0  # fast fall
     let platform = Platform(x: 0.0, y: 400.0, width: 500.0, height: 20.0)
-    let level = Level(platforms: @[platform], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    var level = Level(platforms: @[platform], hazards: @[], exits: @[], buttons: @[], doors: @[])
     discard updatePhysics(chars, level, FIXED_TIMESTEP)
     check chars[0].y <= platform.y - float(chars[0].height) + 0.01
 
@@ -110,7 +110,7 @@ suite "platform collision":
     chars[0].vx = 200.0
     chars[0].vy = 0.0
     let wall = Platform(x: 100.0, y: 0.0, width: 20.0, height: 200.0)
-    let level = Level(platforms: @[wall], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    var level = Level(platforms: @[wall], hazards: @[], exits: @[], buttons: @[], doors: @[])
     discard updatePhysics(chars, level, FIXED_TIMESTEP)
     # Character should not have passed through the wall
     check chars[0].x + float(chars[0].width) <= wall.x + 1.0
@@ -136,7 +136,7 @@ suite "hazard collision":
     chars[0].x = 50.0
     chars[0].y = 50.0
     let hazard = Hazard(x: 40.0, y: 40.0, width: 30.0, height: 30.0)
-    let level = Level(platforms: @[], hazards: @[hazard], exits: @[], buttons: @[], doors: @[])
+    var level = Level(platforms: @[], hazards: @[hazard], exits: @[], buttons: @[], doors: @[])
     let res = updatePhysics(chars, level, FIXED_TIMESTEP)
     check "pip" in res.deadCharacters
 
@@ -145,7 +145,7 @@ suite "hazard collision":
     chars[0].x = 0.0
     chars[0].y = 0.0
     let hazard = Hazard(x: 500.0, y: 500.0, width: 30.0, height: 30.0)
-    let level = Level(platforms: @[], hazards: @[hazard], exits: @[], buttons: @[], doors: @[])
+    var level = Level(platforms: @[], hazards: @[hazard], exits: @[], buttons: @[], doors: @[])
     let res = updatePhysics(chars, level, FIXED_TIMESTEP)
     check "pip" notin res.deadCharacters
 
@@ -155,7 +155,7 @@ suite "exit detection":
     chars[0].x = 100.0
     chars[0].y = 100.0
     let exit = Exit(x: 90.0, y: 90.0, width: 50.0, height: 50.0, characterId: "pip")
-    let level = Level(platforms: @[], hazards: @[], exits: @[exit], buttons: @[], doors: @[])
+    var level = Level(platforms: @[], hazards: @[], exits: @[exit], buttons: @[], doors: @[])
     let res = updatePhysics(chars, level, FIXED_TIMESTEP)
     check "pip" in res.exitedCharacters
 
@@ -164,7 +164,7 @@ suite "exit detection":
     chars[0].x = 100.0
     chars[0].y = 100.0
     let exit = Exit(x: 90.0, y: 90.0, width: 50.0, height: 50.0, characterId: "luca")
-    let level = Level(platforms: @[], hazards: @[], exits: @[exit], buttons: @[], doors: @[])
+    var level = Level(platforms: @[], hazards: @[], exits: @[exit], buttons: @[], doors: @[])
     let res = updatePhysics(chars, level, FIXED_TIMESTEP)
     check "pip" notin res.exitedCharacters
 
@@ -173,6 +173,97 @@ suite "exit detection":
     chars[0].x = 0.0
     chars[0].y = 0.0
     let exit = Exit(x: 500.0, y: 500.0, width: 50.0, height: 50.0, characterId: "pip")
-    let level = Level(platforms: @[], hazards: @[], exits: @[exit], buttons: @[], doors: @[])
+    var level = Level(platforms: @[], hazards: @[], exits: @[exit], buttons: @[], doors: @[])
     let res = updatePhysics(chars, level, FIXED_TIMESTEP)
     check "pip" notin res.exitedCharacters
+
+suite "button/door mechanics":
+  test "grounded character on button opens matching door":
+    var chars = @[newCharacter("pip")]
+    chars[0].x = 100.0
+    chars[0].y = 376.0  # on platform at y=400
+    chars[0].grounded = true
+    let btn = Button(x: 90.0, y: 390.0, width: 40.0, height: 10.0, doorId: 1, requiresHeavy: false)
+    let door = Door(id: 1, x: 300.0, y: 350.0, width: 20.0, height: 50.0, isOpen: false)
+    let platform = Platform(x: 0.0, y: 400.0, width: 500.0, height: 20.0)
+    var level = Level(platforms: @[platform], hazards: @[], exits: @[], buttons: @[btn], doors: @[door])
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    check level.doors[0].isOpen == true
+
+  test "heavy button only responds to Bruno":
+    # Non-heavy character (pip) should NOT press heavy button
+    var chars = @[newCharacter("pip")]
+    chars[0].x = 100.0
+    chars[0].y = 376.0
+    chars[0].grounded = true
+    let btn = Button(x: 90.0, y: 390.0, width: 40.0, height: 10.0, doorId: 1, requiresHeavy: true)
+    let door = Door(id: 1, x: 300.0, y: 350.0, width: 20.0, height: 50.0, isOpen: false)
+    let platform = Platform(x: 0.0, y: 400.0, width: 500.0, height: 20.0)
+    var level = Level(platforms: @[platform], hazards: @[], exits: @[], buttons: @[btn], doors: @[door])
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    check level.doors[0].isOpen == false
+
+  test "Bruno can press heavy button":
+    var chars = @[newCharacter("bruno")]
+    chars[0].x = 100.0
+    chars[0].y = 360.0  # bruno is 40px tall, so y=360 puts bottom at 400
+    chars[0].grounded = true
+    let btn = Button(x: 90.0, y: 390.0, width: 40.0, height: 10.0, doorId: 1, requiresHeavy: true)
+    let door = Door(id: 1, x: 300.0, y: 350.0, width: 20.0, height: 50.0, isOpen: false)
+    let platform = Platform(x: 0.0, y: 400.0, width: 500.0, height: 20.0)
+    var level = Level(platforms: @[platform], hazards: @[], exits: @[], buttons: @[btn], doors: @[door])
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    check level.doors[0].isOpen == true
+
+  test "door closes when character leaves button":
+    var chars = @[newCharacter("pip")]
+    # First frame: on button
+    chars[0].x = 100.0
+    chars[0].y = 376.0
+    chars[0].grounded = true
+    let btn = Button(x: 90.0, y: 390.0, width: 40.0, height: 10.0, doorId: 1, requiresHeavy: false)
+    let door = Door(id: 1, x: 300.0, y: 350.0, width: 20.0, height: 50.0, isOpen: false)
+    let platform = Platform(x: 0.0, y: 400.0, width: 500.0, height: 20.0)
+    var level = Level(platforms: @[platform], hazards: @[], exits: @[], buttons: @[btn], doors: @[door])
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    check level.doors[0].isOpen == true
+    # Second frame: move away from button
+    chars[0].x = 500.0
+    chars[0].grounded = true
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    check level.doors[0].isOpen == false
+
+  test "closed door blocks character":
+    var chars = @[newCharacter("pip")]
+    chars[0].x = 290.0
+    chars[0].y = 376.0
+    chars[0].vx = 200.0
+    let door = Door(id: 1, x: 300.0, y: 350.0, width: 20.0, height: 80.0, isOpen: false)
+    let platform = Platform(x: 0.0, y: 400.0, width: 500.0, height: 20.0)
+    var level = Level(platforms: @[platform], hazards: @[], exits: @[], buttons: @[], doors: @[door])
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    check chars[0].x + float(chars[0].width) <= door.x + 1.0
+
+suite "wall jump (Cara)":
+  test "Cara detects wall touch when hitting wall while airborne":
+    var chars = @[newCharacter("cara")]
+    chars[0].x = 95.0  # near wall at x=100
+    chars[0].y = 50.0
+    chars[0].vx = 200.0
+    chars[0].grounded = false
+    let wall = Platform(x: 100.0, y: 0.0, width: 20.0, height: 200.0)
+    var level = Level(platforms: @[wall], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    check chars[0].wallTouching == true
+
+  test "Cara wall-slide caps vy at 120":
+    var chars = @[newCharacter("cara")]
+    chars[0].x = 95.0
+    chars[0].y = 50.0
+    chars[0].vx = 200.0
+    chars[0].vy = 300.0  # falling fast
+    chars[0].grounded = false
+    let wall = Platform(x: 100.0, y: 0.0, width: 20.0, height: 200.0)
+    var level = Level(platforms: @[wall], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    check chars[0].vy <= 120.0

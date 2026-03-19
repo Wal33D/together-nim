@@ -23,6 +23,8 @@ type
     atExit*: bool
     dead*: bool
     spawnX*, spawnY*: float
+    wallTouching*: bool
+    wallTouchDir*: int           # -1 = wall on left, +1 = wall on right
     # Animation
     squashX*, squashY*: float     # 1.0 = normal, <1 = squashed, >1 = stretched
     idleTimer*: float             # for idle sway
@@ -42,6 +44,8 @@ proc newCharacter*(id: string): Character =
   result.jumpBufferTimer = 0.0
   result.atExit = false
   result.dead = false
+  result.wallTouching = false
+  result.wallTouchDir = 0
   result.squashX = 1.0
   result.squashY = 1.0
   result.idleTimer = 0.0
