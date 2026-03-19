@@ -6,6 +6,7 @@ import "../entities/level"
 import "levels"
 import "../constants"
 import "../game"
+import "camera"
 import math
 
 proc drawFilledRect(renderer: RendererPtr, x, y, w, h: cint) =
@@ -162,26 +163,30 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
 
   let level = allLevels[game.currentLevel]
 
+  # Camera offset — subtract from all world-space coordinates
+  let camX = game.camera.x.cint
+  let camY = game.camera.y.cint
+
   # Platforms
   renderer.setDrawColor(90, 90, 110, 255)
   for p in level.platforms:
-    drawFilledRect(renderer, p.x.cint, p.y.cint, p.width.cint, p.height.cint)
+    drawFilledRect(renderer, p.x.cint - camX, p.y.cint - camY, p.width.cint, p.height.cint)
     # Top edge highlight
     renderer.setDrawColor(120, 120, 145, 255)
-    drawFilledRect(renderer, p.x.cint, p.y.cint, p.width.cint, 2)
+    drawFilledRect(renderer, p.x.cint - camX, p.y.cint - camY, p.width.cint, 2)
     renderer.setDrawColor(90, 90, 110, 255)
 
   # Hazards (red spikes)
   renderer.setDrawColor(200, 50, 50, 255)
   for h in level.hazards:
-    drawFilledRect(renderer, h.x.cint, h.y.cint, h.width.cint, h.height.cint)
+    drawFilledRect(renderer, h.x.cint - camX, h.y.cint - camY, h.width.cint, h.height.cint)
 
   # Doors
   renderer.setDrawBlendMode(BlendMode_Blend)
   for d in level.doors:
     if not d.isOpen:
       renderer.setDrawColor(80, 80, 200, 160)
-      drawFilledRect(renderer, d.x.cint, d.y.cint, d.width.cint, d.height.cint)
+      drawFilledRect(renderer, d.x.cint - camX, d.y.cint - camY, d.width.cint, d.height.cint)
   renderer.setDrawBlendMode(BlendMode_None)
 
   # Buttons — bright yellow when pressed (any character overlaps), dim otherwise
@@ -199,7 +204,7 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
       renderer.setDrawColor(255, 255, 80, 255)
     else:
       renderer.setDrawColor(100, 80, 20, 255)
-    drawFilledRect(renderer, b.x.cint, b.y.cint, b.width.cint, b.height.cint)
+    drawFilledRect(renderer, b.x.cint - camX, b.y.cint - camY, b.width.cint, b.height.cint)
 
   # Exits (character-colored outlines with gentle glow)
   renderer.setDrawBlendMode(BlendMode_Blend)
@@ -212,11 +217,11 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
         break
     # Glow behind
     renderer.setDrawColor(exitColor.r, exitColor.g, exitColor.b, 40)
-    drawFilledRect(renderer, (e.x - 4).cint, (e.y - 4).cint,
+    drawFilledRect(renderer, (e.x - 4).cint - camX, (e.y - 4).cint - camY,
                    (e.width + 8).cint, (e.height + 8).cint)
     # Outline
     renderer.setDrawColor(exitColor.r, exitColor.g, exitColor.b, 200)
-    drawOutlineRect(renderer, e.x.cint, e.y.cint, e.width.cint, e.height.cint)
+    drawOutlineRect(renderer, e.x.cint - camX, e.y.cint - camY, e.width.cint, e.height.cint)
   renderer.setDrawBlendMode(BlendMode_None)
 
   # Characters
@@ -228,27 +233,29 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
     if isActive:
       renderer.setDrawBlendMode(BlendMode_Blend)
       renderer.setDrawColor(chColor.r, chColor.g, chColor.b, 30)
-      drawFilledRect(renderer, (ch.x - 6).cint, (ch.y - 6).cint,
+      drawFilledRect(renderer, (ch.x - 6).cint - camX, (ch.y - 6).cint - camY,
                      cint(ch.width + 12), cint(ch.height + 12))
       renderer.setDrawBlendMode(BlendMode_None)
 
     # Character body
     renderer.setDrawColor(chColor.r, chColor.g, chColor.b, 255)
-    drawFilledRect(renderer, ch.x.cint, ch.y.cint, ch.width.cint, ch.height.cint)
+    drawFilledRect(renderer, ch.x.cint - camX, ch.y.cint - camY, ch.width.cint, ch.height.cint)
 
     # Active character border
     if isActive:
       renderer.setDrawColor(255, 255, 255, 255)
-      drawOutlineRect(renderer, (ch.x - 1).cint, (ch.y - 1).cint,
+      drawOutlineRect(renderer, (ch.x - 1).cint - camX, (ch.y - 1).cint - camY,
                       cint(ch.width + 2), cint(ch.height + 2))
 
     # Exit glow on character when at exit
     if ch.atExit:
       renderer.setDrawBlendMode(BlendMode_Blend)
       renderer.setDrawColor(255, 255, 200, 60)
-      drawFilledRect(renderer, (ch.x - 3).cint, (ch.y - 3).cint,
+      drawFilledRect(renderer, (ch.x - 3).cint - camX, (ch.y - 3).cint - camY,
                      cint(ch.width + 6), cint(ch.height + 6))
       renderer.setDrawBlendMode(BlendMode_None)
+
+  # --- UI: fixed screen positions (not affected by camera) ---
 
   # Character bar at bottom
   let barH = 30

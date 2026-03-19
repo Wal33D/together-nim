@@ -5,6 +5,7 @@ import entities/character
 import entities/level
 import systems/levels
 import systems/physics
+import systems/camera
 
 type
   GameState* = enum
@@ -23,6 +24,7 @@ type
     narrationTimer*: float
     narrationActive*: bool
     levelWinTimer*: float
+    camera*: Camera
 
 const
   SCANCODE_RETURN* = 40.cint
@@ -50,6 +52,11 @@ proc loadLevel*(game: var Game, idx: int) =
   game.narrationTimer = 0.0
   game.narrationActive = level.narration.len > 0
   game.levelWinTimer = 0.0
+  # Snap camera to active character immediately
+  if game.characters.len > 0:
+    let ch = game.characters[0]
+    snapCamera(game.camera, ch.x, ch.y, float(ch.width), float(ch.height),
+               level.levelWidth, level.levelHeight)
 
 proc newGame*(): Game =
   result = Game(
@@ -61,6 +68,7 @@ proc newGame*(): Game =
     narrationText: "",
     narrationRevealed: 0,
     narrationActive: false,
+    camera: newCamera(),
   )
 
 proc startGame*(game: var Game) =
@@ -142,6 +150,12 @@ proc update*(game: var Game, dt: float) =
         if allAtExit:
           game.state = levelWin
           game.levelWinTimer = 0.0
+
+      # Update camera to follow active character
+      if game.activeCharacterIndex < game.characters.len:
+        let ch = game.characters[game.activeCharacterIndex]
+        updateCamera(game.camera, ch.x, ch.y, float(ch.width), float(ch.height),
+                     level.levelWidth, level.levelHeight)
 
     # Narration typewriter
     if game.narrationActive:
