@@ -17,5 +17,24 @@ suite "levels":
   test "level 5 has two exits":
     check level5.exits.len == 2
 
-  test "all levels array has 5 levels":
-    check allLevels.len == 5
+  test "all levels array has 10 levels":
+    check allLevels.len == 10
+
+  test "level 6 introduces bruno":
+    check level6.characters == @["pip", "luca", "bruno"]
+
+  test "level 6 has requiresHeavy button":
+    check level6.buttons.len == 1
+    check level6.buttons[0].requiresHeavy == true
+
+  test "level 6 has three exits":
+    check level6.exits.len == 3
+
+  test "level 8 introduces cara":
+    check level8.characters == @["pip", "bruno", "cara"]
+
+  test "level 9 has all four characters":
+    check level9.characters == @["pip", "luca", "bruno", "cara"]
+
+  test "level 10 has trust narration":
+    check level10.narration == "Trust was not a feeling. Trust was a choice."
