@@ -100,18 +100,37 @@ proc renderMenu(renderer: RendererPtr, game: Game) =
   renderer.setDrawColor(BG_COLOR.r, BG_COLOR.g, BG_COLOR.b, 255)
   renderer.clear()
 
-  let centerX = DEFAULT_WIDTH div 2
+  # Floating color particles behind the cast display
+  renderer.setDrawBlendMode(BlendMode_Blend)
+  for p in game.menuAtmosphere.particles:
+    renderer.setDrawColor(p.color.r, p.color.g, p.color.b, p.alpha)
+    let sz = max(1, p.size.cint)
+    drawFilledRect(renderer, p.x.cint, p.y.cint, sz, sz)
+  renderer.setDrawBlendMode(BlendMode_None)
 
-  # Title: TOGETHER in large text
+  let centerX = DEFAULT_WIDTH div 2
+  let t = game.menuTime
+
+  # Title glow — render slightly larger transparent copy behind solid text
   let titleScale = 6
   let titleText = "TOGETHER"
   let titleW = textWidth(titleText, titleScale)
+  let titleX = centerX - titleW div 2
+  let titleY = 80
+  renderer.setDrawBlendMode(BlendMode_Blend)
+  renderer.setDrawColor(255, 255, 255, 40)
+  drawText(renderer, titleText, titleX - 2, titleY - 2, titleScale + 1)
+  renderer.setDrawBlendMode(BlendMode_None)
+  # Solid title on top
   renderer.setDrawColor(255, 255, 255, 255)
-  drawText(renderer, titleText, centerX - titleW div 2, 80, titleScale)
+  drawText(renderer, titleText, titleX, titleY, titleScale)
 
-  # Subtitle
+  # Tagline — pick based on time (alternates every 6 seconds)
+  let taglines = ["A game about shapes who learned to feel.",
+                   "They were rectangles. They were family."]
+  let tagIdx = (int(t / 6.0)) mod taglines.len
   let subScale = 2
-  let subText = "Six souls. One family."
+  let subText = taglines[tagIdx]
   let subW = textWidth(subText, subScale)
   renderer.setDrawColor(180, 180, 200, 255)
   drawText(renderer, subText, centerX - subW div 2, 160, subScale)
@@ -125,28 +144,33 @@ proc renderMenu(renderer: RendererPtr, game: Game) =
   let totalCastW = 6 * sqSize + 5 * spacing
   let castStartX = centerX - totalCastW div 2
 
-  # Breathing animation — gentle sway using time
+  # Animated bobbing — sine wave, amplitude 3px, period 2s, offset by index
   for i in 0..5:
     let cx = castStartX + i * (sqSize + spacing)
+    let bobOffset = int(3.0 * sin(t * PI + float(i) * 0.8))
+    let cy = castY + bobOffset
     let c = colors[i]
     # Filled square
     renderer.setDrawColor(c.r, c.g, c.b, 255)
-    drawFilledRect(renderer, cint(cx), cint(castY), cint(sqSize), cint(sqSize))
+    drawFilledRect(renderer, cint(cx), cint(cy), cint(sqSize), cint(sqSize))
     # Name below
     renderer.setDrawColor(c.r, c.g, c.b, 255)
     let nameW = textWidth(names[i], 1)
-    drawText(renderer, names[i], cx + sqSize div 2 - nameW div 2, castY + sqSize + 6, 1)
+    drawText(renderer, names[i], cx + sqSize div 2 - nameW div 2, cy + sqSize + 6, 1)
 
   # Line separator
   renderer.setDrawColor(60, 60, 80, 255)
   drawFilledRect(renderer, cint(centerX - 120), cint(320), 240, 1)
 
-  # "Press ENTER to begin"
+  # "Press ENTER to begin" with pulsing opacity (alpha 100-255 over 2 seconds)
   let promptScale = 2
   let promptText = "Press ENTER to begin"
   let promptW = textWidth(promptText, promptScale)
-  renderer.setDrawColor(140, 140, 170, 255)
+  let pulseAlpha = uint8(177.5 + 77.5 * sin(t * PI))  # oscillates 100..255
+  renderer.setDrawBlendMode(BlendMode_Blend)
+  renderer.setDrawColor(140, 140, 170, pulseAlpha)
   drawText(renderer, promptText, centerX - promptW div 2, 350, promptScale)
+  renderer.setDrawBlendMode(BlendMode_None)
 
   # Controls hint
   let ctrlScale = 1

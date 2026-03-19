@@ -29,6 +29,8 @@ type
     camera*: Camera
     atmosphere*: Atmosphere
     currentLevelState*: Level
+    menuTime*: float
+    menuAtmosphere*: Atmosphere
 
 const
   SCANCODE_RETURN* = 40.cint
@@ -70,6 +72,7 @@ proc loadLevel*(game: var Game, idx: int) =
                level.levelWidth, level.levelHeight)
 
 proc newGame*(): Game =
+  let allColors = @[PIP_COLOR, LUCA_COLOR, BRUNO_COLOR, CARA_COLOR, FELIX_COLOR, IVY_COLOR]
   result = Game(
     state: menu,
     currentLevel: 0,
@@ -81,6 +84,8 @@ proc newGame*(): Game =
     narrationActive: false,
     camera: newCamera(),
     atmosphere: newAtmosphere(@[]),
+    menuTime: 0.0,
+    menuAtmosphere: newAtmosphere(allColors),
   )
 
 proc startGame*(game: var Game) =
@@ -122,6 +127,9 @@ proc update*(game: var Game, dt: float) =
   game.deltaTime = scaledDt
 
   case game.state
+  of menu:
+    game.menuTime += scaledDt
+    game.menuAtmosphere.update(scaledDt)
   of playing:
     # Apply movement to active character
     if game.activeCharacterIndex < game.characters.len:
