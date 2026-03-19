@@ -6,6 +6,7 @@ import "../entities/level"
 import "levels"
 import "../constants"
 import "../game"
+import "particles" as particleSystem
 import math
 
 proc drawFilledRect(renderer: RendererPtr, x, y, w, h: cint) =
@@ -156,6 +157,16 @@ proc renderMenu(renderer: RendererPtr, game: Game) =
   drawText(renderer, ctrl1, centerX - ctrl1W div 2, 410, ctrlScale)
   drawText(renderer, ctrl2, centerX - ctrl2W div 2, 428, ctrlScale)
 
+proc renderParticles(renderer: RendererPtr, system: particleSystem.ParticleSystem) =
+  renderer.setDrawBlendMode(BlendMode_Blend)
+  for p in system.particles:
+    let alpha = uint8(clamp(p.life / p.maxLife * 255.0, 0.0, 255.0))
+    renderer.setDrawColor(p.color.r, p.color.g, p.color.b, alpha)
+    let sz = max(1, cint(p.size))
+    var r = rect(p.x.cint - sz div 2, p.y.cint - sz div 2, sz, sz)
+    renderer.fillRect(r.addr)
+  renderer.setDrawBlendMode(BlendMode_None)
+
 proc renderGameplay(renderer: RendererPtr, game: Game) =
   if game.currentLevel < 0 or game.currentLevel >= allLevels.len:
     return
@@ -249,6 +260,9 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
       drawFilledRect(renderer, (ch.x - 3).cint, (ch.y - 3).cint,
                      cint(ch.width + 6), cint(ch.height + 6))
       renderer.setDrawBlendMode(BlendMode_None)
+
+  # Particles (rendered after characters so they appear on top)
+  renderParticles(renderer, game.particles)
 
   # Character bar at bottom
   let barH = 30

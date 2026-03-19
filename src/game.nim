@@ -5,6 +5,7 @@ import entities/character
 import entities/level
 import systems/levels
 import systems/physics
+import systems/particles
 
 type
   GameState* = enum
@@ -23,6 +24,7 @@ type
     narrationTimer*: float
     narrationActive*: bool
     levelWinTimer*: float
+    particles*: ParticleSystem
 
 const
   SCANCODE_RETURN* = 40.cint
@@ -116,6 +118,12 @@ proc update*(game: var Game, dt: float) =
     # Physics
     if game.currentLevel >= 0 and game.currentLevel < allLevels.len:
       let level = allLevels[game.currentLevel]
+
+      # Capture grounded state before physics for landing detection
+      var wasGrounded: seq[bool] = @[]
+      for c in game.characters:
+        wasGrounded.add(c.grounded)
+
       let result = updatePhysics(game.characters, level, scaledDt)
 
       # Handle deaths — respawn at spawn point
@@ -132,6 +140,22 @@ proc update*(game: var Game, dt: float) =
       for i in 0..<game.characters.len:
         game.characters[i].atExit = game.characters[i].id in result.exitedCharacters
 
+      # Particle effects
+      let dustColor: Color = (r: 160'u8, g: 160'u8, b: 170'u8)
+      for i in 0..<game.characters.len:
+        let c = game.characters[i]
+        # Landing dust: transition from airborne to grounded
+        if i < wasGrounded.len and not wasGrounded[i] and c.grounded:
+          let footX = c.x + float(c.width) * 0.5
+          let footY = c.y + float(c.height)
+          emit(game.particles, footX, footY, 6, dustColor, 20.0, 55.0)
+        # Exit sparkles: one particle per frame while at exit
+        if c.atExit:
+          let exitColor = CHAR_COLORS[c.colorIndex mod 6]
+          let centerX = c.x + float(c.width) * 0.5
+          let centerY = c.y + float(c.height) * 0.5
+          emit(game.particles, centerX, centerY, 1, exitColor, 24.0, 40.0)
+
       # Check win — all characters at their exits
       if game.characters.len > 0:
         var allAtExit = true
@@ -142,6 +166,9 @@ proc update*(game: var Game, dt: float) =
         if allAtExit:
           game.state = levelWin
           game.levelWinTimer = 0.0
+
+    # Update particles
+    update(game.particles, scaledDt)
 
     # Narration typewriter
     if game.narrationActive:

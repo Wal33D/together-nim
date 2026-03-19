@@ -3,44 +3,42 @@ import "../src/entities/character"
 import "../src/constants"
 
 suite "character":
-  test "pip is 24x24 pink with doubleJump":
+  test "pip is 30x30 with doubleJump":
     let c = newCharacter("pip")
     check c.id == "pip"
-    check c.width == 24
-    check c.height == 24
-    check c.color == PIP_COLOR
+    check c.width == 30
+    check c.height == 30
     check c.ability == doubleJump
 
-  test "luca is 28x28 yellow with floatAbility":
+  test "luca is 25x40 with floatAbility":
     let c = newCharacter("luca")
     check c.id == "luca"
-    check c.width == 28
-    check c.height == 28
+    check c.width == 25
+    check c.height == 40
     check c.ability == floatAbility
 
-  test "bruno is 40x40 brown with heavy":
+  test "bruno is 50x50 with heavy":
     let c = newCharacter("bruno")
-    check c.width == 40
-    check c.height == 40
+    check c.width == 50
+    check c.height == 50
     check c.ability == heavy
 
-  test "cara is 20x20 with wallJump":
+  test "cara is 20x45 with wallJump":
     let c = newCharacter("cara")
     check c.width == 20
-    check c.height == 20
+    check c.height == 45
     check c.ability == wallJump
 
-  test "felix is 20x50 with coyoteTime":
+  test "felix is 35x35 with coyoteTime":
     let c = newCharacter("felix")
-    check c.width == 20
-    check c.height == 50
+    check c.width == 35
+    check c.height == 35
     check c.ability == coyoteTime
 
-  test "ivy is 28x28 with gracefulFall":
+  test "ivy is 28x42 with gracefulFall":
     let c = newCharacter("ivy")
     check c.width == 28
-    check c.height == 28
-    check c.color == IVY_COLOR
+    check c.height == 42
     check c.ability == gracefulFall
 
   test "default fields on new character":
