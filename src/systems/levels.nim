@@ -282,4 +282,152 @@ const level10* = Level(
   levelHeight: 500.0,
 )
 
-const allLevels*: array[10, Level] = [level1, level2, level3, level4, level5, level6, level7, level8, level9, level10]
+const level11* = Level(
+  id: 11,
+  name: "Patience",
+  narration: "Felix was patient. Felix never rushed. Some edges needed faith.",
+  characters: @["pip", "bruno", "felix"],
+  platforms: @[
+    Platform(x: 0.0,   y: 460.0, width: 150.0, height: 20.0),   # start
+    Platform(x: 300.0, y: 460.0, width: 100.0, height: 20.0),   # island 1
+    Platform(x: 550.0, y: 460.0, width: 100.0, height: 20.0),   # island 2
+    Platform(x: 800.0, y: 460.0, width: 200.0, height: 20.0),   # end ground
+  ],
+  hazards: @[
+    Hazard(x: 150.0, y: 470.0, width: 150.0, height: 10.0),     # gap 1
+    Hazard(x: 400.0, y: 470.0, width: 150.0, height: 10.0),     # gap 2
+    Hazard(x: 650.0, y: 470.0, width: 150.0, height: 10.0),     # gap 3
+  ],
+  exits: @[
+    Exit(x: 860.0, y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 920.0, y: 410.0, width: 40.0, height: 50.0, characterId: "bruno"),
+    Exit(x: 950.0, y: 410.0, width: 40.0, height: 50.0, characterId: "felix"),
+  ],
+  buttons: @[
+    Button(x: 330.0, y: 450.0, width: 40.0, height: 10.0, doorId: 1, requiresHeavy: true),
+  ],
+  doors: @[
+    Door(id: 1, x: 750.0, y: 380.0, width: 20.0, height: 80.0, isOpen: false),
+  ],
+  levelWidth: 1000.0,
+  levelHeight: 500.0,
+)
+
+const level12* = Level(
+  id: 12,
+  name: "The Quiet One",
+  narration: "Ivy fell slowly. Ivy fell gracefully. The ground was always kind to Ivy.",
+  characters: @["pip", "luca", "ivy"],
+  platforms: @[
+    Platform(x: 0.0,   y: 100.0, width: 200.0, height: 20.0),   # high start
+    Platform(x: 300.0, y: 250.0, width: 120.0, height: 20.0),   # mid ledge
+    Platform(x: 500.0, y: 400.0, width: 120.0, height: 20.0),   # lower ledge
+    Platform(x: 0.0,   y: 460.0, width: 900.0, height: 20.0),   # ground
+  ],
+  hazards: @[
+    Hazard(x: 200.0, y: 470.0, width: 100.0, height: 10.0),     # gap in ground
+  ],
+  exits: @[
+    Exit(x: 720.0, y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 780.0, y: 410.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 840.0, y: 410.0, width: 40.0, height: 50.0, characterId: "ivy"),
+  ],
+  buttons: @[],
+  doors: @[],
+  levelWidth: 900.0,
+  levelHeight: 500.0,
+)
+
+const level13* = Level(
+  id: 13,
+  name: "Six",
+  narration: "Six shapes. Six colors. Six ways of being in the world.",
+  characters: @["pip", "luca", "bruno", "cara", "felix", "ivy"],
+  platforms: @[
+    Platform(x: 0.0,   y: 460.0, width: 350.0, height: 20.0),   # left ground
+    Platform(x: 450.0, y: 460.0, width: 350.0, height: 20.0),   # right ground
+    Platform(x: 200.0, y: 360.0, width: 120.0, height: 20.0),   # left upper
+    Platform(x: 500.0, y: 360.0, width: 120.0, height: 20.0),   # right upper
+  ],
+  hazards: @[],
+  exits: @[
+    Exit(x: 40.0,  y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 120.0, y: 410.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 200.0, y: 410.0, width: 40.0, height: 50.0, characterId: "bruno"),
+    Exit(x: 500.0, y: 410.0, width: 40.0, height: 50.0, characterId: "cara"),
+    Exit(x: 580.0, y: 410.0, width: 40.0, height: 50.0, characterId: "felix"),
+    Exit(x: 660.0, y: 410.0, width: 40.0, height: 50.0, characterId: "ivy"),
+  ],
+  buttons: @[],
+  doors: @[],
+  levelWidth: 800.0,
+  levelHeight: 500.0,
+)
+
+const level14* = Level(
+  id: 14,
+  name: "Hazards",
+  narration: "The world had sharp edges. But they had each other.",
+  characters: @["pip", "luca", "bruno", "cara", "felix", "ivy"],
+  platforms: @[
+    Platform(x: 0.0,   y: 460.0, width: 200.0, height: 20.0),   # start ground
+    Platform(x: 280.0, y: 400.0, width: 120.0, height: 20.0),   # mid platform 1
+    Platform(x: 480.0, y: 340.0, width: 120.0, height: 20.0),   # mid platform 2
+    Platform(x: 680.0, y: 460.0, width: 320.0, height: 20.0),   # end ground
+  ],
+  hazards: @[
+    Hazard(x: 200.0, y: 470.0, width: 80.0,  height: 10.0),     # spikes below gap 1
+    Hazard(x: 400.0, y: 470.0, width: 80.0,  height: 10.0),     # spikes below gap 2
+    Hazard(x: 600.0, y: 470.0, width: 80.0,  height: 10.0),     # spikes below gap 3
+  ],
+  exits: @[
+    Exit(x: 700.0, y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 750.0, y: 410.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 800.0, y: 410.0, width: 40.0, height: 50.0, characterId: "bruno"),
+    Exit(x: 850.0, y: 410.0, width: 40.0, height: 50.0, characterId: "cara"),
+    Exit(x: 900.0, y: 410.0, width: 40.0, height: 50.0, characterId: "felix"),
+    Exit(x: 950.0, y: 410.0, width: 40.0, height: 50.0, characterId: "ivy"),
+  ],
+  buttons: @[
+    Button(x: 100.0, y: 450.0, width: 40.0, height: 10.0, doorId: 1, requiresHeavy: true),
+  ],
+  doors: @[
+    Door(id: 1, x: 650.0, y: 380.0, width: 20.0, height: 80.0, isOpen: false),
+  ],
+  levelWidth: 1000.0,
+  levelHeight: 500.0,
+)
+
+const level15* = Level(
+  id: 15,
+  name: "Rising",
+  narration: "Up. They had always been going up. They just hadn't noticed.",
+  characters: @["pip", "luca", "bruno", "cara", "felix", "ivy"],
+  platforms: @[
+    Platform(x: 0.0,   y: 960.0, width: 800.0, height: 20.0),   # ground
+    Platform(x: 100.0, y: 800.0, width: 200.0, height: 20.0),   # tier 1 left
+    Platform(x: 500.0, y: 700.0, width: 200.0, height: 20.0),   # tier 2 right
+    Platform(x: 100.0, y: 600.0, width: 200.0, height: 20.0),   # tier 3 left
+    Platform(x: 500.0, y: 500.0, width: 200.0, height: 20.0),   # tier 4 right
+    Platform(x: 100.0, y: 400.0, width: 200.0, height: 20.0),   # tier 5 left
+    Platform(x: 400.0, y: 300.0, width: 300.0, height: 20.0),   # top platform
+    # wall-jump pillars for Cara
+    Platform(x: 380.0, y: 700.0, width: 20.0,  height: 100.0),  # pillar left
+    Platform(x: 420.0, y: 700.0, width: 20.0,  height: 100.0),  # pillar right
+  ],
+  hazards: @[],
+  exits: @[
+    Exit(x: 420.0, y: 250.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 480.0, y: 250.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 540.0, y: 250.0, width: 40.0, height: 50.0, characterId: "bruno"),
+    Exit(x: 600.0, y: 250.0, width: 40.0, height: 50.0, characterId: "cara"),
+    Exit(x: 460.0, y: 250.0, width: 40.0, height: 50.0, characterId: "felix"),
+    Exit(x: 520.0, y: 250.0, width: 40.0, height: 50.0, characterId: "ivy"),
+  ],
+  buttons: @[],
+  doors: @[],
+  levelWidth: 800.0,
+  levelHeight: 1000.0,
+)
+
+const allLevels*: array[15, Level] = [level1, level2, level3, level4, level5, level6, level7, level8, level9, level10, level11, level12, level13, level14, level15]
