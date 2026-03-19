@@ -205,7 +205,7 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
   renderer.setDrawBlendMode(BlendMode_Blend)
   for e in level.exits:
     # Look up the character index so we can use the palette consistently
-    var exitColor: Color = (r: 128'u8, g: 128'u8, b: 128'u8)
+    var exitColor: constants.Color = (r: 128'u8, g: 128'u8, b: 128'u8)
     for i, charId in level.characters:
       if charId == e.characterId:
         exitColor = CHAR_COLORS[game.characters[i].colorIndex mod 6]
