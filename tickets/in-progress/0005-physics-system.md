@@ -23,3 +23,8 @@ Implement `src/systems/physics.nim`:
 - `make test` passes
 
 **Worktree:** /var/folders/ys/98yrt60d6dz7l3ml2s6p45480000gn/T/scriptorium/together-nim-31dcad70cc70b542/worktrees/tickets/0005-physics-system
+
+## Prediction
+- predicted_difficulty: hard
+- predicted_duration_minutes: 32
+- reasoning: Single new file but dense physics logic — AABB resolution, per-character stubs, gravity, and 4 distinct collision types — plus unit tests required; likely 2 attempts due to edge cases in platform resolution and grounded detection.
