@@ -15,3 +15,5 @@ Refactor `src/together.nim` and create `src/game.nim`:
 - Pressing Enter transitions to playing state
 - Escape toggles pause
 - `make test` passes (unit test for state transitions)
+
+**Worktree:** /var/folders/ys/98yrt60d6dz7l3ml2s6p45480000gn/T/scriptorium/together-nim-31dcad70cc70b542/worktrees/tickets/0004-game-state-machine

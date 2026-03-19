@@ -14,3 +14,5 @@ Implement `src/entities/character.nim`:
 - `newCharacter("pip")` returns correct pink 30x30 character with double jump
 - Unit test validates all 6 characters
 - `make test` passes
+
+**Worktree:** /var/folders/ys/98yrt60d6dz7l3ml2s6p45480000gn/T/scriptorium/together-nim-31dcad70cc70b542/worktrees/tickets/0002-character-entity
