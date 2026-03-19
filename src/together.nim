@@ -5,6 +5,7 @@ import sdl2
 import times
 import game
 import constants
+import systems/renderer
 
 proc main() =
   echo "Together - starting up..."
@@ -57,8 +58,7 @@ proc main() =
       g.update(FIXED_TIMESTEP)
       accumulator -= FIXED_TIMESTEP
 
-    renderer.setDrawColor(26, 26, 46, 255)
-    renderer.clear()
+    renderGame(renderer, g)
     renderer.present()
 
   renderer.destroy()
