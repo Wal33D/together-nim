@@ -7,6 +7,7 @@ type
   Character* = object
     x*, y*: float
     colorIndex*: int
+    vx*, vy*: float
 
   Game* = object
     state*: GameState
@@ -14,6 +15,7 @@ type
     characters*: seq[Character]
     activeCharacterIndex*: int
     deltaTime*: float
+    leftHeld*, rightHeld*: bool
 
 const
   SCANCODE_RETURN* = 40.cint
