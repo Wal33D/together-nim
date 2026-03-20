@@ -1,10 +1,10 @@
-## Code-rendered scenic backdrops for Together.
-## These are intentionally geometric so they stay in style with the characters.
+## Code-rendered ambient backdrops for Together.
+## The goal is mood and depth, not literal scenery props.
 
-import sdl2
 import math
 import "../constants"
 import "../entities/level"
+import "render_backend"
 
 type
   BackdropScene* = enum
@@ -14,17 +14,13 @@ type
     scene*: BackdropScene
     skyTop*: constants.Color
     skyBottom*: constants.Color
+    haze*: constants.Color
     horizon*: constants.Color
     silhouette*: constants.Color
     glow*: constants.Color
-    accent*: constants.Color
-
-proc drawFilledRect(renderer: RendererPtr, x, y, w, h: cint) =
-  var r = rect(x, y, w, h)
-  renderer.fillRect(r.addr)
 
 proc clamp01(value: float): float =
-  result = max(0.0, min(1.0, value))
+  max(0.0, min(1.0, value))
 
 proc mixColor(a, b: constants.Color, t: float): constants.Color =
   let clamped = clamp01(t)
@@ -37,42 +33,42 @@ proc themeForScene(scene: BackdropScene): BackdropTheme =
   of dawnMeadow:
     BackdropTheme(
       scene: scene,
-      skyTop: (r: 32'u8, g: 44'u8, b: 74'u8),
-      skyBottom: (r: 112'u8, g: 128'u8, b: 150'u8),
-      horizon: (r: 74'u8, g: 92'u8, b: 86'u8),
-      silhouette: (r: 42'u8, g: 60'u8, b: 54'u8),
-      glow: (r: 255'u8, g: 224'u8, b: 144'u8),
-      accent: (r: 140'u8, g: 180'u8, b: 120'u8),
+      skyTop: (r: 28'u8, g: 36'u8, b: 64'u8),
+      skyBottom: (r: 128'u8, g: 142'u8, b: 156'u8),
+      haze: (r: 255'u8, g: 211'u8, b: 156'u8),
+      horizon: (r: 86'u8, g: 110'u8, b: 92'u8),
+      silhouette: (r: 48'u8, g: 66'u8, b: 56'u8),
+      glow: (r: 255'u8, g: 232'u8, b: 184'u8),
     )
   of riverValley:
     BackdropTheme(
       scene: scene,
-      skyTop: (r: 22'u8, g: 36'u8, b: 70'u8),
-      skyBottom: (r: 88'u8, g: 116'u8, b: 150'u8),
-      horizon: (r: 52'u8, g: 74'u8, b: 100'u8),
-      silhouette: (r: 28'u8, g: 44'u8, b: 68'u8),
-      glow: (r: 180'u8, g: 230'u8, b: 255'u8),
-      accent: (r: 118'u8, g: 160'u8, b: 190'u8),
+      skyTop: (r: 18'u8, g: 34'u8, b: 68'u8),
+      skyBottom: (r: 92'u8, g: 118'u8, b: 152'u8),
+      haze: (r: 176'u8, g: 214'u8, b: 236'u8),
+      horizon: (r: 52'u8, g: 78'u8, b: 102'u8),
+      silhouette: (r: 26'u8, g: 48'u8, b: 72'u8),
+      glow: (r: 196'u8, g: 236'u8, b: 255'u8),
     )
   of stoneRuins:
     BackdropTheme(
       scene: scene,
-      skyTop: (r: 38'u8, g: 36'u8, b: 64'u8),
-      skyBottom: (r: 104'u8, g: 90'u8, b: 120'u8),
-      horizon: (r: 84'u8, g: 78'u8, b: 94'u8),
-      silhouette: (r: 46'u8, g: 42'u8, b: 58'u8),
-      glow: (r: 220'u8, g: 200'u8, b: 240'u8),
-      accent: (r: 160'u8, g: 140'u8, b: 180'u8),
+      skyTop: (r: 30'u8, g: 30'u8, b: 54'u8),
+      skyBottom: (r: 112'u8, g: 94'u8, b: 118'u8),
+      haze: (r: 214'u8, g: 182'u8, b: 210'u8),
+      horizon: (r: 78'u8, g: 74'u8, b: 90'u8),
+      silhouette: (r: 42'u8, g: 40'u8, b: 54'u8),
+      glow: (r: 228'u8, g: 210'u8, b: 240'u8),
     )
   of nightSky:
     BackdropTheme(
       scene: scene,
-      skyTop: (r: 10'u8, g: 14'u8, b: 32'u8),
-      skyBottom: (r: 26'u8, g: 28'u8, b: 54'u8),
-      horizon: (r: 30'u8, g: 36'u8, b: 64'u8),
-      silhouette: (r: 18'u8, g: 22'u8, b: 40'u8),
-      glow: (r: 140'u8, g: 200'u8, b: 255'u8),
-      accent: (r: 96'u8, g: 132'u8, b: 180'u8),
+      skyTop: (r: 8'u8, g: 12'u8, b: 28'u8),
+      skyBottom: (r: 24'u8, g: 28'u8, b: 54'u8),
+      haze: (r: 86'u8, g: 126'u8, b: 168'u8),
+      horizon: (r: 26'u8, g: 34'u8, b: 62'u8),
+      silhouette: (r: 14'u8, g: 18'u8, b: 34'u8),
+      glow: (r: 148'u8, g: 206'u8, b: 255'u8),
     )
 
 proc levelBackdropScene*(levelId: int): BackdropScene =
@@ -85,22 +81,43 @@ proc levelBackdropScene*(levelId: int): BackdropScene =
 proc backdropThemeForLevel*(levelId: int): BackdropTheme =
   themeForScene(levelBackdropScene(levelId))
 
-proc renderBackdropSky(renderer: RendererPtr, theme: BackdropTheme, time: float) =
-  let bands = 14
+proc renderSkyGradient(renderer: RendererPtr, theme: BackdropTheme) =
+  let bands = 18
   let bandH = max(1, DEFAULT_HEIGHT div bands)
   for i in 0..<bands:
     let t = float(i) / float(max(1, bands - 1))
     let color = mixColor(theme.skyTop, theme.skyBottom, t)
     renderer.setDrawColor(color.r, color.g, color.b, 255)
-    drawFilledRect(renderer, 0.cint, cint(i * bandH), DEFAULT_WIDTH.cint, cint(bandH + 1))
+    drawFilledRect(renderer, 0, cint(i * bandH), DEFAULT_WIDTH.cint, cint(bandH + 1))
 
-  let shimmer = 0.5 + 0.5 * sin(time * 0.8)
+proc renderGlow(renderer: RendererPtr, x, y, w, h: int, color: constants.Color, alpha: uint8) =
   renderer.setDrawBlendMode(BlendMode_Blend)
-  renderer.setDrawColor(theme.glow.r, theme.glow.g, theme.glow.b, uint8(24 + shimmer * 18.0))
-  drawFilledRect(renderer, 0.cint, 0.cint, DEFAULT_WIDTH.cint, (DEFAULT_HEIGHT div 2).cint)
+  for layer in 0..4:
+    let inset = layer * 12
+    let layerAlpha = max(0, int(alpha) - layer * 18).uint8
+    renderer.setDrawColor(color.r, color.g, color.b, layerAlpha)
+    drawFilledRect(
+      renderer,
+      cint(x - w div 2 + inset),
+      cint(y - h div 2 + inset),
+      cint(max(1, w - inset * 2)),
+      cint(max(1, h - inset * 2))
+    )
   renderer.setDrawBlendMode(BlendMode_None)
 
-proc renderStars(renderer: RendererPtr, levelId: int, theme: BackdropTheme, time: float) =
+proc renderCelestialBody(renderer: RendererPtr, theme: BackdropTheme, scene: BackdropScene, time: float) =
+  case scene
+  of dawnMeadow:
+    renderGlow(renderer, 150, 116, 180, 180, theme.glow, 62)
+  of riverValley:
+    renderGlow(renderer, 610, 104, 150, 150, theme.glow, 40)
+  of stoneRuins:
+    renderGlow(renderer, 212, 132, 150, 150, theme.glow, 34)
+  of nightSky:
+    let driftY = int(6.0 * sin(time * 0.18))
+    renderGlow(renderer, 628, 98 + driftY, 120, 120, theme.glow, 54)
+
+proc renderStars(renderer: RendererPtr, theme: BackdropTheme, levelId: int, time: float) =
   if theme.scene != nightSky:
     return
 
@@ -108,89 +125,103 @@ proc renderStars(renderer: RendererPtr, levelId: int, theme: BackdropTheme, time
   for i in 0..<36:
     let x = (i * 97 + levelId * 23) mod DEFAULT_WIDTH
     let y = (i * 53 + levelId * 41) mod (DEFAULT_HEIGHT div 2)
-    let twinkle = 32 + int(22.0 * (0.5 + 0.5 * sin(time * 1.8 + float(i) * 0.37)))
+    let twinkle = 26 + int(24.0 * (0.5 + 0.5 * sin(time * 1.8 + float(i) * 0.37)))
     renderer.setDrawColor(theme.glow.r, theme.glow.g, theme.glow.b, uint8(twinkle))
-    drawFilledRect(renderer, cint(x), cint(y), 2.cint, 2.cint)
+    drawFilledRect(renderer, cint(x), cint(y), 2, 2)
   renderer.setDrawBlendMode(BlendMode_None)
 
-proc renderClouds(renderer: RendererPtr, theme: BackdropTheme, levelId: int, time: float) =
+proc renderAurora(renderer: RendererPtr, theme: BackdropTheme, time: float) =
+  if theme.scene != nightSky:
+    return
+
   renderer.setDrawBlendMode(BlendMode_Blend)
   for i in 0..<5:
-    let baseX = int((float(levelId) * 73.0 + float(i) * 167.0 + time * (12.0 + float(i) * 3.0))) mod (DEFAULT_WIDTH + 140) - 70
-    let baseY = 36 + i * 28
-    let width = 90 + (i mod 3) * 20
-    let alpha = uint8(18 + i * 4)
-    renderer.setDrawColor(theme.glow.r, theme.glow.g, theme.glow.b, alpha)
-    drawFilledRect(renderer, cint(baseX), cint(baseY), cint(width), 10.cint)
-    drawFilledRect(renderer, cint(baseX + 18), cint(baseY - 6), cint(width - 36), 12.cint)
-    drawFilledRect(renderer, cint(baseX + 36), cint(baseY + 4), cint(width - 64), 8.cint)
+    let x = 80 + i * 132 + int(10.0 * sin(time * 0.4 + float(i)))
+    let width = 56 + (i mod 2) * 18
+    let height = 180 + (i mod 3) * 26
+    let alpha = uint8(16 + i * 5)
+    renderer.setDrawColor(theme.haze.r, theme.haze.g, theme.haze.b, alpha)
+    drawFilledRect(renderer, cint(x), 12, cint(width), cint(height))
   renderer.setDrawBlendMode(BlendMode_None)
 
-proc renderHills(renderer: RendererPtr, theme: BackdropTheme, levelId: int, camX: float) =
+proc renderHorizonBands(renderer: RendererPtr, theme: BackdropTheme, camX: float) =
+  let bandBaseY = DEFAULT_HEIGHT - 158
   let parallax = case theme.scene
-    of dawnMeadow: 0.10
-    of riverValley: 0.16
-    of stoneRuins: 0.12
+    of dawnMeadow: 0.08
+    of riverValley: 0.12
+    of stoneRuins: 0.10
     of nightSky: 0.05
 
-  let bandY = DEFAULT_HEIGHT - 126
   let offset = int(camX * parallax)
   for layer in 0..2:
-    let layerColor = mixColor(theme.horizon, theme.silhouette, float(layer) * 0.22)
-    renderer.setDrawColor(layerColor.r, layerColor.g, layerColor.b, 255)
-    let y = bandY + layer * 24
-    let height = 52 + layer * 18
-    let widthShift = (levelId * 37 + layer * 91) mod 220
-    for x in -2..6:
-      let segmentX = x * 150 - offset + widthShift div 2
-      drawFilledRect(renderer, cint(segmentX), cint(y), 120.cint, cint(height))
-
-proc renderMotifs(renderer: RendererPtr, theme: BackdropTheme, levelId: int, camX: float, time: float) =
-  let horizonY = DEFAULT_HEIGHT - 138
-  case theme.scene
-  of dawnMeadow:
-    renderer.setDrawColor(theme.accent.r, theme.accent.g, theme.accent.b, 255)
-    for i in 0..<7:
-      let x = (i * 103 + levelId * 19) mod (DEFAULT_WIDTH + 120) - 60
-      let trunkH = 18 + (i mod 3) * 6
-      drawFilledRect(renderer, cint(x), cint(horizonY - trunkH), 6.cint, cint(trunkH))
-      drawFilledRect(renderer, cint(x - 10), cint(horizonY - trunkH - 12), 26.cint, 12.cint)
-      drawFilledRect(renderer, cint(x - 14), cint(horizonY - trunkH - 4), 34.cint, 8.cint)
-  of riverValley:
-    renderer.setDrawColor(theme.accent.r, theme.accent.g, theme.accent.b, 255)
-    for i in 0..<5:
-      let x = int((float(levelId) * 61.0 + float(i) * 143.0 + camX * 0.2)) mod (DEFAULT_WIDTH + 160) - 80
-      drawFilledRect(renderer, cint(x), cint(horizonY - 26 - (i mod 2) * 8), 18.cint, 34.cint)
-      drawFilledRect(renderer, cint(x - 10), cint(horizonY - 42), 38.cint, 10.cint)
-    renderer.setDrawColor(theme.glow.r, theme.glow.g, theme.glow.b, 90)
-    drawFilledRect(renderer, 0.cint, cint(horizonY + 10), DEFAULT_WIDTH.cint, 10.cint)
-  of stoneRuins:
-    renderer.setDrawColor(theme.accent.r, theme.accent.g, theme.accent.b, 255)
-    for i in 0..<6:
-      let x = (i * 116 + levelId * 17) mod (DEFAULT_WIDTH + 150) - 75
-      let h = 46 + (i mod 3) * 18
-      drawFilledRect(renderer, cint(x), cint(horizonY - h), 20.cint, cint(h))
-      drawFilledRect(renderer, cint(x - 8), cint(horizonY - h - 10), 36.cint, 10.cint)
-      if i mod 2 == 0:
-        renderer.setDrawColor(theme.glow.r, theme.glow.g, theme.glow.b, 50)
-        drawFilledRect(renderer, cint(x + 5), cint(horizonY - h + 12), 8.cint, 12.cint)
-        renderer.setDrawColor(theme.accent.r, theme.accent.g, theme.accent.b, 255)
-  of nightSky:
-    renderer.setDrawColor(theme.accent.r, theme.accent.g, theme.accent.b, 255)
-    for i in 0..<5:
-      let x = (i * 172 + levelId * 13) mod (DEFAULT_WIDTH + 120) - 60
-      let pHeight = 40 + (i mod 3) * 20
-      drawFilledRect(renderer, cint(x), cint(horizonY - pHeight), 14.cint, cint(pHeight))
-      drawFilledRect(renderer, cint(x - 6), cint(horizonY - pHeight - 10), 26.cint, 10.cint)
+    let bandColor = mixColor(theme.horizon, theme.silhouette, float(layer) * 0.28)
+    let alpha = uint8(210 - layer * 28)
     renderer.setDrawBlendMode(BlendMode_Blend)
-    renderer.setDrawColor(theme.glow.r, theme.glow.g, theme.glow.b, 42)
-    drawFilledRect(renderer, 0.cint, cint(horizonY - 48), DEFAULT_WIDTH.cint, 36.cint)
-    renderer.setDrawBlendMode(BlendMode_None)
+    renderer.setDrawColor(bandColor.r, bandColor.g, bandColor.b, alpha)
+    let y = bandBaseY + layer * 30
+    let height = 48 + layer * 14
+    let segmentW = 260 + layer * 40
+    let shift = (offset + layer * 44) mod segmentW
+    for segment in -1..4:
+      let x = segment * segmentW - shift
+      drawFilledRect(renderer, cint(x), cint(y), cint(segmentW + 28), cint(height))
+  renderer.setDrawBlendMode(BlendMode_None)
+
+proc renderMist(renderer: RendererPtr, theme: BackdropTheme, scene: BackdropScene, time: float) =
+  renderer.setDrawBlendMode(BlendMode_Blend)
+  for layer in 0..3:
+    let width = 240 + layer * 80
+    let speed = 7.0 + float(layer) * 2.8
+    let baseX = int((time * speed).floor) mod (DEFAULT_WIDTH + width) - width div 2
+    let y = DEFAULT_HEIGHT - 176 + layer * 22
+    let alpha = case scene
+      of dawnMeadow: uint8(20 + layer * 5)
+      of riverValley: uint8(28 + layer * 6)
+      of stoneRuins: uint8(16 + layer * 5)
+      of nightSky: uint8(10 + layer * 4)
+    renderer.setDrawColor(theme.haze.r, theme.haze.g, theme.haze.b, alpha)
+    drawFilledRect(renderer, cint(baseX), cint(y), cint(width), 18)
+    drawFilledRect(renderer, cint(baseX - 180), cint(y + 8), cint(width - 40), 14)
+  renderer.setDrawBlendMode(BlendMode_None)
+
+proc renderWaterShimmer(renderer: RendererPtr, theme: BackdropTheme, time: float) =
+  if theme.scene != riverValley:
+    return
+
+  renderer.setDrawBlendMode(BlendMode_Blend)
+  for i in 0..<8:
+    let y = DEFAULT_HEIGHT - 96 + i * 6
+    let width = 200 + i * 60
+    let x = DEFAULT_WIDTH div 2 - width div 2 + int(14.0 * sin(time * 0.6 + float(i)))
+    let alpha = uint8(14 + (7 - i) * 3)
+    renderer.setDrawColor(theme.glow.r, theme.glow.g, theme.glow.b, alpha)
+    drawFilledRect(renderer, cint(x), cint(y), cint(width), 2)
+  renderer.setDrawBlendMode(BlendMode_None)
+
+proc renderAmbientStrata(renderer: RendererPtr, theme: BackdropTheme, scene: BackdropScene) =
+  renderer.setDrawBlendMode(BlendMode_Blend)
+  case scene
+  of dawnMeadow:
+    renderer.setDrawColor(theme.haze.r, theme.haze.g, theme.haze.b, 24)
+    drawFilledRect(renderer, 0, 92, DEFAULT_WIDTH.cint, 96)
+  of riverValley:
+    renderer.setDrawColor(theme.haze.r, theme.haze.g, theme.haze.b, 20)
+    drawFilledRect(renderer, 0, 118, DEFAULT_WIDTH.cint, 84)
+  of stoneRuins:
+    renderer.setDrawColor(theme.haze.r, theme.haze.g, theme.haze.b, 18)
+    drawFilledRect(renderer, 0, 136, DEFAULT_WIDTH.cint, 74)
+  of nightSky:
+    renderer.setDrawColor(theme.haze.r, theme.haze.g, theme.haze.b, 14)
+    drawFilledRect(renderer, 0, 74, DEFAULT_WIDTH.cint, 110)
+  renderer.setDrawBlendMode(BlendMode_None)
 
 proc renderBackdrop*(renderer: RendererPtr, level: Level, camX, time: float) =
   let theme = backdropThemeForLevel(level.id)
-  renderBackdropSky(renderer, theme, time)
-  renderStars(renderer, level.id, theme, time)
-  renderClouds(renderer, theme, level.id, time)
-  renderHills(renderer, theme, level.id, camX)
-  renderMotifs(renderer, theme, level.id, camX, time)
+  renderSkyGradient(renderer, theme)
+  renderCelestialBody(renderer, theme, theme.scene, time)
+  renderAmbientStrata(renderer, theme, theme.scene)
+  renderStars(renderer, theme, level.id, time)
+  renderAurora(renderer, theme, time)
+  renderHorizonBands(renderer, theme, camX)
+  renderMist(renderer, theme, theme.scene, time)
+  renderWaterShimmer(renderer, theme, time)

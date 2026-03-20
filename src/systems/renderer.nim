@@ -1,6 +1,5 @@
 ## SDL2 renderer for Together — menu, gameplay, narration, win screen
 
-import sdl2
 import "../entities/character"
 import "../entities/level"
 import "levels"
@@ -9,15 +8,8 @@ import "../game"
 import "camera"
 import "atmosphere"
 import "backdrop"
+import "render_backend"
 import math
-
-proc drawFilledRect(renderer: RendererPtr, x, y, w, h: cint) =
-  var r = rect(x, y, w, h)
-  renderer.fillRect(r.addr)
-
-proc drawOutlineRect(renderer: RendererPtr, x, y, w, h: cint) =
-  var r = rect(x, y, w, h)
-  renderer.drawRect(r.addr)
 
 # Simple bitmap font — draws text as small pixel blocks
 proc drawChar(renderer: RendererPtr, ch: char, x, y, scale: int) =

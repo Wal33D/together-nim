@@ -2,10 +2,12 @@
 ## Rebuilt in Nim with SDL2
 
 import sdl2
+import opengl
 import times
 import game
 import constants
 import systems/renderer
+import systems/render_backend
 import systems/input
 import systems/audio
 import systems/gamepad
@@ -15,29 +17,34 @@ proc main() =
     echo "SDL2 init failed: ", sdl2.getError()
     quit(1)
 
+  discard glSetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4)
+  discard glSetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1)
+  discard glSetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE)
+
   let window = createWindow(
     "Together",
     SDL_WINDOWPOS_CENTERED,
     SDL_WINDOWPOS_CENTERED,
     DEFAULT_WIDTH.cint, DEFAULT_HEIGHT.cint,
-    SDL_WINDOW_SHOWN
+    SDL_WINDOW_SHOWN or SDL_WINDOW_OPENGL
   )
   if window == nil:
     echo "Window creation failed: ", sdl2.getError()
     quit(1)
 
-  let sdlRenderer = createRenderer(window, -1,
-    Renderer_Accelerated or Renderer_PresentVsync)
-  if sdlRenderer == nil:
-    echo "Renderer creation failed: ", sdl2.getError()
+  let glContext = glCreateContext(window)
+  if glContext == nil:
+    echo "OpenGL context creation failed: ", sdl2.getError()
     quit(1)
 
-  # Enable alpha blending
-  sdlRenderer.setDrawBlendMode(BlendMode_Blend)
+  discard glMakeCurrent(window, glContext)
+  loadExtensions()
+  discard glSetSwapInterval(1)
 
   initAudio()
   openFirstController()
 
+  let renderer = newRenderer()
   var g = newGame()
   var running = true
   var event = defaultEvent
@@ -70,12 +77,16 @@ proc main() =
       g.update(FIXED_TIMESTEP)
       accumulator -= FIXED_TIMESTEP
 
-    renderGame(sdlRenderer, g)
-    sdlRenderer.present()
+    var drawableW, drawableH: cint
+    glGetDrawableSize(window, drawableW, drawableH)
+    renderer.beginFrame(drawableW.int, drawableH.int)
+    renderGame(renderer, g)
+    renderer.endFrame()
+    glSwapWindow(window)
 
   closeController()
   shutdownAudio()
-  sdlRenderer.destroy()
+  glDeleteContext(glContext)
   window.destroy()
   sdl2.quit()
 
