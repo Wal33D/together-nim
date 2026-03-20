@@ -8,6 +8,7 @@ import systems/physics
 import systems/camera
 import systems/atmosphere
 import systems/audio
+import systems/particles
 
 type
   GameState* = enum
@@ -28,6 +29,7 @@ type
     levelWinTimer*: float
     camera*: Camera
     atmosphere*: Atmosphere
+    particles*: ParticleSystem
     currentLevelState*: Level
     menuTime*: float
     elapsedTime*: float
@@ -90,6 +92,53 @@ proc attemptCharacterJump(c: var Character): bool =
 
   false
 
+proc characterCenterX(c: Character): float =
+  c.x + float(c.width) * 0.5
+
+proc characterCenterY(c: Character): float =
+  c.y + float(c.height) * 0.5
+
+proc characterFeetX(c: Character): float =
+  c.x + float(c.width) * 0.5
+
+proc characterFeetY(c: Character): float =
+  c.y + float(c.height) - 2.0
+
+proc findCharacterIndex(game: Game, characterId: string): int =
+  for i, c in game.characters:
+    if c.id == characterId:
+      return i
+  -1
+
+proc emitJumpParticles(game: var Game, idx: int) =
+  let c = game.characters[idx]
+  game.particles.emitJump(c.characterFeetX(), c.characterFeetY(),
+                          CHAR_COLORS[c.colorIndex mod 6])
+
+proc emitLandingParticles(game: var Game, idx: int) =
+  let c = game.characters[idx]
+  game.particles.emitLanding(c.characterFeetX(), c.characterFeetY(),
+                             CHAR_COLORS[c.colorIndex mod 6])
+
+proc emitDeathParticles(game: var Game, idx: int) =
+  let c = game.characters[idx]
+  game.particles.emitDeath(c.characterCenterX(), c.characterCenterY(),
+                           CHAR_COLORS[c.colorIndex mod 6])
+
+proc emitExitParticles(game: var Game, idx: int) =
+  let c = game.characters[idx]
+  for e in game.currentLevelState.exits:
+    if e.characterId == c.id:
+      game.particles.emitExit(e.x + e.width * 0.5, e.y + e.height * 0.5,
+                              CHAR_COLORS[c.colorIndex mod 6])
+      break
+
+proc emitCompletionParticles(game: var Game) =
+  let completionColor: Color = (r: 248'u8, g: 232'u8, b: 178'u8)
+  for c in game.characters:
+    game.particles.emitCompletion(c.characterCenterX(), c.characterCenterY(),
+                                  completionColor)
+
 proc pressJump*(game: var Game) =
   game.jumpPressed = true
 
@@ -98,6 +147,7 @@ proc pressJump*(game: var Game) =
 
   if game.activeCharacterIndex < game.characters.len:
     if attemptCharacterJump(game.characters[game.activeCharacterIndex]):
+      game.emitJumpParticles(game.activeCharacterIndex)
       playSound(soundJump)
     else:
       game.characters[game.activeCharacterIndex].jumpBufferTimer = JUMP_BUFFER_TIME
@@ -163,6 +213,7 @@ proc loadLevel*(game: var Game, idx: int) =
   for c in game.characters:
     atmColors.add(CHAR_COLORS[c.colorIndex mod 6])
   game.atmosphere = newAtmosphere(atmColors)
+  game.particles = ParticleSystem(particles: @[])
 
   # Narration
   game.narrationText = level.narration
@@ -190,6 +241,7 @@ proc newGame*(): Game =
     narrationActive: false,
     camera: newCamera(),
     atmosphere: newAtmosphere(@[]),
+    particles: ParticleSystem(particles: @[]),
     menuTime: 0.0,
     elapsedTime: 0.0,
     menuAtmosphere: newAtmosphere(allColors),
@@ -258,6 +310,7 @@ proc update*(game: var Game, dt: float) =
       for deadId in result.deadCharacters:
         for i in 0..<game.characters.len:
           if game.characters[i].id == deadId:
+            game.emitDeathParticles(i)
             game.characters[i].x = game.characters[i].spawnX
             game.characters[i].y = game.characters[i].spawnY
             game.characters[i].vx = 0
@@ -267,6 +320,10 @@ proc update*(game: var Game, dt: float) =
 
       # Landing sound
       if result.landedCharacters.len > 0:
+        for landedId in result.landedCharacters:
+          let idx = game.findCharacterIndex(landedId)
+          if idx >= 0:
+            game.emitLandingParticles(idx)
         playSound(soundLand)
 
       # Mark exits — play chime when a character newly reaches their exit
@@ -274,6 +331,7 @@ proc update*(game: var Game, dt: float) =
         let wasAtExit = game.characters[i].atExit
         game.characters[i].atExit = game.characters[i].id in result.exitedCharacters
         if game.characters[i].atExit and not wasAtExit:
+          game.emitExitParticles(i)
           playSound(soundExitReached)
 
       # Buffered jump: if the active character landed this frame, spend the buffer immediately.
@@ -290,6 +348,7 @@ proc update*(game: var Game, dt: float) =
             allAtExit = false
             break
         if allAtExit and game.state == playing:
+          game.emitCompletionParticles()
           game.state = levelWin
           game.levelWinTimer = 0.0
           playSound(soundLevelComplete)
@@ -325,3 +384,5 @@ proc update*(game: var Game, dt: float) =
 
   else:
     discard
+
+  game.particles.update(scaledDt)

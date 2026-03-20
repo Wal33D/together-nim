@@ -16,6 +16,7 @@ type
     frameWidth*: int
     frameHeight*: int
     blendMode*: BlendMode
+    layerActive: bool
 
 proc toChromaColor(r, g, b: uint8, a: uint8 = 255'u8): chroma.Color =
   chroma.color(
@@ -32,11 +33,25 @@ proc newRenderer*(): RendererPtr =
     frameWidth: DEFAULT_WIDTH,
     frameHeight: DEFAULT_HEIGHT,
     blendMode: BlendMode_None,
+    layerActive: false,
   )
+
+proc closeBlendLayer(renderer: RendererPtr) =
+  if not renderer.layerActive:
+    return
+
+  let blend = case renderer.blendMode
+    of BlendMode_Add: boxy.ScreenBlend
+    else: boxy.NormalBlend
+
+  renderer.boxy.popLayer(blendMode = blend)
+  renderer.layerActive = false
 
 proc beginFrame*(renderer: RendererPtr, drawableWidth, drawableHeight: int) =
   renderer.frameWidth = DEFAULT_WIDTH
   renderer.frameHeight = DEFAULT_HEIGHT
+  renderer.blendMode = BlendMode_None
+  renderer.layerActive = false
   renderer.boxy.beginFrame(
     ivec2(drawableWidth.int32, drawableHeight.int32),
     ortho(
@@ -47,13 +62,22 @@ proc beginFrame*(renderer: RendererPtr, drawableWidth, drawableHeight: int) =
   )
 
 proc endFrame*(renderer: RendererPtr) =
+  renderer.closeBlendLayer()
   renderer.boxy.endFrame()
 
 proc setDrawColor*(renderer: RendererPtr, r, g, b, a: uint8) =
   renderer.currentColor = toChromaColor(r, g, b, a)
 
 proc setDrawBlendMode*(renderer: RendererPtr, mode: BlendMode) =
+  if renderer.blendMode == mode:
+    return
+
+  renderer.closeBlendLayer()
   renderer.blendMode = mode
+
+  if mode == BlendMode_Add:
+    renderer.boxy.pushLayer()
+    renderer.layerActive = true
 
 proc clear*(renderer: RendererPtr) =
   renderer.boxy.drawRect(

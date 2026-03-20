@@ -1,5 +1,6 @@
 import unittest
 import "../src/game"
+import "../src/constants"
 import "../src/systems/input"
 import "../src/entities/character"
 
@@ -64,3 +65,11 @@ suite "input system":
     g.activeCharacterIndex = 1
     processKey(g, SCANCODE_1, true)
     check g.activeCharacterIndex == 0
+
+  test "F11 does not affect gameplay input state":
+    var g = newGame()
+    g.startGame()
+    processKey(g, SCANCODE_F11, true)
+    check g.state == playing
+    check g.leftHeld == false
+    check g.rightHeld == false

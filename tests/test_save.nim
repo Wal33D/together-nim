@@ -33,6 +33,11 @@ suite "save system":
     let loaded = loadSave()
     check loaded.fullscreen == false
 
+  test "saveFullscreen persists fullscreen preference":
+    saveFullscreen(true)
+    let loaded = loadSave()
+    check loaded.fullscreen == true
+
   test "loadSave handles corrupted file gracefully":
     writeFile(SAVE_FILE, "not valid json{{{")
     let s = loadSave()

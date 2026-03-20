@@ -1,4 +1,4 @@
-## Particle system for visual effects — landing dust and exit sparkles
+## Particle system for visual effects — subtle geometric bursts and dust
 
 import "../constants"
 import math
@@ -18,27 +18,65 @@ type
 
 const MAX_PARTICLES = 200
 
-proc emit*(system: var ParticleSystem, x, y: float, count: int,
-           color: Color, spread, speed: float) =
-  ## Spawn a burst of particles at (x, y).
+proc pushParticle(system: var ParticleSystem, p: Particle) =
+  if system.particles.len < MAX_PARTICLES:
+    system.particles.add(p)
+
+proc randRange(minValue, maxValue: float): float =
+  if maxValue <= minValue:
+    minValue
+  else:
+    minValue + rand(maxValue - minValue)
+
+proc emitBurst*(system: var ParticleSystem, x, y: float, count: int,
+                color: Color, spread, speed, verticalBias: float,
+                lifeMin, lifeMax, sizeMin, sizeMax: float) =
+  ## Spawn a shaped burst of particles at (x, y).
   for i in 0..<count:
     if system.particles.len >= MAX_PARTICLES:
       break
     let angle = rand(2.0 * PI)
-    let vx = cos(angle) * speed * (0.3 + rand(0.7))
-    let vy = sin(angle) * speed * (0.3 + rand(0.7)) - speed * 0.5  # upward bias
-    let life = 0.25 + rand(0.45)
-    let p = Particle(
-      x: x + rand(spread) - spread * 0.5,
-      y: y,
+    let speedScale = 0.3 + rand(0.7)
+    let vx = cos(angle) * speed * speedScale
+    let vy = sin(angle) * speed * speedScale + verticalBias
+    let life = randRange(lifeMin, lifeMax)
+    let size = randRange(sizeMin, sizeMax)
+    pushParticle(system, Particle(
+      x: x + randRange(-spread * 0.5, spread * 0.5),
+      y: y + randRange(-spread * 0.15, spread * 0.15),
       vx: vx,
       vy: vy,
       life: life,
       maxLife: life,
       color: color,
-      size: 2.0 + rand(2.0)
-    )
-    system.particles.add(p)
+      size: size
+    ))
+
+proc emit*(system: var ParticleSystem, x, y: float, count: int,
+           color: Color, spread, speed: float) =
+  ## Legacy generic burst used by tests and older callers.
+  system.emitBurst(x, y, count, color, spread, speed, -speed * 0.5,
+                   0.25, 0.70, 2.0, 4.0)
+
+proc emitJump*(system: var ParticleSystem, x, y: float, color: Color) =
+  ## Small, upward-leaning burst for jump takeoff.
+  system.emitBurst(x, y, 4, color, 8.0, 34.0, -18.0, 0.18, 0.34, 1.5, 2.6)
+
+proc emitLanding*(system: var ParticleSystem, x, y: float, color: Color) =
+  ## Low dust puff for touchdown.
+  system.emitBurst(x, y, 6, color, 14.0, 22.0, 10.0, 0.20, 0.40, 1.5, 3.2)
+
+proc emitDeath*(system: var ParticleSystem, x, y: float, color: Color) =
+  ## Wider burst used when a character dies and respawns.
+  system.emitBurst(x, y, 10, color, 20.0, 42.0, -6.0, 0.22, 0.55, 2.0, 4.0)
+
+proc emitExit*(system: var ParticleSystem, x, y: float, color: Color) =
+  ## Short chime-like burst around a reached exit.
+  system.emitBurst(x, y, 6, color, 12.0, 28.0, -10.0, 0.20, 0.42, 1.5, 3.0)
+
+proc emitCompletion*(system: var ParticleSystem, x, y: float, color: Color) =
+  ## Slightly brighter celebration burst for level completion.
+  system.emitBurst(x, y, 8, color, 18.0, 34.0, -14.0, 0.24, 0.50, 1.5, 3.4)
 
 proc update*(system: var ParticleSystem, dt: float) =
   ## Advance all particles and remove dead ones.

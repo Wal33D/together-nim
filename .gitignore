@@ -7,3 +7,5 @@ nimcache/
 .scriptorium/
 .claude/
 queue/
+tests/test_*
+!tests/*.nim

@@ -3,6 +3,7 @@
 import sdl2
 import "../game"
 import "audio"
+import "../constants"
 
 const
   SCANCODE_LEFT* = 80.cint
@@ -19,6 +20,8 @@ const
 
 proc processKey*(game: var Game, scancode: cint, isDown: bool) =
   case scancode
+  of SCANCODE_F11:
+    discard
   of SCANCODE_LEFT, SCANCODE_A:
     game.leftHeld = isDown
   of SCANCODE_RIGHT, SCANCODE_D:

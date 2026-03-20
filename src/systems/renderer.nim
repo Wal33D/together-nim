@@ -1,13 +1,15 @@
-## SDL2 renderer for Together — menu, gameplay, narration, win screen
+## Boxy-backed renderer for Together — menu, gameplay, narration, win screen
 
 import "../entities/character"
 import "../entities/level"
 import "levels"
 import "../constants"
+import "../build_info"
 import "../game"
 import "camera"
 import "atmosphere"
 import "backdrop"
+import "particles"
 import "render_backend"
 import math
 
@@ -87,6 +89,23 @@ proc drawText(renderer: RendererPtr, text: string, x, y: int, scale: int = 2) =
 proc textWidth(text: string, scale: int = 2): int =
   let charW = 3 * scale + scale
   text.len * charW
+
+proc renderBuildStamp(renderer: RendererPtr) =
+  let label = "v" & GameVersion
+  let padX = 8
+  let padY = 6
+  let scale = 1
+  let boxW = textWidth(label, scale) + padX * 2
+  let boxH = 5 * scale + padY * 2
+  let boxX = 8
+  let boxY = DEFAULT_HEIGHT - boxH - 8
+
+  renderer.setDrawBlendMode(BlendMode_Blend)
+  renderer.setDrawColor(0, 0, 0, 110)
+  drawFilledRect(renderer, boxX.cint, boxY.cint, boxW.cint, boxH.cint)
+  renderer.setDrawBlendMode(BlendMode_None)
+  renderer.setDrawColor(132, 140, 172, 255)
+  drawText(renderer, label, boxX + padX, boxY + padY, scale)
 
 proc renderMenu(renderer: RendererPtr, game: Game) =
   # Dark background
@@ -169,14 +188,17 @@ proc renderMenu(renderer: RendererPtr, game: Game) =
   let ctrlScale = 1
   let ctrl1 = "Arrow keys: move   Space: jump"
   let ctrl2 = "1-6: switch character   ESC: pause"
-  let ctrl3 = "Gamepad: A=jump, Bumpers=switch, Start=pause"
+  let ctrl3 = "F11: fullscreen toggle"
+  let ctrl4 = "Gamepad: A=jump, Bumpers=switch, Start=pause"
   let ctrl1W = textWidth(ctrl1, ctrlScale)
   let ctrl2W = textWidth(ctrl2, ctrlScale)
   let ctrl3W = textWidth(ctrl3, ctrlScale)
+  let ctrl4W = textWidth(ctrl4, ctrlScale)
   renderer.setDrawColor(80, 80, 110, 255)
   drawText(renderer, ctrl1, centerX - ctrl1W div 2, 400, ctrlScale)
   drawText(renderer, ctrl2, centerX - ctrl2W div 2, 418, ctrlScale)
   drawText(renderer, ctrl3, centerX - ctrl3W div 2, 436, ctrlScale)
+  drawText(renderer, ctrl4, centerX - ctrl4W div 2, 454, ctrlScale)
 
 proc renderAtmosphereOverlay(renderer: RendererPtr, atm: Atmosphere) =
   renderer.setDrawBlendMode(BlendMode_Blend)
@@ -190,6 +212,34 @@ proc renderAtmosphereOverlay(renderer: RendererPtr, atm: Atmosphere) =
     let sz = max(1, p.size.cint)
     drawFilledRect(renderer, p.x.cint, p.y.cint, sz, sz)
 
+  renderer.setDrawBlendMode(BlendMode_None)
+
+proc renderParticleSystem(renderer: RendererPtr, system: ParticleSystem,
+                          camX, camY: int) =
+  if system.particles.len == 0:
+    return
+
+  renderer.setDrawBlendMode(BlendMode_Blend)
+  for p in system.particles:
+    let lifeRatio = if p.maxLife > 0.0: max(0.0, min(1.0, p.life / p.maxLife)) else: 0.0
+    let alpha = uint8(max(0.0, min(255.0, lifeRatio * 220.0)))
+    let sz = max(1, p.size.cint).int
+    let x = p.x.cint - camX
+    let y = p.y.cint - camY
+    let rx = x.cint
+    let ry = y.cint
+    let rsz = sz.cint
+
+    renderer.setDrawColor(p.color.r, p.color.g, p.color.b, alpha div 2)
+    drawFilledRect(renderer, (rx - 1).cint, (ry - 1).cint,
+                   (rsz + 2).cint, (rsz + 2).cint)
+
+    renderer.setDrawColor(p.color.r, p.color.g, p.color.b, alpha)
+    drawFilledRect(renderer, rx, ry, rsz, rsz)
+
+    if sz >= 3:
+      renderer.setDrawColor(255, 255, 255, alpha div 3)
+      drawOutlineRect(renderer, rx, ry, rsz, rsz)
   renderer.setDrawBlendMode(BlendMode_None)
 
 proc renderGameplay(renderer: RendererPtr, game: Game) =
@@ -270,6 +320,8 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
     renderer.setDrawColor(exitColor.r, exitColor.g, exitColor.b, 200)
     drawOutlineRect(renderer, e.x.cint - camX, e.y.cint - camY, e.width.cint, e.height.cint)
   renderer.setDrawBlendMode(BlendMode_None)
+
+  renderParticleSystem(renderer, game.particles, camX, camY)
 
   # Characters
   for i, ch in game.characters:
@@ -433,3 +485,5 @@ proc renderGame*(renderer: RendererPtr, game: Game) =
     renderLevelWin(renderer, game)
   of credits:
     renderCredits(renderer, game)
+
+  renderBuildStamp(renderer)

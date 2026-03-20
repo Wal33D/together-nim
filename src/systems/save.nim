@@ -24,3 +24,8 @@ proc loadSave*(): SaveData =
         result.fullscreen = j["fullscreen"].getBool()
     except CatchableError:
       discard
+
+proc saveFullscreen*(fullscreen: bool) =
+  var data = loadSave()
+  data.fullscreen = fullscreen
+  writeSave(data)
