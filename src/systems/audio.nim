@@ -8,6 +8,27 @@ type
     soundJump, soundLand, soundDeath, soundLevelComplete,
     soundCharSwitch, soundExitReached
 
+  MusicStep* = object
+    freqStart*, freqEnd*: float
+    durationMs*: int
+    amplitude*: float
+
+proc musicBedPattern*(): seq[MusicStep] =
+  ## A short, looping ambient bed with a slow pulse and a higher companion line.
+  ##
+  ## The runtime mixes this into a continuous loop; tests can inspect the pattern
+  ## without needing SDL audio.
+  @[
+    MusicStep(freqStart: 110.0, freqEnd: 110.0, durationMs: 1200, amplitude: 0.065),
+    MusicStep(freqStart: 164.8, freqEnd: 220.0, durationMs: 600, amplitude: 0.035),
+    MusicStep(freqStart: 146.8, freqEnd: 146.8, durationMs: 1200, amplitude: 0.060),
+    MusicStep(freqStart: 196.0, freqEnd: 246.9, durationMs: 600, amplitude: 0.035),
+    MusicStep(freqStart: 123.5, freqEnd: 123.5, durationMs: 1200, amplitude: 0.060),
+    MusicStep(freqStart: 174.6, freqEnd: 196.0, durationMs: 600, amplitude: 0.035),
+    MusicStep(freqStart: 130.8, freqEnd: 130.8, durationMs: 1200, amplitude: 0.065),
+    MusicStep(freqStart: 185.0, freqEnd: 220.0, durationMs: 600, amplitude: 0.035),
+  ]
+
 when defined(withAudio):
   import sdl2
   import sdl2/audio
@@ -40,9 +61,87 @@ when defined(withAudio):
       totalSamples: int
       samplesPlayed: int
 
+    MusicTrack = object
+      active: bool
+      pattern: seq[MusicStep]
+      stepIndex: int
+      sampleInStep: int
+      phase: float
+      samplesPlayed: int
+      totalSamples: int
+      pitchScale: float
+      ampScale: float
+
   var
     gInstances: array[MAX_INSTANCES, SoundInstance]
+    gMusicTracks: array[2, MusicTrack]
     gAudioOpen = false
+
+  proc durationSamples(step: MusicStep): int =
+    max(1, (step.durationMs * SAMPLE_RATE) div 1000)
+
+  proc resetMusicTrack(track: var MusicTrack, pitchScale, ampScale: float, stepOffset: int) =
+    track.active = true
+    track.pattern = musicBedPattern()
+    track.stepIndex = if track.pattern.len > 0: stepOffset mod track.pattern.len else: 0
+    track.sampleInStep = 0
+    track.phase = 0.0
+    track.samplesPlayed = 0
+    track.pitchScale = pitchScale
+    track.ampScale = ampScale
+    track.totalSamples = 0
+    for step in track.pattern:
+      track.totalSamples += durationSamples(step)
+
+  proc initMusicBed() =
+    # Two layers: a lower pulse and a slightly brighter companion line.
+    resetMusicTrack(gMusicTracks[0], 1.0, 1.0, 0)
+    resetMusicTrack(gMusicTracks[1], 2.0, 0.75, 4)
+
+  proc mixSineSample(baseSample: int32, phase: float, freq, amp: float): int32 =
+    let s = int32(sin(phase * 2.0 * PI) * amp * 28000.0)
+    max(-32767, min(32767, baseSample + s))
+
+  proc mixMusicTracks(buf: ptr UncheckedArray[int16], numSamples: int) =
+    for track in gMusicTracks.mitems:
+      if not track.active or track.pattern.len == 0:
+        continue
+      for i in 0..<numSamples:
+        if not track.active:
+          break
+
+        let step = track.pattern[track.stepIndex]
+        let stepDuration = durationSamples(step)
+        let noteProgress =
+          if stepDuration > 0: float(track.sampleInStep) / float(stepDuration)
+          else: 0.0
+        let freq = (step.freqStart + (step.freqEnd - step.freqStart) * noteProgress) * track.pitchScale
+        var amp = step.amplitude * track.ampScale
+
+        # Gentle fade at loop boundaries to avoid clicks.
+        if track.samplesPlayed < FADE_SAMPLES:
+          amp *= float(track.samplesPlayed) / float(FADE_SAMPLES)
+        let remaining = track.totalSamples - track.samplesPlayed
+        if remaining < FADE_SAMPLES:
+          amp *= float(remaining) / float(FADE_SAMPLES)
+
+        let mixed = mixSineSample(int32(buf[i]), track.phase, freq, amp)
+        buf[i] = int16(mixed)
+
+        track.phase += freq / float(SAMPLE_RATE)
+        if track.phase >= 1.0:
+          track.phase -= 1.0
+        inc track.sampleInStep
+        inc track.samplesPlayed
+
+        if track.sampleInStep >= stepDuration:
+          track.sampleInStep = 0
+          inc track.stepIndex
+          if track.stepIndex >= track.pattern.len:
+            track.stepIndex = 0
+            track.samplesPlayed = 0
+          if track.stepIndex < track.pattern.len:
+            track.phase *= 0.9
 
   proc audioCallback(userdata: pointer; stream: ptr uint8; len: cint) {.cdecl.} =
     let numSamples = int(len) div 2
@@ -50,6 +149,8 @@ when defined(withAudio):
 
     for i in 0..<numSamples:
       buf[i] = 0
+
+    mixMusicTracks(buf, numSamples)
 
     for inst in gInstances.mitems:
       if not inst.active: continue
@@ -103,6 +204,7 @@ when defined(withAudio):
       echo "Audio init failed: ", sdl2.getError()
       return
     gAudioOpen = true
+    initMusicBed()
     pauseAudio(0)
 
   proc shutdownAudio*() =
