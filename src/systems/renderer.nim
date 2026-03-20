@@ -8,6 +8,7 @@ import "../constants"
 import "../game"
 import "camera"
 import "atmosphere"
+import "backdrop"
 import math
 
 proc drawFilledRect(renderer: RendererPtr, x, y, w, h: cint) =
@@ -185,46 +186,14 @@ proc renderMenu(renderer: RendererPtr, game: Game) =
   drawText(renderer, ctrl2, centerX - ctrl2W div 2, 418, ctrlScale)
   drawText(renderer, ctrl3, centerX - ctrl3W div 2, 436, ctrlScale)
 
-proc renderAtmosphere(renderer: RendererPtr, atm: Atmosphere) =
-  ## Draw gradient background, light shafts, and floating particles.
-  ## Call AFTER clear and BEFORE platforms.
-
-  # Gradient: dark blue at top fading to BG_COLOR at bottom
-  let topR = 32; let topG = 36; let topB = 64
-  let botR = BG_COLOR.r.int; let botG = BG_COLOR.g.int; let botB = BG_COLOR.b.int
-  let bands = 16
-  let bandH = DEFAULT_HEIGHT div bands
-  for i in 0..<bands:
-    let t = float(i) / float(bands - 1)
-    let r = uint8(float(topR) + t * float(botR - topR))
-    let g = uint8(float(topG) + t * float(botG - topG))
-    let b = uint8(float(topB) + t * float(botB - topB))
-    renderer.setDrawColor(r, g, b, 255)
-    drawFilledRect(renderer, 0, cint(i * bandH), DEFAULT_WIDTH.cint, cint(bandH + 1))
-
-  renderer.setDrawBlendMode(BlendMode_Blend)
-
-  # Light shafts — vertical semi-transparent rectangles
-  for shaft in atm.shafts:
-    renderer.setDrawColor(180, 180, 220, shaft.alpha)
-    drawFilledRect(renderer, shaft.x.cint, 0, shaft.width.cint, DEFAULT_HEIGHT.cint)
-
-  # Floating particles
-  for p in atm.particles:
-    renderer.setDrawColor(p.color.r, p.color.g, p.color.b, p.alpha)
-    let sz = max(1, p.size.cint)
-    drawFilledRect(renderer, p.x.cint, p.y.cint, sz, sz)
-
-  renderer.setDrawBlendMode(BlendMode_None)
-
 proc renderGameplay(renderer: RendererPtr, game: Game) =
   if game.currentLevel < 0 or game.currentLevel >= allLevels.len:
     return
 
   let level = game.currentLevelState
 
-  # Atmospheric background — rendered BEFORE platforms
-  renderAtmosphere(renderer, game.atmosphere)
+  # Scenic backdrop — rendered BEFORE platforms and characters.
+  renderBackdrop(renderer, level, game.camera.x, game.elapsedTime)
 
   # Camera offset — subtract from all world-space coordinates
   let camX = game.camera.x.cint

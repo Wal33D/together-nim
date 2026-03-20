@@ -5,8 +5,6 @@ import sdl2
 import sdl2/gamecontroller
 import sdl2/joystick
 import "../game"
-import "../entities/character"
-import "../constants"
 import "audio"
 
 const
@@ -44,47 +42,21 @@ proc handleControllerButton*(game: var Game, button: uint8, isDown: bool) =
   ## Map controller buttons to game actions.
   case button.GameControllerButton
   of SDL_CONTROLLER_BUTTON_A:
-    # A button = jump (same logic as space bar)
-    if isDown and game.state == playing:
-      if game.activeCharacterIndex < game.characters.len:
-        var c = game.characters[game.activeCharacterIndex]
-        if c.ability == doubleJump:
-          if c.grounded or c.jumpCount < 2:
-            c.vy = c.jumpForce()
-            c.grounded = false
-            c.jumpCount += 1
-            c.triggerJump()
-            playSound(soundJump)
-        elif c.ability == coyoteTime:
-          if c.grounded or c.coyoteTimer < FELIX_COYOTE_TIME:
-            c.vy = c.jumpForce()
-            c.grounded = false
-            c.jumpCount = 1
-            c.coyoteTimer = FELIX_COYOTE_TIME + 1
-            c.triggerJump()
-            playSound(soundJump)
-        else:
-          if c.grounded:
-            c.vy = c.jumpForce()
-            c.grounded = false
-            c.jumpCount = 1
-            c.triggerJump()
-            playSound(soundJump)
-        game.characters[game.activeCharacterIndex] = c
-      # Skip narration on A
-      if game.narrationActive:
-        game.narrationRevealed = game.narrationText.len
-        game.narrationActive = false
-    # A also acts like ENTER for menus
     if isDown:
-      case game.state
-      of menu:
-        game.handleKey(SCANCODE_RETURN)
-      of levelWin:
-        game.handleKey(SCANCODE_RETURN)
-      of credits:
-        game.handleKey(SCANCODE_RETURN)
-      else: discard
+      if game.state == playing:
+        game.pressJump()
+      else:
+        case game.state
+        of menu:
+          game.handleKey(SCANCODE_RETURN)
+        of levelWin:
+          game.handleKey(SCANCODE_RETURN)
+        of credits:
+          game.handleKey(SCANCODE_RETURN)
+        else:
+          discard
+    elif game.state == playing:
+      game.releaseJump()
 
   of SDL_CONTROLLER_BUTTON_B:
     # B button = restart level
@@ -98,19 +70,13 @@ proc handleControllerButton*(game: var Game, button: uint8, isDown: bool) =
 
   of SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
     # LB = previous character
-    if isDown and game.state == playing:
-      let newIdx = (game.activeCharacterIndex - 1 + game.characters.len) mod game.characters.len
-      if newIdx != game.activeCharacterIndex and game.characters.len > 1:
-        game.activeCharacterIndex = newIdx
-        playSound(soundCharSwitch)
+    if isDown and game.state == playing and game.cycleActiveCharacter(-1):
+      playSound(soundCharSwitch)
 
   of SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
     # RB = next character
-    if isDown and game.state == playing:
-      let newIdx = (game.activeCharacterIndex + 1) mod game.characters.len
-      if newIdx != game.activeCharacterIndex and game.characters.len > 1:
-        game.activeCharacterIndex = newIdx
-        playSound(soundCharSwitch)
+    if isDown and game.state == playing and game.cycleActiveCharacter(1):
+      playSound(soundCharSwitch)
 
   of SDL_CONTROLLER_BUTTON_DPAD_LEFT:
     game.leftHeld = isDown

@@ -30,6 +30,16 @@ suite "input system":
     processKey(g, SCANCODE_SPACE, true)
     check g.characters[0].vy < 0.0
 
+  test "releasing space cuts jump height":
+    var g = newGame()
+    g.startGame()
+    g.characters[0].grounded = true
+    processKey(g, SCANCODE_SPACE, true)
+    let fullJumpVy = g.characters[0].vy
+    processKey(g, SCANCODE_SPACE, false)
+    check g.characters[0].vy > fullJumpVy
+    check g.characters[0].vy < 0.0
+
   test "enter starts game from menu":
     var g = newGame()
     processKey(g, SCANCODE_RETURN, true)

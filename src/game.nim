@@ -30,12 +30,117 @@ type
     atmosphere*: Atmosphere
     currentLevelState*: Level
     menuTime*: float
+    elapsedTime*: float
     menuAtmosphere*: Atmosphere
 
 const
   SCANCODE_RETURN* = 40.cint
   SCANCODE_ESCAPE* = 41.cint
   SCANCODE_R* = 21.cint
+
+proc jumpGraceWindow(c: Character): float =
+  if c.ability == coyoteTime:
+    FELIX_COYOTE_TIME
+  else:
+    COYOTE_TIME
+
+proc attemptCharacterJump(c: var Character): bool =
+  let graceWindow = jumpGraceWindow(c)
+
+  case c.ability
+  of doubleJump:
+    if c.grounded or c.coyoteTimer < graceWindow or c.jumpCount < 2:
+      c.vy = c.jumpForce()
+      c.grounded = false
+      if c.jumpCount < 1:
+        c.jumpCount = 1
+      else:
+        inc c.jumpCount
+      c.coyoteTimer = graceWindow + 1.0
+      c.jumpBufferTimer = 0.0
+      c.triggerJump()
+      return true
+  of wallJump:
+    if c.grounded or c.coyoteTimer < graceWindow:
+      c.vy = c.jumpForce()
+      c.grounded = false
+      c.jumpCount = 1
+      c.coyoteTimer = graceWindow + 1.0
+      c.jumpBufferTimer = 0.0
+      c.triggerJump()
+      return true
+    if c.wallTouching:
+      c.vy = c.jumpForce()
+      c.vx = float(c.wallTouchDir) * c.moveSpeed()
+      c.grounded = false
+      c.wallTouching = false
+      c.jumpCount = 1
+      c.jumpBufferTimer = 0.0
+      c.triggerJump()
+      return true
+  else:
+    if c.grounded or c.coyoteTimer < graceWindow:
+      c.vy = c.jumpForce()
+      c.grounded = false
+      c.jumpCount = 1
+      c.coyoteTimer = graceWindow + 1.0
+      c.jumpBufferTimer = 0.0
+      c.triggerJump()
+      return true
+
+  false
+
+proc pressJump*(game: var Game) =
+  game.jumpPressed = true
+
+  if game.state != playing:
+    return
+
+  if game.activeCharacterIndex < game.characters.len:
+    if attemptCharacterJump(game.characters[game.activeCharacterIndex]):
+      playSound(soundJump)
+    else:
+      game.characters[game.activeCharacterIndex].jumpBufferTimer = JUMP_BUFFER_TIME
+
+  if game.narrationActive:
+    game.narrationRevealed = game.narrationText.len
+    game.narrationActive = false
+
+proc releaseJump*(game: var Game) =
+  game.jumpPressed = false
+
+  if game.state != playing:
+    return
+
+  if game.activeCharacterIndex < game.characters.len and
+     game.characters[game.activeCharacterIndex].vy < 0.0:
+    game.characters[game.activeCharacterIndex].vy *= JUMP_CUT_FACTOR
+
+proc selectActiveCharacter*(game: var Game, idx: int): bool =
+  if idx < 0 or idx >= game.characters.len or idx == game.activeCharacterIndex:
+    return false
+
+  if game.activeCharacterIndex >= 0 and game.activeCharacterIndex < game.characters.len:
+    game.characters[game.activeCharacterIndex].jumpBufferTimer = 0.0
+
+  game.activeCharacterIndex = idx
+  true
+
+proc cycleActiveCharacter*(game: var Game, delta: int): bool =
+  if game.characters.len <= 1:
+    return false
+
+  var currentIdx = game.activeCharacterIndex
+  if currentIdx < 0 or currentIdx >= game.characters.len:
+    currentIdx = 0
+
+  let newIdx = (currentIdx + delta + game.characters.len) mod game.characters.len
+  if newIdx == currentIdx:
+    return false
+
+  game.characters[currentIdx].jumpBufferTimer = 0.0
+  game.activeCharacterIndex = newIdx
+  true
 
 proc loadLevel*(game: var Game, idx: int) =
   if idx < 0 or idx >= allLevels.len:
@@ -65,6 +170,7 @@ proc loadLevel*(game: var Game, idx: int) =
   game.narrationTimer = 0.0
   game.narrationActive = level.narration.len > 0
   game.levelWinTimer = 0.0
+  game.jumpPressed = false
   # Snap camera to active character immediately
   if game.characters.len > 0:
     let ch = game.characters[0]
@@ -85,6 +191,7 @@ proc newGame*(): Game =
     camera: newCamera(),
     atmosphere: newAtmosphere(@[]),
     menuTime: 0.0,
+    elapsedTime: 0.0,
     menuAtmosphere: newAtmosphere(allColors),
   )
 
@@ -125,6 +232,7 @@ proc handleKey*(game: var Game, scancode: cint) =
 proc update*(game: var Game, dt: float) =
   let scaledDt = dt * TIME_SCALE
   game.deltaTime = scaledDt
+  game.elapsedTime += scaledDt
 
   case game.state
   of menu:
@@ -168,6 +276,12 @@ proc update*(game: var Game, dt: float) =
         if game.characters[i].atExit and not wasAtExit:
           playSound(soundExitReached)
 
+      # Buffered jump: if the active character landed this frame, spend the buffer immediately.
+      if game.activeCharacterIndex < game.characters.len and
+         game.characters[game.activeCharacterIndex].jumpBufferTimer > 0.0 and
+         attemptCharacterJump(game.characters[game.activeCharacterIndex]):
+        playSound(soundJump)
+
       # Check win — all characters at their exits
       if game.characters.len > 0:
         var allAtExit = true
@@ -189,6 +303,9 @@ proc update*(game: var Game, dt: float) =
     # Update animations for all characters
     for i in 0..<game.characters.len:
       updateAnimation(game.characters[i], scaledDt)
+      if game.characters[i].jumpBufferTimer > 0.0:
+        game.characters[i].jumpBufferTimer =
+          max(0.0, game.characters[i].jumpBufferTimer - scaledDt)
 
     # Update atmospheric background effects
     game.atmosphere.update(scaledDt)

@@ -6,6 +6,8 @@ A narrative puzzle-platformer about colored rectangles discovering consciousness
 
 Inspired by *Thomas Was Alone*. Originally built in TypeScript at [candycomp.com](https://candycomp.com), now reimagined as a native desktop game orchestrated by [Scriptorium](https://github.com/Wal33D/scriptorium).
 
+The current campaign spans 12 levels and brings Felix and Ivy into the playable arc.
+
 ## The Family
 
 | Character | Color | Gift |

@@ -1,4 +1,5 @@
 import unittest
+import strutils
 import "../src/systems/levels"
 
 suite "levels":
@@ -17,8 +18,8 @@ suite "levels":
   test "level 5 has two exits":
     check level5.exits.len == 2
 
-  test "all levels array has 10 levels":
-    check allLevels.len == 10
+  test "all levels array has 12 levels":
+    check allLevels.len == 12
 
   test "level 6 introduces bruno":
     check level6.characters == @["pip", "luca", "bruno"]
@@ -38,3 +39,15 @@ suite "levels":
 
   test "level 10 has trust narration":
     check level10.narration == "Trust was not a feeling. Trust was a choice."
+
+  test "level 11 introduces felix":
+    check level11.characters == @["pip", "luca", "bruno", "cara", "felix"]
+
+  test "level 11 has felix narration":
+    check level11.narration.contains("Felix")
+
+  test "level 12 introduces ivy":
+    check level12.characters == @["pip", "luca", "bruno", "cara", "felix", "ivy"]
+
+  test "level 12 has ivy narration":
+    check level12.narration.contains("Ivy")

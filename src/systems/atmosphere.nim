@@ -2,7 +2,6 @@
 
 import "../constants"
 import random
-import math
 
 type
   AtmosParticle* = object

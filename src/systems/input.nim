@@ -2,8 +2,6 @@
 
 import sdl2
 import "../game"
-import "../entities/character"
-import "../constants"
 import "audio"
 
 const
@@ -26,59 +24,14 @@ proc processKey*(game: var Game, scancode: cint, isDown: bool) =
   of SCANCODE_RIGHT, SCANCODE_D:
     game.rightHeld = isDown
   of SCANCODE_SPACE:
-    if isDown and game.state == playing:
-      if game.activeCharacterIndex < game.characters.len:
-        var c = game.characters[game.activeCharacterIndex]
-        # Double jump for Pip
-        if c.ability == doubleJump:
-          if c.grounded or c.jumpCount < 2:
-            c.vy = c.jumpForce()
-            c.grounded = false
-            c.jumpCount += 1
-            c.triggerJump()
-            playSound(soundJump)
-        # Coyote time for Felix
-        elif c.ability == coyoteTime:
-          if c.grounded or c.coyoteTimer < FELIX_COYOTE_TIME:
-            c.vy = c.jumpForce()
-            c.grounded = false
-            c.jumpCount = 1
-            c.coyoteTimer = FELIX_COYOTE_TIME + 1  # consume coyote
-            c.triggerJump()
-            playSound(soundJump)
-        # Wall jump for Cara
-        elif c.ability == wallJump:
-          if c.grounded:
-            c.vy = c.jumpForce()
-            c.grounded = false
-            c.jumpCount = 1
-            c.triggerJump()
-            playSound(soundJump)
-          elif c.wallTouching:
-            c.vy = c.jumpForce()
-            c.vx = float(c.wallTouchDir) * c.moveSpeed()
-            c.grounded = false
-            c.wallTouching = false
-            c.jumpCount = 1
-            c.triggerJump()
-            playSound(soundJump)
-        else:
-          if c.grounded:
-            c.vy = c.jumpForce()
-            c.grounded = false
-            c.jumpCount = 1
-            c.triggerJump()
-            playSound(soundJump)
-        game.characters[game.activeCharacterIndex] = c
-      # Skip narration on space
-      if game.narrationActive:
-        game.narrationRevealed = game.narrationText.len
-        game.narrationActive = false
+    if isDown:
+      game.pressJump()
+    else:
+      game.releaseJump()
   of SCANCODE_1, SCANCODE_2, SCANCODE_3, SCANCODE_4, SCANCODE_5, SCANCODE_6:
     if isDown:
       let idx = (scancode - SCANCODE_1).int
-      if idx < game.characters.len and idx != game.activeCharacterIndex:
-        game.activeCharacterIndex = idx
+      if game.selectActiveCharacter(idx):
         playSound(soundCharSwitch)
   of SCANCODE_RETURN:
     if isDown:
