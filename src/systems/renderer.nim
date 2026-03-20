@@ -186,6 +186,20 @@ proc renderMenu(renderer: RendererPtr, game: Game) =
   drawText(renderer, ctrl2, centerX - ctrl2W div 2, 418, ctrlScale)
   drawText(renderer, ctrl3, centerX - ctrl3W div 2, 436, ctrlScale)
 
+proc renderAtmosphereOverlay(renderer: RendererPtr, atm: Atmosphere) =
+  renderer.setDrawBlendMode(BlendMode_Blend)
+
+  for shaft in atm.shafts:
+    renderer.setDrawColor(180, 180, 220, shaft.alpha)
+    drawFilledRect(renderer, shaft.x.cint, 0, shaft.width.cint, DEFAULT_HEIGHT.cint)
+
+  for p in atm.particles:
+    renderer.setDrawColor(p.color.r, p.color.g, p.color.b, p.alpha)
+    let sz = max(1, p.size.cint)
+    drawFilledRect(renderer, p.x.cint, p.y.cint, sz, sz)
+
+  renderer.setDrawBlendMode(BlendMode_None)
+
 proc renderGameplay(renderer: RendererPtr, game: Game) =
   if game.currentLevel < 0 or game.currentLevel >= allLevels.len:
     return
@@ -194,6 +208,7 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
 
   # Scenic backdrop — rendered BEFORE platforms and characters.
   renderBackdrop(renderer, level, game.camera.x, game.elapsedTime)
+  renderAtmosphereOverlay(renderer, game.atmosphere)
 
   # Camera offset — subtract from all world-space coordinates
   let camX = game.camera.x.cint
