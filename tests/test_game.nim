@@ -175,8 +175,13 @@ suite "game state machine":
     check g.particles.particles.len > 0
     check g.characters[0].x == g.characters[0].spawnX
     check g.characters[0].y == g.characters[0].spawnY
-    check g.camera.x == 0.0
+    check g.camera.x == 400.0
+    check g.camera.holdTimer > 0.0
     check g.camera.responseBoost > 0.0
+
+    for _ in 0..8:
+      g.update(FIXED_TIMESTEP)
+    check g.camera.x == 0.0
 
   test "exit reach spawns particles":
     var g = newGame()
@@ -225,3 +230,4 @@ suite "game state machine":
 
     check g.state == levelWin
     check g.particles.particles.len > 0
+    check g.camera.holdTimer > 0.0

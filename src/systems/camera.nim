@@ -23,6 +23,9 @@ type
     lookAheadX*, lookAheadY*: float
     impulseX*, impulseY*: float
     responseBoost*: float
+    holdTimer*: float
+    pendingSnapX, pendingSnapY: float
+    pendingSnapActive: bool
 
 proc newCamera*(): Camera =
   Camera(
@@ -34,7 +37,11 @@ proc newCamera*(): Camera =
     lookAheadY: 0.0,
     impulseX: 0.0,
     impulseY: 0.0,
-    responseBoost: 0.0
+    responseBoost: 0.0,
+    holdTimer: 0.0,
+    pendingSnapX: 0.0,
+    pendingSnapY: 0.0,
+    pendingSnapActive: false
   )
 
 proc clampf(value, low, high: float): float =
@@ -54,6 +61,45 @@ proc boostResponse*(cam: var Camera, amount: float) =
 proc addImpulse*(cam: var Camera, x, y: float) =
   cam.impulseX = clampf(cam.impulseX + x, -MAX_IMPULSE_X, MAX_IMPULSE_X)
   cam.impulseY = clampf(cam.impulseY + y, -MAX_IMPULSE_Y, MAX_IMPULSE_Y)
+
+proc centeredCameraX(charX, charW: float): float =
+  charX + charW * 0.5 - float(DEFAULT_WIDTH) * 0.5
+
+proc centeredCameraY(charY, charH: float): float =
+  charY + charH * 0.5 - float(DEFAULT_HEIGHT) * 0.5
+
+proc hold*(cam: var Camera, duration: float) =
+  cam.holdTimer = max(cam.holdTimer, duration)
+
+proc queueSnap*(cam: var Camera, charX, charY, charW, charH, levelWidth,
+                levelHeight: float) =
+  let maxX = max(0.0, levelWidth - float(DEFAULT_WIDTH))
+  let maxY = max(0.0, levelHeight - float(DEFAULT_HEIGHT))
+  cam.pendingSnapX = clampf(centeredCameraX(charX, charW), 0.0, maxX)
+  cam.pendingSnapY = clampf(centeredCameraY(charY, charH), 0.0, maxY)
+  cam.pendingSnapActive = true
+
+proc flushPendingSnap(cam: var Camera, levelWidth, levelHeight: float) =
+  if not cam.pendingSnapActive:
+    return
+  cam.x = cam.pendingSnapX
+  cam.y = cam.pendingSnapY
+  cam.targetX = cam.pendingSnapX
+  cam.targetY = cam.pendingSnapY
+  cam.pendingSnapActive = false
+  cam.clampToBounds(levelWidth, levelHeight)
+
+proc beginCameraUpdate(cam: var Camera, levelWidth, levelHeight, dt: float): bool =
+  if cam.holdTimer > 0.0:
+    cam.holdTimer = max(0.0, cam.holdTimer - dt)
+    if cam.holdTimer > 0.0:
+      return false
+
+  if cam.pendingSnapActive:
+    cam.flushPendingSnap(levelWidth, levelHeight)
+    return false
+
+  true
 
 proc updateCameraFocus*(cam: var Camera, charX, charY, charW, charH, charVX,
                         charVY: float, facingRight: bool, levelWidth,
@@ -85,11 +131,13 @@ proc updateCameraFocus*(cam: var Camera, charX, charY, charW, charH, charVX,
 
 proc updateCamera*(cam: var Camera, charX, charY, charW, charH: float,
                    levelWidth, levelHeight: float) =
+  if not cam.beginCameraUpdate(levelWidth, levelHeight, FIXED_TIMESTEP):
+    return
   cam.updateCameraFocus(charX, charY, charW, charH, 0.0, 0.0, true,
                         levelWidth, levelHeight, FIXED_TIMESTEP)
-  cam.targetX = charX + charW * 0.5 - float(DEFAULT_WIDTH) * 0.5 +
+  cam.targetX = centeredCameraX(charX, charW) +
     cam.lookAheadX + cam.impulseX
-  cam.targetY = charY + charH * 0.5 - float(DEFAULT_HEIGHT) * 0.5 +
+  cam.targetY = centeredCameraY(charY, charH) +
     cam.lookAheadY + cam.impulseY
 
   let follow = min(0.34, LERP_FACTOR + cam.responseBoost)
@@ -100,12 +148,14 @@ proc updateCamera*(cam: var Camera, charX, charY, charW, charH: float,
 proc updateCamera*(cam: var Camera, charX, charY, charW, charH, charVX,
                    charVY: float, facingRight: bool, levelWidth,
                    levelHeight, dt: float) =
+  if not cam.beginCameraUpdate(levelWidth, levelHeight, dt):
+    return
   cam.updateCameraFocus(charX, charY, charW, charH, charVX, charVY,
                         facingRight, levelWidth, levelHeight, dt)
 
-  cam.targetX = charX + charW * 0.5 - float(DEFAULT_WIDTH) * 0.5 +
+  cam.targetX = centeredCameraX(charX, charW) +
     cam.lookAheadX + cam.impulseX
-  cam.targetY = charY + charH * 0.5 - float(DEFAULT_HEIGHT) * 0.5 +
+  cam.targetY = centeredCameraY(charY, charH) +
     cam.lookAheadY + cam.impulseY
 
   let follow = min(0.34, LERP_FACTOR + cam.responseBoost)
@@ -121,8 +171,10 @@ proc snapCamera*(cam: var Camera, charX, charY, charW, charH: float,
   cam.impulseX = 0.0
   cam.impulseY = 0.0
   cam.responseBoost = 0.0
-  cam.targetX = charX + charW * 0.5 - float(DEFAULT_WIDTH) * 0.5
-  cam.targetY = charY + charH * 0.5 - float(DEFAULT_HEIGHT) * 0.5
+  cam.holdTimer = 0.0
+  cam.pendingSnapActive = false
+  cam.targetX = centeredCameraX(charX, charW)
+  cam.targetY = centeredCameraY(charY, charH)
 
   cam.x = cam.targetX
   cam.y = cam.targetY

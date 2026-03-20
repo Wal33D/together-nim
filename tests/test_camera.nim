@@ -14,6 +14,7 @@ suite "camera":
     check cam.impulseX == 0.0
     check cam.impulseY == 0.0
     check cam.responseBoost == 0.0
+    check cam.holdTimer == 0.0
 
   test "updateCamera lerps toward target":
     var cam = newCamera()
@@ -55,6 +56,36 @@ suite "camera":
 
     check boostedCam.x > baseCam.x
 
+  test "hold freezes camera motion until it expires":
+    var cam = newCamera()
+    cam.hold(0.05)
+
+    updateCamera(cam, 900.0, 250.0, 24.0, 24.0, 120.0, 0.0, true,
+                 2200.0, 900.0, FIXED_TIMESTEP)
+    check cam.x == 0.0
+    check cam.holdTimer > 0.0
+
+    for _ in 0..4:
+      updateCamera(cam, 900.0, 250.0, 24.0, 24.0, 120.0, 0.0, true,
+                   2200.0, 900.0, FIXED_TIMESTEP)
+    check cam.x > 0.0
+
+  test "queued snap applies after hold releases":
+    var cam = newCamera()
+    snapCamera(cam, 900.0, 250.0, 24.0, 24.0, 2200.0, 900.0)
+    let heldX = cam.x
+    cam.hold(0.05)
+    cam.queueSnap(40.0, 250.0, 24.0, 24.0, 2200.0, 900.0)
+
+    updateCamera(cam, 40.0, 250.0, 24.0, 24.0, 0.0, 0.0, true,
+                 2200.0, 900.0, FIXED_TIMESTEP)
+    check cam.x == heldX
+
+    for _ in 0..3:
+      updateCamera(cam, 40.0, 250.0, 24.0, 24.0, 0.0, 0.0, true,
+                   2200.0, 900.0, FIXED_TIMESTEP)
+    check cam.x == 0.0
+
   test "camera clamps to level left edge":
     var cam = newCamera()
     # Character at world origin — camera should stay at 0
@@ -80,6 +111,7 @@ suite "camera":
     check cam.impulseX == 0.0
     check cam.impulseY == 0.0
     check cam.responseBoost == 0.0
+    check cam.holdTimer == 0.0
 
   test "camera does not scroll on 800px level (no room)":
     var cam = newCamera()

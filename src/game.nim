@@ -169,16 +169,17 @@ proc accentDeath(game: var Game, idx: int) =
 proc accentLevelComplete(game: var Game) =
   game.camera.boostResponse(0.14)
   game.camera.addImpulse(0.0, -8.0)
+  game.camera.hold(0.18)
 
-proc snapCameraToCharacter(game: var Game, idx: int) =
+proc queueCameraSnapToCharacter(game: var Game, idx: int) =
   if idx < 0 or idx >= game.characters.len:
     return
   if game.currentLevel < 0 or game.currentLevel >= allLevels.len:
     return
 
   let ch = game.characters[idx]
-  snapCamera(game.camera, ch.x, ch.y, float(ch.width), float(ch.height),
-             game.currentLevelState.levelWidth, game.currentLevelState.levelHeight)
+  queueSnap(game.camera, ch.x, ch.y, float(ch.width), float(ch.height),
+            game.currentLevelState.levelWidth, game.currentLevelState.levelHeight)
 
 proc pressJump*(game: var Game) =
   game.jumpPressed = true
@@ -362,7 +363,8 @@ proc update*(game: var Game, dt: float) =
             game.characters[i].vy = 0
             game.characters[i].dead = false
             if i == game.activeCharacterIndex:
-              game.snapCameraToCharacter(i)
+              game.camera.hold(0.10)
+              game.queueCameraSnapToCharacter(i)
             game.accentDeath(i)
             playSound(soundDeath)
 
