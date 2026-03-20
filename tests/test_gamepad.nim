@@ -5,6 +5,9 @@ import "../src/systems/gamepad"
 import "../src/entities/character"
 
 suite "gamepad system":
+  setup:
+    resetPadState()
+
   test "A button triggers jump on grounded character":
     var g = newGame()
     g.startGame()
@@ -109,3 +112,21 @@ suite "gamepad system":
   test "AXIS_DEADZONE constant is reasonable":
     check AXIS_DEADZONE > 0
     check AXIS_DEADZONE < 16000
+
+  test "polling snapshot starts game from menu on A press":
+    var g = newGame()
+    check g.state == menu
+    applyControllerSnapshot(g, true, false, false, false, false, false, false, 0'i16)
+    check g.state == playing
+
+  test "polling snapshot keeps stick input active when dpad releases":
+    var g = newGame()
+    g.startGame()
+
+    applyControllerSnapshot(g, false, false, false, false, false, true, false, -20000'i16)
+    check g.leftHeld == true
+    check g.rightHeld == false
+
+    applyControllerSnapshot(g, false, false, false, false, false, false, false, -20000'i16)
+    check g.leftHeld == true
+    check g.rightHeld == false

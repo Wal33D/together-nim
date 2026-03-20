@@ -52,6 +52,9 @@ proc beginFrame*(renderer: RendererPtr, drawableWidth, drawableHeight: int) =
   renderer.frameHeight = DEFAULT_HEIGHT
   renderer.blendMode = BlendMode_None
   renderer.layerActive = false
+  # Silky and other raw OpenGL callers mutate VAO/buffer/shader state.
+  # Re-bind Boxy's state before starting a new frame.
+  renderer.boxy.exitRawOpenGLMode()
   renderer.boxy.beginFrame(
     ivec2(drawableWidth.int32, drawableHeight.int32),
     ortho(
@@ -64,6 +67,13 @@ proc beginFrame*(renderer: RendererPtr, drawableWidth, drawableHeight: int) =
 proc endFrame*(renderer: RendererPtr) =
   renderer.closeBlendLayer()
   renderer.boxy.endFrame()
+
+proc beginOverlay*(renderer: RendererPtr) =
+  renderer.closeBlendLayer()
+  renderer.boxy.enterRawOpenGLMode()
+
+proc endOverlay*(renderer: RendererPtr) =
+  renderer.boxy.exitRawOpenGLMode()
 
 proc setDrawColor*(renderer: RendererPtr, r, g, b, a: uint8) =
   renderer.currentColor = toChromaColor(r, g, b, a)

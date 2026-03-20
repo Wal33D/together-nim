@@ -1,19 +1,19 @@
-# Together (Nim) `v0.2.0`
+# Together (Nim) `v0.3.0`
 
 *"Pip woke up. This was unusual, because Pip had never been asleep."*
 
-A narrative puzzle-platformer about colored rectangles discovering consciousness, friendship, and what it means to belong. Rebuilt from the ground up in **Nim** with **SDL2** for platform/input/audio and a **Boxy-backed rendering spike** for the visual layer.
+A narrative puzzle-platformer about colored rectangles discovering consciousness, friendship, and what it means to belong. Rebuilt from the ground up in **Nim** with **Windy** for the window loop, **SDL2** for audio/controllers, **Boxy** for the world render path, and **Silky** for the UI layer.
 
 Inspired by *Thomas Was Alone*. Originally built in TypeScript at [candycomp.com](https://candycomp.com), now reimagined as a native desktop game orchestrated by [Scriptorium](https://github.com/Wal33D/scriptorium).
 
-Current state: a 12-level campaign with Felix and Ivy in the playable arc, ambient procedural music, improved jump feel, and layered atmospheric backdrops instead of literal scene props.
+Current state: a 12-level campaign with Felix and Ivy in the playable arc, ambient procedural music, improved jump feel, layered atmospheric backdrops, and a fresh Windy/Silky UI pass for menus and overlays.
 
 ## Current Build
 
-- Version: `0.2.0`
-- Runtime stack: SDL2 for windowing, input, audio, and controllers, with a Boxy-backed render path
+- Version: `0.3.0`
+- Runtime stack: Windy for windowing/input, SDL2 for audio and controllers, Boxy for world rendering, Silky for UI
 - Campaign: 12 playable levels
-- Recent improvements: jump buffering and coyote time polish, procedural ambient music, atmospheric backdrops, gameplay particles, fullscreen toggle with saved preference
+- Recent improvements: Windy/Silky UI migration, jump buffering and coyote time polish, procedural ambient music, atmospheric backdrops, gameplay particles, fullscreen toggle with saved preference
 
 ## Screenshots
 
@@ -46,7 +46,7 @@ Current state: a 12-level campaign with Felix and Ivy in the playable arc, ambie
 
 ## Build & Run
 
-Requires [Nim](https://nim-lang.org/) >= 2.0.0 and [SDL2](https://www.libsdl.org/).
+Requires [Nim](https://nim-lang.org/) >= 2.0.0 and [SDL2](https://www.libsdl.org/). The Treeform stack (`boxy`, `windy`, `silky`, `pixie`) is declared in `together.nimble`.
 
 ```bash
 # Install SDL2 (macOS)
@@ -54,6 +54,9 @@ brew install sdl2
 
 # Install Nim SDL2 bindings
 nimble install sdl2
+
+# Install project dependencies
+nimble install -y
 
 # Build
 nim c -o:together -d:release src/together.nim
@@ -72,6 +75,8 @@ This game is being developed using [Scriptorium](https://github.com/Wal33D/scrip
 The `scriptorium/plan` branch contains the full planning state — spec, areas, tickets, and their lifecycle.
 
 Thanks to Monofuel on GitHub for creating Orchestrator / Scriptorium and for the underlying workflow that powers this project.
+
+Thanks as well to Monofuel for [Sygnosphere](https://github.com/monofuel/sygnosphere), which Andrew pointed us to as a practical reference for running Boxy world rendering and Silky overlays together in the same Windy/OpenGL frame loop.
 
 ## License
 
