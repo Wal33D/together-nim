@@ -139,6 +139,47 @@ proc emitCompletionParticles(game: var Game) =
     game.particles.emitCompletion(c.characterCenterX(), c.characterCenterY(),
                                   completionColor)
 
+proc accentCharacterSwitch(game: var Game, previousIdx, newIdx: int) =
+  game.camera.boostResponse(0.18)
+
+  if previousIdx < 0 or previousIdx >= game.characters.len or
+     newIdx < 0 or newIdx >= game.characters.len:
+    return
+
+  let dx = game.characters[newIdx].characterCenterX() -
+    game.characters[previousIdx].characterCenterX()
+  game.camera.addImpulse(max(-12.0, min(12.0, dx * 0.12)), -4.0)
+
+proc accentJump(game: var Game) =
+  game.camera.boostResponse(0.05)
+  game.camera.addImpulse(0.0, -10.0)
+
+proc accentLanding(game: var Game, idx: int) =
+  if idx != game.activeCharacterIndex:
+    return
+  game.camera.boostResponse(0.08)
+  game.camera.addImpulse(0.0, 12.0)
+
+proc accentDeath(game: var Game, idx: int) =
+  if idx != game.activeCharacterIndex:
+    return
+  game.camera.boostResponse(0.22)
+  game.camera.addImpulse(0.0, 8.0)
+
+proc accentLevelComplete(game: var Game) =
+  game.camera.boostResponse(0.14)
+  game.camera.addImpulse(0.0, -8.0)
+
+proc snapCameraToCharacter(game: var Game, idx: int) =
+  if idx < 0 or idx >= game.characters.len:
+    return
+  if game.currentLevel < 0 or game.currentLevel >= allLevels.len:
+    return
+
+  let ch = game.characters[idx]
+  snapCamera(game.camera, ch.x, ch.y, float(ch.width), float(ch.height),
+             game.currentLevelState.levelWidth, game.currentLevelState.levelHeight)
+
 proc pressJump*(game: var Game) =
   game.jumpPressed = true
 
@@ -148,6 +189,7 @@ proc pressJump*(game: var Game) =
   if game.activeCharacterIndex < game.characters.len:
     if attemptCharacterJump(game.characters[game.activeCharacterIndex]):
       game.emitJumpParticles(game.activeCharacterIndex)
+      game.accentJump()
       playSound(soundJump)
     else:
       game.characters[game.activeCharacterIndex].jumpBufferTimer = JUMP_BUFFER_TIME
@@ -170,10 +212,12 @@ proc selectActiveCharacter*(game: var Game, idx: int): bool =
   if idx < 0 or idx >= game.characters.len or idx == game.activeCharacterIndex:
     return false
 
+  let previousIdx = game.activeCharacterIndex
   if game.activeCharacterIndex >= 0 and game.activeCharacterIndex < game.characters.len:
     game.characters[game.activeCharacterIndex].jumpBufferTimer = 0.0
 
   game.activeCharacterIndex = idx
+  game.accentCharacterSwitch(previousIdx, idx)
   true
 
 proc cycleActiveCharacter*(game: var Game, delta: int): bool =
@@ -190,6 +234,7 @@ proc cycleActiveCharacter*(game: var Game, delta: int): bool =
 
   game.characters[currentIdx].jumpBufferTimer = 0.0
   game.activeCharacterIndex = newIdx
+  game.accentCharacterSwitch(currentIdx, newIdx)
   true
 
 proc loadLevel*(game: var Game, idx: int) =
@@ -316,6 +361,9 @@ proc update*(game: var Game, dt: float) =
             game.characters[i].vx = 0
             game.characters[i].vy = 0
             game.characters[i].dead = false
+            if i == game.activeCharacterIndex:
+              game.snapCameraToCharacter(i)
+            game.accentDeath(i)
             playSound(soundDeath)
 
       # Landing sound
@@ -324,6 +372,7 @@ proc update*(game: var Game, dt: float) =
           let idx = game.findCharacterIndex(landedId)
           if idx >= 0:
             game.emitLandingParticles(idx)
+            game.accentLanding(idx)
         playSound(soundLand)
 
       # Mark exits — play chime when a character newly reaches their exit
@@ -338,6 +387,8 @@ proc update*(game: var Game, dt: float) =
       if game.activeCharacterIndex < game.characters.len and
          game.characters[game.activeCharacterIndex].jumpBufferTimer > 0.0 and
          attemptCharacterJump(game.characters[game.activeCharacterIndex]):
+        game.emitJumpParticles(game.activeCharacterIndex)
+        game.accentJump()
         playSound(soundJump)
 
       # Check win — all characters at their exits
@@ -349,6 +400,7 @@ proc update*(game: var Game, dt: float) =
             break
         if allAtExit and game.state == playing:
           game.emitCompletionParticles()
+          game.accentLevelComplete()
           game.state = levelWin
           game.levelWinTimer = 0.0
           playSound(soundLevelComplete)
@@ -357,7 +409,8 @@ proc update*(game: var Game, dt: float) =
       if game.activeCharacterIndex < game.characters.len:
         let ch = game.characters[game.activeCharacterIndex]
         updateCamera(game.camera, ch.x, ch.y, float(ch.width), float(ch.height),
-                     level.levelWidth, level.levelHeight)
+                     ch.vx, ch.vy, ch.facingRight, level.levelWidth,
+                     level.levelHeight, scaledDt)
 
     # Update animations for all characters
     for i in 0..<game.characters.len:
@@ -381,6 +434,13 @@ proc update*(game: var Game, dt: float) =
 
   of levelWin:
     game.levelWinTimer += scaledDt
+    if game.currentLevel >= 0 and game.currentLevel < allLevels.len and
+       game.activeCharacterIndex < game.characters.len:
+      let ch = game.characters[game.activeCharacterIndex]
+      let level = game.currentLevelState
+      updateCamera(game.camera, ch.x, ch.y, float(ch.width), float(ch.height),
+                   ch.vx, ch.vy, ch.facingRight, level.levelWidth,
+                   level.levelHeight, scaledDt)
 
   else:
     discard

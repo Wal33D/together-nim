@@ -92,6 +92,34 @@ suite "game state machine":
     g.pressJump()
 
     check g.particles.particles.len > 0
+    check g.camera.impulseY < 0.0
+
+  test "character switching boosts camera response":
+    var g = newGame()
+    g.state = playing
+    g.currentLevel = 0
+    g.currentLevelState = Level(
+      platforms: @[Platform(x: 0.0, y: 200.0, width: 500.0, height: 20.0)],
+      hazards: @[],
+      exits: @[],
+      buttons: @[],
+      doors: @[],
+      movingPlatforms: @[],
+      levelWidth: 1200.0,
+      levelHeight: 500.0,
+    )
+    g.characters = @[newCharacter("pip"), newCharacter("luca")]
+    g.characters[0].x = 80.0
+    g.characters[0].y = 170.0
+    g.characters[1].x = 260.0
+    g.characters[1].y = 170.0
+    g.activeCharacterIndex = 0
+
+    let changed = g.selectActiveCharacter(1)
+
+    check changed == true
+    check g.activeCharacterIndex == 1
+    check g.camera.responseBoost > 0.0
 
   test "landing spawns particles":
     var g = newGame()
@@ -118,6 +146,7 @@ suite "game state machine":
     g.update(FIXED_TIMESTEP)
 
     check g.particles.particles.len > 0
+    check g.camera.impulseY > 0.0
 
   test "death spawns particles":
     var g = newGame()
@@ -125,26 +154,29 @@ suite "game state machine":
     g.currentLevel = 0
     g.currentLevelState = Level(
       platforms: @[],
-      hazards: @[Hazard(x: 0.0, y: 0.0, width: 100.0, height: 100.0)],
+      hazards: @[Hazard(x: 880.0, y: 0.0, width: 100.0, height: 100.0)],
       exits: @[],
       buttons: @[],
       doors: @[],
       movingPlatforms: @[],
-      levelWidth: 800.0,
+      levelWidth: 1600.0,
       levelHeight: 500.0,
     )
     g.characters = @[newCharacter("luca")]
     g.activeCharacterIndex = 0
-    g.characters[0].x = 20.0
+    g.characters[0].x = 900.0
     g.characters[0].y = 20.0
     g.characters[0].spawnX = 20.0
     g.characters[0].spawnY = 20.0
+    g.camera.x = 400.0
 
     g.update(FIXED_TIMESTEP)
 
     check g.particles.particles.len > 0
     check g.characters[0].x == g.characters[0].spawnX
     check g.characters[0].y == g.characters[0].spawnY
+    check g.camera.x == 0.0
+    check g.camera.responseBoost > 0.0
 
   test "exit reach spawns particles":
     var g = newGame()

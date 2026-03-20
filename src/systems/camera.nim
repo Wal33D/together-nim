@@ -1,42 +1,129 @@
 ## Smooth follow camera for Together
 
 import "../constants"
+import math
 
 const LERP_FACTOR* = 0.08
+const LOOK_AHEAD_X* = 72.0
+const IDLE_LOOK_AHEAD_X* = 18.0
+const LOOK_AHEAD_Y_UP* = -20.0
+const LOOK_AHEAD_Y_DOWN* = 26.0
+const LOOK_AHEAD_LERP* = 7.5
+const IMPULSE_DAMPING_X* = 7.5
+const IMPULSE_DAMPING_Y* = 9.0
+const RESPONSE_DECAY* = 2.4
+const MAX_RESPONSE_BOOST* = 0.22
+const MAX_IMPULSE_X* = 40.0
+const MAX_IMPULSE_Y* = 28.0
 
 type
   Camera* = object
     x*, y*: float        # current world coord of screen top-left
     targetX*, targetY*: float
+    lookAheadX*, lookAheadY*: float
+    impulseX*, impulseY*: float
+    responseBoost*: float
 
 proc newCamera*(): Camera =
-  Camera(x: 0.0, y: 0.0, targetX: 0.0, targetY: 0.0)
+  Camera(
+    x: 0.0,
+    y: 0.0,
+    targetX: 0.0,
+    targetY: 0.0,
+    lookAheadX: 0.0,
+    lookAheadY: 0.0,
+    impulseX: 0.0,
+    impulseY: 0.0,
+    responseBoost: 0.0
+  )
+
+proc clampf(value, low, high: float): float =
+  max(low, min(high, value))
+
+proc clampToBounds(cam: var Camera, levelWidth, levelHeight: float) =
+  let maxX = max(0.0, levelWidth - float(DEFAULT_WIDTH))
+  let maxY = max(0.0, levelHeight - float(DEFAULT_HEIGHT))
+  cam.x = clampf(cam.x, 0.0, maxX)
+  cam.y = clampf(cam.y, 0.0, maxY)
+  cam.targetX = clampf(cam.targetX, 0.0, maxX)
+  cam.targetY = clampf(cam.targetY, 0.0, maxY)
+
+proc boostResponse*(cam: var Camera, amount: float) =
+  cam.responseBoost = clampf(max(cam.responseBoost, amount), 0.0, MAX_RESPONSE_BOOST)
+
+proc addImpulse*(cam: var Camera, x, y: float) =
+  cam.impulseX = clampf(cam.impulseX + x, -MAX_IMPULSE_X, MAX_IMPULSE_X)
+  cam.impulseY = clampf(cam.impulseY + y, -MAX_IMPULSE_Y, MAX_IMPULSE_Y)
+
+proc updateCameraFocus*(cam: var Camera, charX, charY, charW, charH, charVX,
+                        charVY: float, facingRight: bool, levelWidth,
+                        levelHeight, dt: float) =
+  let desiredLookAheadX =
+    if abs(charVX) > 18.0:
+      clampf(charVX * 0.26, -LOOK_AHEAD_X, LOOK_AHEAD_X)
+    elif facingRight:
+      IDLE_LOOK_AHEAD_X
+    else:
+      -IDLE_LOOK_AHEAD_X
+
+  let desiredLookAheadY =
+    if charVY < -45.0:
+      LOOK_AHEAD_Y_UP
+    elif charVY > 90.0:
+      clampf(charVY * 0.08, 0.0, LOOK_AHEAD_Y_DOWN)
+    else:
+      0.0
+
+  cam.lookAheadX += (desiredLookAheadX - cam.lookAheadX) *
+    min(1.0, LOOK_AHEAD_LERP * dt)
+  cam.lookAheadY += (desiredLookAheadY - cam.lookAheadY) *
+    min(1.0, (LOOK_AHEAD_LERP - 1.0) * dt)
+
+  cam.impulseX *= max(0.0, 1.0 - IMPULSE_DAMPING_X * dt)
+  cam.impulseY *= max(0.0, 1.0 - IMPULSE_DAMPING_Y * dt)
+  cam.responseBoost = max(0.0, cam.responseBoost - RESPONSE_DECAY * dt)
 
 proc updateCamera*(cam: var Camera, charX, charY, charW, charH: float,
                    levelWidth, levelHeight: float) =
-  # Center screen on character
-  cam.targetX = charX + charW * 0.5 - float(DEFAULT_WIDTH) * 0.5
-  cam.targetY = charY + charH * 0.5 - float(DEFAULT_HEIGHT) * 0.5
+  cam.updateCameraFocus(charX, charY, charW, charH, 0.0, 0.0, true,
+                        levelWidth, levelHeight, FIXED_TIMESTEP)
+  cam.targetX = charX + charW * 0.5 - float(DEFAULT_WIDTH) * 0.5 +
+    cam.lookAheadX + cam.impulseX
+  cam.targetY = charY + charH * 0.5 - float(DEFAULT_HEIGHT) * 0.5 +
+    cam.lookAheadY + cam.impulseY
 
-  # Lerp toward target
-  cam.x += (cam.targetX - cam.x) * LERP_FACTOR
-  cam.y += (cam.targetY - cam.y) * LERP_FACTOR
+  let follow = min(0.34, LERP_FACTOR + cam.responseBoost)
+  cam.x += (cam.targetX - cam.x) * follow
+  cam.y += (cam.targetY - cam.y) * follow
+  cam.clampToBounds(levelWidth, levelHeight)
 
-  # Clamp to level bounds
-  let maxX = max(0.0, levelWidth - float(DEFAULT_WIDTH))
-  let maxY = max(0.0, levelHeight - float(DEFAULT_HEIGHT))
-  if cam.x < 0.0: cam.x = 0.0
-  elif cam.x > maxX: cam.x = maxX
-  if cam.y < 0.0: cam.y = 0.0
-  elif cam.y > maxY: cam.y = maxY
+proc updateCamera*(cam: var Camera, charX, charY, charW, charH, charVX,
+                   charVY: float, facingRight: bool, levelWidth,
+                   levelHeight, dt: float) =
+  cam.updateCameraFocus(charX, charY, charW, charH, charVX, charVY,
+                        facingRight, levelWidth, levelHeight, dt)
+
+  cam.targetX = charX + charW * 0.5 - float(DEFAULT_WIDTH) * 0.5 +
+    cam.lookAheadX + cam.impulseX
+  cam.targetY = charY + charH * 0.5 - float(DEFAULT_HEIGHT) * 0.5 +
+    cam.lookAheadY + cam.impulseY
+
+  let follow = min(0.34, LERP_FACTOR + cam.responseBoost)
+  cam.x += (cam.targetX - cam.x) * follow
+  cam.y += (cam.targetY - cam.y) * follow
+  cam.clampToBounds(levelWidth, levelHeight)
 
 proc snapCamera*(cam: var Camera, charX, charY, charW, charH: float,
                  levelWidth, levelHeight: float) =
   ## Instantly position camera on character (no lerp) — use on level load
+  cam.lookAheadX = 0.0
+  cam.lookAheadY = 0.0
+  cam.impulseX = 0.0
+  cam.impulseY = 0.0
+  cam.responseBoost = 0.0
   cam.targetX = charX + charW * 0.5 - float(DEFAULT_WIDTH) * 0.5
   cam.targetY = charY + charH * 0.5 - float(DEFAULT_HEIGHT) * 0.5
 
-  let maxX = max(0.0, levelWidth - float(DEFAULT_WIDTH))
-  let maxY = max(0.0, levelHeight - float(DEFAULT_HEIGHT))
-  cam.x = max(0.0, min(cam.targetX, maxX))
-  cam.y = max(0.0, min(cam.targetY, maxY))
+  cam.x = cam.targetX
+  cam.y = cam.targetY
+  cam.clampToBounds(levelWidth, levelHeight)
