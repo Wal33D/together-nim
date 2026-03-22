@@ -374,6 +374,12 @@ const level13* = Level(
   ],
   buttons: @[],
   doors: @[],
+  movingPlatforms: @[
+    MovingPlatform(waypoints: @[(x: 260.0, y: 460.0), (x: 580.0, y: 460.0)],
+                   width: 100.0, height: 20.0, speed: 70.0,
+                   pingPong: true, forward: true,
+                   x: 260.0, y: 460.0, prevX: 260.0, prevY: 460.0),
+  ],
   starChallenge: StarChallenge(timeTarget: 90.0, secretX: 540.0, secretY: 315.0),
   levelWidth: 960.0,
   levelHeight: 500.0,
@@ -410,6 +416,12 @@ const level14* = Level(
   doors: @[
     Door(id: 1, x: 540.0, y: 380.0, width: 20.0, height: 80.0, isOpen: false),
   ],
+  movingPlatforms: @[
+    MovingPlatform(waypoints: @[(x: 230.0, y: 420.0), (x: 370.0, y: 420.0)],
+                   width: 90.0, height: 20.0, speed: 55.0,
+                   pingPong: true, forward: true,
+                   x: 230.0, y: 420.0, prevX: 230.0, prevY: 420.0),
+  ],
   starChallenge: StarChallenge(timeTarget: 95.0, secretX: 130.0, secretY: 295.0),
   levelWidth: 840.0,
   levelHeight: 500.0,
@@ -443,6 +455,12 @@ const level15* = Level(
   ],
   buttons: @[],
   doors: @[],
+  movingPlatforms: @[
+    MovingPlatform(waypoints: @[(x: 720.0, y: 940.0), (x: 720.0, y: 350.0)],
+                   width: 80.0, height: 20.0, speed: 80.0,
+                   pingPong: true, forward: true,
+                   x: 720.0, y: 940.0, prevX: 720.0, prevY: 940.0),
+  ],
   starChallenge: StarChallenge(timeTarget: 100.0, secretX: 750.0, secretY: 935.0),
   levelWidth: 800.0,
   levelHeight: 1000.0,
