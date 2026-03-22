@@ -769,8 +769,21 @@ proc update*(game: var Game, dt: float) =
         game.characters[i].jumpBufferTimer =
           max(0.0, game.characters[i].jumpBufferTimer - scaledDt)
 
+    # Precompute pairwise distances — reused by all proximity systems.
+    let n = game.characters.len
+    var distMatrix = newSeq[float](n * n)
+    for i in 0..<n:
+      for j in (i + 1)..<n:
+        let ci = game.characters[i]
+        let cj = game.characters[j]
+        let dx = characterCenterX(cj) - characterCenterX(ci)
+        let dy = characterCenterY(cj) - characterCenterY(ci)
+        let d = sqrt(dx * dx + dy * dy)
+        distMatrix[i * n + j] = d
+        distMatrix[j * n + i] = d
+
     # Character proximity emotional system
-    for i in 0..<game.characters.len:
+    for i in 0..<n:
       if game.characters[i].isDying() or game.characters[i].isRespawning():
         game.characters[i].proximityTarget = -1
         continue
@@ -780,13 +793,11 @@ proc update*(game: var Game, dt: float) =
       var closestIdx = -1
       var bestApproach = 0.0
 
-      for j in 0..<game.characters.len:
+      for j in 0..<n:
         if i == j: continue
         if game.characters[j].isDying() or game.characters[j].isRespawning():
           continue
-        let dx = characterCenterX(game.characters[j]) - characterCenterX(game.characters[i])
-        let dy = characterCenterY(game.characters[j]) - characterCenterY(game.characters[i])
-        let dist = sqrt(dx * dx + dy * dy)
+        let dist = distMatrix[i * n + j]
         if dist < closestDist:
           closestDist = dist
           closestIdx = j
@@ -798,6 +809,8 @@ proc update*(game: var Game, dt: float) =
 
         # Anticipation: moving toward another character
         if dist > 0.001:
+          let dx = characterCenterX(game.characters[j]) - characterCenterX(game.characters[i])
+          let dy = characterCenterY(game.characters[j]) - characterCenterY(game.characters[i])
           let dot = game.characters[i].vx * (dx / dist) + game.characters[i].vy * (dy / dist)
           if dot > 0.0:
             bestApproach = max(bestApproach, min(1.0, dot / 150.0))
@@ -851,7 +864,6 @@ proc update*(game: var Game, dt: float) =
 
     # Proximity glow blending
     block:
-      let n = game.characters.len
       var minDists = newSeq[float](n)
       var nearbyCounts = newSeq[int](n)
       for i in 0..<n:
@@ -862,9 +874,7 @@ proc update*(game: var Game, dt: float) =
           if i == j: continue
           if game.characters[j].isDying() or game.characters[j].isRespawning():
             continue
-          let dx = characterCenterX(game.characters[j]) - characterCenterX(game.characters[i])
-          let dy = characterCenterY(game.characters[j]) - characterCenterY(game.characters[i])
-          let dist = sqrt(dx * dx + dy * dy)
+          let dist = distMatrix[i * n + j]
           if dist < minDists[i]:
             minDists[i] = dist
           if dist <= ProximityGlowRange:
