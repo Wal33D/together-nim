@@ -290,3 +290,10 @@ proc renderGame*(renderer: RendererPtr, game: Game) =
     renderCredits(renderer, game)
   of actTitle:
     renderActTitle(renderer, game)
+
+  if transitionAlpha > 0.001:
+    renderer.setDrawBlendMode(BlendMode_Blend)
+    renderer.setDrawColor(transitionColor.r, transitionColor.g,
+                          transitionColor.b, uint8(transitionAlpha * 255.0))
+    drawFilledRect(renderer, 0, 0, DEFAULT_WIDTH.cint, DEFAULT_HEIGHT.cint)
+    renderer.setDrawBlendMode(BlendMode_None)
