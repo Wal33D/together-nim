@@ -420,7 +420,12 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
       let mouthB = uint8(darkened.b * 255.0)
       renderer.setDrawColor(mouthR, mouthG, mouthB, 255)
       if ch.celebrating:
-        drawFilledRect(renderer, mouthX, mouthY - 1, mouthW, 3)
+        # Curved smile arc — parabolic U-shape.
+        let arcHeight = 2.0
+        for px in 0 ..< mouthW.int:
+          let t = if mouthW > 1: (2.0 * px.float / (mouthW - 1).float) - 1.0 else: 0.0
+          let yOff = cint(round(arcHeight * (1.0 - t * t)))
+          drawFilledRect(renderer, mouthX + px.cint, mouthY - 1 + yOff, 1, 2)
       else:
         drawFilledRect(renderer, mouthX, mouthY, mouthW, 2)
 
