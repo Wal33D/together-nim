@@ -9,7 +9,7 @@ import "render_backend"
 
 type
   BackdropScene* = enum
-    dawnMeadow, riverValley, stoneRuins, nightSky
+    dawnMeadow, riverValley, stoneRuins, nightSky, aetherPlane
 
   BackdropTheme* = object
     scene*: BackdropScene
@@ -120,12 +120,23 @@ proc themeForScene(scene: BackdropScene): BackdropTheme =
       silhouette: (r: 14'u8, g: 18'u8, b: 34'u8),
       glow: (r: 148'u8, g: 206'u8, b: 255'u8),
     )
+  of aetherPlane:
+    BackdropTheme(
+      scene: scene,
+      skyTop: (r: 230'u8, g: 235'u8, b: 255'u8),
+      skyBottom: (r: 210'u8, g: 218'u8, b: 248'u8),
+      haze: (r: 248'u8, g: 248'u8, b: 255'u8),
+      horizon: (r: 180'u8, g: 190'u8, b: 220'u8),
+      silhouette: (r: 160'u8, g: 168'u8, b: 210'u8),
+      glow: (r: 255'u8, g: 255'u8, b: 255'u8),
+    )
 
 proc levelBackdropScene*(levelId: int): BackdropScene =
   case levelId
   of 1..4: dawnMeadow
   of 5..7: riverValley
   of 8..10: stoneRuins
+  of 25..30: aetherPlane
   else: nightSky
 
 proc backdropThemeForLevel*(levelId: int): BackdropTheme =
@@ -166,33 +177,47 @@ proc renderCelestialBody(renderer: RendererPtr, theme: BackdropTheme, scene: Bac
   of nightSky:
     let driftY = int(6.0 * sin(time * 0.18))
     renderGlow(renderer, 628, 98 + driftY, 120, 120, theme.glow, 54)
+  of aetherPlane:
+    renderGlow(renderer, DEFAULT_WIDTH div 2, 80, 260, 260, theme.glow, 48)
 
 proc renderStars(renderer: RendererPtr, theme: BackdropTheme, levelId: int, time: float) =
-  if theme.scene != nightSky:
-    return
-
-  renderer.setDrawBlendMode(BlendMode_Blend)
-  for i in 0..<36:
-    let x = (i * 97 + levelId * 23) mod DEFAULT_WIDTH
-    let y = (i * 53 + levelId * 41) mod (DEFAULT_HEIGHT div 2)
-    let twinkle = 26 + int(24.0 * (0.5 + 0.5 * sin(time * 1.8 + float(i) * 0.37)))
-    renderer.setDrawColor(theme.glow.r, theme.glow.g, theme.glow.b, uint8(twinkle))
-    drawFilledRect(renderer, cint(x), cint(y), 2, 2)
-  renderer.setDrawBlendMode(BlendMode_None)
+  if theme.scene == nightSky:
+    renderer.setDrawBlendMode(BlendMode_Blend)
+    for i in 0..<36:
+      let x = (i * 97 + levelId * 23) mod DEFAULT_WIDTH
+      let y = (i * 53 + levelId * 41) mod (DEFAULT_HEIGHT div 2)
+      let twinkle = 26 + int(24.0 * (0.5 + 0.5 * sin(time * 1.8 + float(i) * 0.37)))
+      renderer.setDrawColor(theme.glow.r, theme.glow.g, theme.glow.b, uint8(twinkle))
+      drawFilledRect(renderer, cint(x), cint(y), 2, 2)
+    renderer.setDrawBlendMode(BlendMode_None)
+  elif theme.scene == aetherPlane:
+    renderer.setDrawBlendMode(BlendMode_Blend)
+    for i in 0..<20:
+      let x = (i * 113 + levelId * 31) mod DEFAULT_WIDTH
+      let y = (i * 67 + levelId * 47) mod DEFAULT_HEIGHT
+      renderer.setDrawColor(230, 235, 255, 40)
+      drawFilledRect(renderer, cint(x), cint(y), 2, 2)
+    renderer.setDrawBlendMode(BlendMode_None)
 
 proc renderAurora(renderer: RendererPtr, theme: BackdropTheme, time: float) =
-  if theme.scene != nightSky:
-    return
-
-  renderer.setDrawBlendMode(BlendMode_Blend)
-  for i in 0..<5:
-    let x = 80 + i * 132 + int(10.0 * sin(time * 0.4 + float(i)))
-    let width = 56 + (i mod 2) * 18
-    let height = 180 + (i mod 3) * 26
-    let alpha = uint8(16 + i * 5)
-    renderer.setDrawColor(theme.haze.r, theme.haze.g, theme.haze.b, alpha)
-    drawFilledRect(renderer, cint(x), 12, cint(width), cint(height))
-  renderer.setDrawBlendMode(BlendMode_None)
+  if theme.scene == nightSky:
+    renderer.setDrawBlendMode(BlendMode_Blend)
+    for i in 0..<5:
+      let x = 80 + i * 132 + int(10.0 * sin(time * 0.4 + float(i)))
+      let width = 56 + (i mod 2) * 18
+      let height = 180 + (i mod 3) * 26
+      let alpha = uint8(16 + i * 5)
+      renderer.setDrawColor(theme.haze.r, theme.haze.g, theme.haze.b, alpha)
+      drawFilledRect(renderer, cint(x), 12, cint(width), cint(height))
+    renderer.setDrawBlendMode(BlendMode_None)
+  elif theme.scene == aetherPlane:
+    renderer.setDrawBlendMode(BlendMode_Blend)
+    for i in 0..<6:
+      let x = 60 + i * (DEFAULT_WIDTH div 6)
+      let width = 80 + (i mod 2) * 20
+      renderer.setDrawColor(theme.haze.r, theme.haze.g, theme.haze.b, 12)
+      drawFilledRect(renderer, cint(x), 0, cint(width), DEFAULT_HEIGHT.cint)
+    renderer.setDrawBlendMode(BlendMode_None)
 
 proc renderHorizonBands(renderer: RendererPtr, theme: BackdropTheme, camX: float) =
   let bandBaseY = DEFAULT_HEIGHT - 158
@@ -201,6 +226,7 @@ proc renderHorizonBands(renderer: RendererPtr, theme: BackdropTheme, camX: float
     of riverValley: 0.12
     of stoneRuins: 0.10
     of nightSky: 0.05
+    of aetherPlane: 0.06
 
   let offset = int(camX * parallax)
   for layer in 0..2:
@@ -229,6 +255,7 @@ proc renderMist(renderer: RendererPtr, theme: BackdropTheme, scene: BackdropScen
       of riverValley: uint8(28 + layer * 6)
       of stoneRuins: uint8(16 + layer * 5)
       of nightSky: uint8(10 + layer * 4)
+      of aetherPlane: uint8(30 + layer * 6)
     renderer.setDrawColor(theme.haze.r, theme.haze.g, theme.haze.b, alpha)
     drawFilledRect(renderer, cint(baseX), cint(y), cint(width), 18)
     drawFilledRect(renderer, cint(baseX - 180), cint(y + 8), cint(width - 40), 14)
@@ -263,6 +290,10 @@ proc renderAmbientStrata(renderer: RendererPtr, theme: BackdropTheme, scene: Bac
   of nightSky:
     renderer.setDrawColor(theme.haze.r, theme.haze.g, theme.haze.b, 14)
     drawFilledRect(renderer, 0, 74, DEFAULT_WIDTH.cint, 110)
+  of aetherPlane:
+    renderer.setDrawColor(theme.haze.r, theme.haze.g, theme.haze.b, 16)
+    drawFilledRect(renderer, 0, 100, DEFAULT_WIDTH.cint, 90)
+    drawFilledRect(renderer, 0, 160, DEFAULT_WIDTH.cint, 90)
   renderer.setDrawBlendMode(BlendMode_None)
 
 proc renderMidGroundSilhouettes(renderer: RendererPtr, actColor: chroma.Color, act: int, camX: float) =

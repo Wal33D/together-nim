@@ -17,3 +17,8 @@ suite "backdrop scenes":
   test "final act uses night sky":
     check levelBackdropScene(11) == nightSky
     check backdropThemeForLevel(12).scene == nightSky
+
+  test "act 5 uses aether plane":
+    check levelBackdropScene(25) == aetherPlane
+    check levelBackdropScene(30) == aetherPlane
+    check backdropThemeForLevel(25).scene == aetherPlane
