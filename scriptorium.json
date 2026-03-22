@@ -14,7 +14,7 @@
     }
   },
   "concurrency": {
-    "maxAgents": 2
+    "maxAgents": 4
   },
   "timeouts": {
     "codingAgentHardTimeoutMs": 14400000,
