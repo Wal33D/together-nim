@@ -1,20 +1,29 @@
 ## Gamepad/controller support for Together
-## Manages SDL2 game controller lifecycle and maps controller input to game actions.
+## Manages IOKit HID game controller lifecycle and maps controller input to game actions.
 
-import sdl2
-import sdl2/gamecontroller
-import sdl2/joystick
-import "../game"
-import "audio"
+import
+  ../game,
+  ./audio
+
+{.passL: "-framework IOKit -framework CoreFoundation".}
+
+# --- Button and axis identity constants ---
 
 const
-  AXIS_DEADZONE* = 8000'i16  ## Stick deadzone threshold
+  ButtonA* = 0'u8
+  ButtonB* = 1'u8
+  ButtonStart* = 6'u8
+  ButtonLB* = 9'u8
+  ButtonRB* = 10'u8
+  ButtonDpadLeft* = 13'u8
+  ButtonDpadRight* = 14'u8
+  AxisLeftX* = 0'u8
+  AXIS_DEADZONE* = 8000'i16  ## Stick deadzone threshold.
+
+# --- Module state ---
 
 var
-  controller*: GameControllerPtr = nil
   controllerConnected*: bool = false
-  ## Track the current directional sources separately so d-pad and stick can
-  ## coexist without fighting each other.
   dpadLeftHeld: bool = false
   dpadRightHeld: bool = false
   stickLeftHeld: bool = false
@@ -28,6 +37,16 @@ var
   prevDpadRight: bool = false
   prevStickLeft: bool = false
   prevStickRight: bool = false
+
+  ## HID state updated by IOKit callbacks.
+  hidButtonA: bool = false
+  hidButtonB: bool = false
+  hidButtonStart: bool = false
+  hidButtonLB: bool = false
+  hidButtonRB: bool = false
+  hidDpadLeft: bool = false
+  hidDpadRight: bool = false
+  hidLeftX: int16 = 0
 
 proc resetControllerState() =
   dpadLeftHeld = false
@@ -43,6 +62,14 @@ proc resetControllerState() =
   prevDpadRight = false
   prevStickLeft = false
   prevStickRight = false
+  hidButtonA = false
+  hidButtonB = false
+  hidButtonStart = false
+  hidButtonLB = false
+  hidButtonRB = false
+  hidDpadLeft = false
+  hidDpadRight = false
+  hidLeftX = 0
 
 proc syncDirectionalHeldState(game: var Game) =
   game.leftHeld = dpadLeftHeld or stickLeftHeld
@@ -52,28 +79,12 @@ proc resetPadState*() =
   ## Reset internal pad held state. Useful for tests.
   resetControllerState()
 
-proc openFirstController*() =
-  ## Scan for and open the first available game controller.
-  let n = numJoysticks()
-  for i in 0.cint ..< n:
-    if isGameController(i):
-      controller = gameControllerOpen(i)
-      if controller != nil:
-        controllerConnected = true
-        resetControllerState()
-        return
-
-proc closeController*() =
-  if controller != nil:
-    controller.close()
-    controller = nil
-  controllerConnected = false
-  resetControllerState()
+# --- Game logic (pure Nim, no platform dependency) ---
 
 proc handleControllerButton*(game: var Game, button: uint8, isDown: bool) =
   ## Map controller buttons to game actions.
-  case button.GameControllerButton
-  of SDL_CONTROLLER_BUTTON_A:
+  case button
+  of ButtonA:
     if isDown:
       if game.state == playing:
         game.pressJump()
@@ -90,31 +101,27 @@ proc handleControllerButton*(game: var Game, button: uint8, isDown: bool) =
     elif game.state == playing:
       game.releaseJump()
 
-  of SDL_CONTROLLER_BUTTON_B:
-    # B button = restart level
+  of ButtonB:
     if isDown:
       game.handleKey(SCANCODE_R)
 
-  of SDL_CONTROLLER_BUTTON_START:
-    # Start = pause/unpause
+  of ButtonStart:
     if isDown:
       game.handleKey(SCANCODE_ESCAPE)
 
-  of SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
-    # LB = previous character
+  of ButtonLB:
     if isDown and game.state == playing and game.cycleActiveCharacter(-1):
       playSound(soundCharSwitch)
 
-  of SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
-    # RB = next character
+  of ButtonRB:
     if isDown and game.state == playing and game.cycleActiveCharacter(1):
       playSound(soundCharSwitch)
 
-  of SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+  of ButtonDpadLeft:
     dpadLeftHeld = isDown
     syncDirectionalHeldState(game)
 
-  of SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+  of ButtonDpadRight:
     dpadRightHeld = isDown
     syncDirectionalHeldState(game)
 
@@ -122,7 +129,7 @@ proc handleControllerButton*(game: var Game, button: uint8, isDown: bool) =
 
 proc handleControllerAxis*(game: var Game, axis: uint8, value: int16) =
   ## Map left stick X axis to left/right movement.
-  if axis == SDL_CONTROLLER_AXIS_LEFTX.uint8:
+  if axis == AxisLeftX:
     let newLeft = value < -AXIS_DEADZONE
     let newRight = value > AXIS_DEADZONE
     stickLeftHeld = newLeft
@@ -140,94 +147,293 @@ proc applyControllerSnapshot*(
   ## This is shared by the live polling path and unit tests so we can keep the
   ## transition logic deterministic without requiring hardware.
   if aPressed != prevButtonA:
-    handleControllerButton(game, SDL_CONTROLLER_BUTTON_A.uint8, aPressed)
+    handleControllerButton(game, ButtonA, aPressed)
     prevButtonA = aPressed
 
   if bPressed != prevButtonB:
     if bPressed:
-      handleControllerButton(game, SDL_CONTROLLER_BUTTON_B.uint8, true)
+      handleControllerButton(game, ButtonB, true)
     prevButtonB = bPressed
 
   if startPressed != prevButtonStart:
     if startPressed:
-      handleControllerButton(game, SDL_CONTROLLER_BUTTON_START.uint8, true)
+      handleControllerButton(game, ButtonStart, true)
     prevButtonStart = startPressed
 
   if lbPressed != prevButtonLB:
     if lbPressed:
-      handleControllerButton(game, SDL_CONTROLLER_BUTTON_LEFTSHOULDER.uint8, true)
+      handleControllerButton(game, ButtonLB, true)
     prevButtonLB = lbPressed
 
   if rbPressed != prevButtonRB:
     if rbPressed:
-      handleControllerButton(game, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER.uint8, true)
+      handleControllerButton(game, ButtonRB, true)
     prevButtonRB = rbPressed
 
   if dpadLeftPressed != prevDpadLeft:
-    handleControllerButton(game, SDL_CONTROLLER_BUTTON_DPAD_LEFT.uint8, dpadLeftPressed)
+    handleControllerButton(game, ButtonDpadLeft, dpadLeftPressed)
     prevDpadLeft = dpadLeftPressed
 
   if dpadRightPressed != prevDpadRight:
-    handleControllerButton(game, SDL_CONTROLLER_BUTTON_DPAD_RIGHT.uint8, dpadRightPressed)
+    handleControllerButton(game, ButtonDpadRight, dpadRightPressed)
     prevDpadRight = dpadRightPressed
 
   let newStickLeft = leftX < -AXIS_DEADZONE
   let newStickRight = leftX > AXIS_DEADZONE
   if newStickLeft != prevStickLeft or newStickRight != prevStickRight:
-    handleControllerAxis(game, SDL_CONTROLLER_AXIS_LEFTX.uint8, leftX)
+    handleControllerAxis(game, AxisLeftX, leftX)
     prevStickLeft = newStickLeft
     prevStickRight = newStickRight
 
+# --- IOKit HID FFI declarations ---
+
+type
+  IOHIDManagerRef = pointer
+  IOHIDDeviceRef = pointer
+  IOHIDValueRef = pointer
+  IOHIDElementRef = pointer
+  CFRunLoopRef = pointer
+  CFStringRef = pointer
+  CFAllocatorRef = pointer
+  CFArrayRef = pointer
+  CFNumberRef = pointer
+  CFDictionaryRef = pointer
+  IOReturn = int32
+  IOOptionBits = uint32
+  CFIndex = int
+  CFDictionaryKeyCallBacks {.importc, header: "<CoreFoundation/CoreFoundation.h>".} = object
+  CFDictionaryValueCallBacks {.importc, header: "<CoreFoundation/CoreFoundation.h>".} = object
+  CFArrayCallBacks {.importc, header: "<CoreFoundation/CoreFoundation.h>".} = object
+
+var
+  kCFTypeDictionaryKeyCallBacks {.importc,
+      header: "<CoreFoundation/CoreFoundation.h>".}: CFDictionaryKeyCallBacks
+  kCFTypeDictionaryValueCallBacks {.importc,
+      header: "<CoreFoundation/CoreFoundation.h>".}: CFDictionaryValueCallBacks
+  kCFTypeArrayCallBacks {.importc,
+      header: "<CoreFoundation/CoreFoundation.h>".}: CFArrayCallBacks
+  kCFRunLoopDefaultMode {.importc,
+      header: "<CoreFoundation/CoreFoundation.h>".}: CFStringRef
+  kIOHIDDeviceUsagePageKey {.importc,
+      header: "<IOKit/hid/IOHIDKeys.h>".}: CFStringRef
+  kIOHIDDeviceUsageKey {.importc,
+      header: "<IOKit/hid/IOHIDKeys.h>".}: CFStringRef
+
+const
+  KCFNumberSInt32Type = 3'i32
+  KHIDPageGenericDesktop = 0x01'u32
+  KHIDPageButton = 0x09'u32
+  KHIDUsageGDJoystick = 0x04'u32
+  KHIDUsageGDGamePad = 0x05'u32
+  KHIDUsageGDX = 0x30'u32
+  KHIDUsageGDHatswitch = 0x39'u32
+
+proc CFRunLoopGetMain(): CFRunLoopRef
+  {.importc, header: "<CoreFoundation/CoreFoundation.h>".}
+
+proc CFRunLoopRunInMode(mode: CFStringRef, seconds: float64,
+    returnAfterSourceHandled: uint8): int32
+  {.importc, header: "<CoreFoundation/CoreFoundation.h>".}
+
+proc CFNumberCreate(allocator: CFAllocatorRef, theType: int32,
+    valuePtr: pointer): CFNumberRef
+  {.importc, header: "<CoreFoundation/CoreFoundation.h>".}
+
+proc CFDictionaryCreate(allocator: CFAllocatorRef, keys: pointer,
+    values: pointer, numValues: CFIndex, keyCallBacks: pointer,
+    valueCallBacks: pointer): CFDictionaryRef
+  {.importc, header: "<CoreFoundation/CoreFoundation.h>".}
+
+proc CFArrayCreate(allocator: CFAllocatorRef, values: pointer,
+    numValues: CFIndex, callBacks: pointer): CFArrayRef
+  {.importc, header: "<CoreFoundation/CoreFoundation.h>".}
+
+proc CFRelease(cf: pointer)
+  {.importc, header: "<CoreFoundation/CoreFoundation.h>".}
+
+proc IOHIDManagerCreate(allocator: CFAllocatorRef,
+    options: IOOptionBits): IOHIDManagerRef
+  {.importc, header: "<IOKit/hid/IOHIDManager.h>".}
+
+proc IOHIDManagerSetDeviceMatchingMultiple(manager: IOHIDManagerRef,
+    multiple: CFArrayRef)
+  {.importc, header: "<IOKit/hid/IOHIDManager.h>".}
+
+proc IOHIDManagerRegisterDeviceMatchingCallback(manager: IOHIDManagerRef,
+    callback: pointer, context: pointer)
+  {.importc, header: "<IOKit/hid/IOHIDManager.h>".}
+
+proc IOHIDManagerRegisterDeviceRemovalCallback(manager: IOHIDManagerRef,
+    callback: pointer, context: pointer)
+  {.importc, header: "<IOKit/hid/IOHIDManager.h>".}
+
+proc IOHIDManagerRegisterInputValueCallback(manager: IOHIDManagerRef,
+    callback: pointer, context: pointer)
+  {.importc, header: "<IOKit/hid/IOHIDManager.h>".}
+
+proc IOHIDManagerScheduleWithRunLoop(manager: IOHIDManagerRef,
+    runLoop: CFRunLoopRef, mode: CFStringRef)
+  {.importc, header: "<IOKit/hid/IOHIDManager.h>".}
+
+proc IOHIDManagerOpen(manager: IOHIDManagerRef,
+    options: IOOptionBits): IOReturn
+  {.importc, header: "<IOKit/hid/IOHIDManager.h>".}
+
+proc IOHIDManagerClose(manager: IOHIDManagerRef,
+    options: IOOptionBits): IOReturn
+  {.importc, header: "<IOKit/hid/IOHIDManager.h>".}
+
+proc IOHIDManagerUnscheduleFromRunLoop(manager: IOHIDManagerRef,
+    runLoop: CFRunLoopRef, mode: CFStringRef)
+  {.importc, header: "<IOKit/hid/IOHIDManager.h>".}
+
+proc IOHIDValueGetIntegerValue(value: IOHIDValueRef): CFIndex
+  {.importc, header: "<IOKit/hid/IOHIDValue.h>".}
+
+proc IOHIDValueGetElement(value: IOHIDValueRef): IOHIDElementRef
+  {.importc, header: "<IOKit/hid/IOHIDValue.h>".}
+
+proc IOHIDElementGetUsage(element: IOHIDElementRef): uint32
+  {.importc, header: "<IOKit/hid/IOHIDElement.h>".}
+
+proc IOHIDElementGetUsagePage(element: IOHIDElementRef): uint32
+  {.importc, header: "<IOKit/hid/IOHIDElement.h>".}
+
+proc IOHIDElementGetLogicalMin(element: IOHIDElementRef): CFIndex
+  {.importc, header: "<IOKit/hid/IOHIDElement.h>".}
+
+proc IOHIDElementGetLogicalMax(element: IOHIDElementRef): CFIndex
+  {.importc, header: "<IOKit/hid/IOHIDElement.h>".}
+
+proc IOHIDElementGetDevice(element: IOHIDElementRef): IOHIDDeviceRef
+  {.importc, header: "<IOKit/hid/IOHIDElement.h>".}
+
+# --- IOKit HID Manager state and callbacks ---
+
+var
+  hidManager: IOHIDManagerRef = nil
+  hidDevice: IOHIDDeviceRef = nil
+
+proc normalizeAxis(value: int, logMin: int, logMax: int): int16 =
+  ## Normalize a HID axis value from [logMin, logMax] to -32768..32767.
+  let span = logMax - logMin
+  if span <= 0: return 0'i16
+  let scaled = ((value - logMin).float * 65535.0 / span.float) - 32768.0
+  return clamp(scaled.int, -32768, 32767).int16
+
+proc deviceMatchCallback(context: pointer, res: IOReturn, sender: pointer,
+    device: IOHIDDeviceRef) {.cdecl.} =
+  ## Called when a matching HID gamepad or joystick is connected.
+  if not controllerConnected:
+    hidDevice = device
+    controllerConnected = true
+    resetControllerState()
+
+proc deviceRemovalCallback(context: pointer, res: IOReturn, sender: pointer,
+    device: IOHIDDeviceRef) {.cdecl.} =
+  ## Called when a HID device is disconnected.
+  if device == hidDevice:
+    hidDevice = nil
+    controllerConnected = false
+    resetControllerState()
+
+proc inputValueCallback(context: pointer, res: IOReturn, sender: pointer,
+    value: IOHIDValueRef) {.cdecl.} =
+  ## Called when a HID input value changes on any matched device.
+  let element = IOHIDValueGetElement(value)
+  if IOHIDElementGetDevice(element) != hidDevice:
+    return
+  let usagePage = IOHIDElementGetUsagePage(element)
+  let usage = IOHIDElementGetUsage(element)
+  let intVal = IOHIDValueGetIntegerValue(value)
+
+  if usagePage == KHIDPageButton:
+    let pressed = intVal != 0
+    case usage
+    of 1: hidButtonA = pressed
+    of 2: hidButtonB = pressed
+    of 5: hidButtonLB = pressed
+    of 6: hidButtonRB = pressed
+    of 9: hidButtonStart = pressed
+    else: discard
+
+  elif usagePage == KHIDPageGenericDesktop:
+    case usage
+    of KHIDUsageGDX:
+      let logMin = IOHIDElementGetLogicalMin(element)
+      let logMax = IOHIDElementGetLogicalMax(element)
+      hidLeftX = normalizeAxis(intVal, logMin, logMax)
+    of KHIDUsageGDHatswitch:
+      hidDpadLeft = intVal >= 5 and intVal <= 7
+      hidDpadRight = intVal >= 1 and intVal <= 3
+    else: discard
+
+proc createMatchingDict(usagePage: uint32, usage: uint32): CFDictionaryRef =
+  ## Build a CoreFoundation dictionary for IOKit HID device matching.
+  var pageVal = usagePage.int32
+  var usageVal = usage.int32
+  let pageNum = CFNumberCreate(nil, KCFNumberSInt32Type, addr pageVal)
+  let usageNum = CFNumberCreate(nil, KCFNumberSInt32Type, addr usageVal)
+  var keys: array[2, pointer] = [
+    cast[pointer](kIOHIDDeviceUsagePageKey),
+    cast[pointer](kIOHIDDeviceUsageKey)]
+  var vals: array[2, pointer] = [
+    cast[pointer](pageNum),
+    cast[pointer](usageNum)]
+  result = CFDictionaryCreate(nil, addr keys[0], addr vals[0], 2,
+    addr kCFTypeDictionaryKeyCallBacks, addr kCFTypeDictionaryValueCallBacks)
+  CFRelease(pageNum)
+  CFRelease(usageNum)
+
+proc openFirstController*() =
+  ## Create an IOKit HID Manager and register for gamepad/joystick devices.
+  if hidManager != nil: return
+  hidManager = IOHIDManagerCreate(nil, 0)
+  if hidManager == nil: return
+
+  let gamepadDict = createMatchingDict(KHIDPageGenericDesktop, KHIDUsageGDGamePad)
+  let joystickDict = createMatchingDict(KHIDPageGenericDesktop, KHIDUsageGDJoystick)
+  var dicts: array[2, pointer] = [
+    cast[pointer](gamepadDict),
+    cast[pointer](joystickDict)]
+  let matchArray = CFArrayCreate(nil, addr dicts[0], 2,
+    addr kCFTypeArrayCallBacks)
+
+  IOHIDManagerSetDeviceMatchingMultiple(hidManager, matchArray)
+  IOHIDManagerRegisterDeviceMatchingCallback(hidManager,
+    cast[pointer](deviceMatchCallback), nil)
+  IOHIDManagerRegisterDeviceRemovalCallback(hidManager,
+    cast[pointer](deviceRemovalCallback), nil)
+  IOHIDManagerRegisterInputValueCallback(hidManager,
+    cast[pointer](inputValueCallback), nil)
+  IOHIDManagerScheduleWithRunLoop(hidManager, CFRunLoopGetMain(),
+    kCFRunLoopDefaultMode)
+  discard IOHIDManagerOpen(hidManager, 0)
+
+  CFRelease(matchArray)
+  CFRelease(gamepadDict)
+  CFRelease(joystickDict)
+
+proc closeController*() =
+  ## Close and release the IOKit HID Manager.
+  if hidManager != nil:
+    IOHIDManagerUnscheduleFromRunLoop(hidManager, CFRunLoopGetMain(),
+      kCFRunLoopDefaultMode)
+    discard IOHIDManagerClose(hidManager, 0)
+    CFRelease(hidManager)
+    hidManager = nil
+  hidDevice = nil
+  controllerConnected = false
+  resetControllerState()
+
 proc pollControllerInput*(game: var Game) =
-  ## Poll the active SDL game controller once and translate changes into game
-  ## actions. Intended for a main loop that no longer depends on SDL events.
-  gameControllerUpdate()
-
-  if controller == nil:
-    openFirstController()
-  if controller == nil:
-    return
-  if int(getAttached(controller)) == 0:
-    closeController()
-    return
-
-  let
-    aPressed = getButton(controller, SDL_CONTROLLER_BUTTON_A) != 0
-    bPressed = getButton(controller, SDL_CONTROLLER_BUTTON_B) != 0
-    startPressed = getButton(controller, SDL_CONTROLLER_BUTTON_START) != 0
-    lbPressed = getButton(controller, SDL_CONTROLLER_BUTTON_LEFTSHOULDER) != 0
-    rbPressed = getButton(controller, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) != 0
-    dpadLeftPressed = getButton(controller, SDL_CONTROLLER_BUTTON_DPAD_LEFT) != 0
-    dpadRightPressed = getButton(controller, SDL_CONTROLLER_BUTTON_DPAD_RIGHT) != 0
-    leftX = getAxis(controller, SDL_CONTROLLER_AXIS_LEFTX)
+  ## Process pending HID events and apply current controller state to the game.
+  if hidManager == nil: return
+  discard CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.0, 0)
+  if not controllerConnected: return
 
   applyControllerSnapshot(
     game,
-    aPressed, bPressed, startPressed, lbPressed, rbPressed,
-    dpadLeftPressed, dpadRightPressed, leftX
+    hidButtonA, hidButtonB, hidButtonStart, hidButtonLB, hidButtonRB,
+    hidDpadLeft, hidDpadRight, hidLeftX
   )
-
-proc handleControllerDevice*(game: var Game, event: Event) =
-  ## Handle controller connect/disconnect events for the legacy SDL event path.
-  ##
-  ## This remains exported so the current SDL-based main loop keeps building
-  ## while the Windy migration lands.
-  case event.kind
-  of ControllerDeviceAdded:
-    if not controllerConnected:
-      let idx = event.cdevice.which
-      if isGameController(idx):
-        controller = gameControllerOpen(idx)
-        if controller != nil:
-          controllerConnected = true
-          resetControllerState()
-  of ControllerDeviceRemoved:
-    if controllerConnected and controller != nil:
-      controller.close()
-      controller = nil
-      controllerConnected = false
-      resetControllerState()
-      # Clear any held gamepad state so character stops moving.
-      game.leftHeld = false
-      game.rightHeld = false
-  else: discard
