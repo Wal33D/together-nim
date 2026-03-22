@@ -58,6 +58,7 @@ type
 const
   ProximityNear* = 80.0
   ProximityFar* = 200.0
+  ProximityGlowRange = 120.0
 
   ActTitleFadeIn* = 1.0
   ActTitleHold* = 2.0
@@ -764,6 +765,65 @@ proc update*(game: var Game, dt: float) =
       if not nearAny:
         let rate = if game.characters.len > 1 and closestDist > ProximityFar: 0.8 else: 0.5
         game.characters[i].contentment = max(0.0, game.characters[i].contentment - rate * scaledDt)
+
+    # Proximity glow blending
+    block:
+      let n = game.characters.len
+      var minDists = newSeq[float](n)
+      var nearbyCounts = newSeq[int](n)
+      for i in 0..<n:
+        minDists[i] = 1e9
+        if game.characters[i].isDying() or game.characters[i].isRespawning():
+          continue
+        for j in 0..<n:
+          if i == j: continue
+          if game.characters[j].isDying() or game.characters[j].isRespawning():
+            continue
+          let dx = characterCenterX(game.characters[j]) - characterCenterX(game.characters[i])
+          let dy = characterCenterY(game.characters[j]) - characterCenterY(game.characters[i])
+          let dist = sqrt(dx * dx + dy * dy)
+          if dist < minDists[i]:
+            minDists[i] = dist
+          if dist <= ProximityGlowRange:
+            nearbyCounts[i] += 1
+
+      # Full group: all active characters within range of at least one other.
+      var fullGroup = true
+      var activeCount = 0
+      for i in 0..<n:
+        if game.characters[i].isDying() or game.characters[i].isRespawning():
+          continue
+        activeCount += 1
+        if nearbyCounts[i] == 0:
+          fullGroup = false
+      if activeCount < 2:
+        fullGroup = false
+
+      let lerpRate = min(1.0, 4.0 * scaledDt)
+      for i in 0..<n:
+        if game.characters[i].isDying() or game.characters[i].isRespawning():
+          continue
+        var targetScale: float
+        var targetAlpha: float
+        if minDists[i] > ProximityGlowRange:
+          # Alone: dim and small.
+          targetScale = 1.2
+          targetAlpha = 0.08
+        else:
+          # Companion: expand and brighten with closeness.
+          let t = 1.0 - minDists[i] / ProximityGlowRange
+          targetScale = 1.8 + 1.0 * t
+          targetAlpha = 0.15 + 0.10 * t
+        var targetGoldMix = 0.0
+        if fullGroup:
+          targetGoldMix = 0.15
+          targetAlpha = min(0.25, targetAlpha * 1.3)
+        # Blow-out prevention when more than 3 characters nearby.
+        if nearbyCounts[i] > 3:
+          targetAlpha = targetAlpha / sqrt(float(nearbyCounts[i]))
+        game.characters[i].glowScale += (targetScale - game.characters[i].glowScale) * lerpRate
+        game.characters[i].glowAlpha += (targetAlpha - game.characters[i].glowAlpha) * lerpRate
+        game.characters[i].glowGoldMix += (targetGoldMix - game.characters[i].glowGoldMix) * lerpRate
 
     # Update atmospheric background effects
     game.atmosphere.update(scaledDt)

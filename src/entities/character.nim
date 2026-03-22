@@ -47,6 +47,9 @@ type
     proximityTarget*: int          # index of nearest character within 80px (-1 if none)
     celebrateTimer*: float         # counts down from stagger delay, then triggers bounce
     celebrating*: bool             # true while bounce sequence is active
+    glowScale*: float              # dynamic glow scale from proximity (default 1.8)
+    glowAlpha*: float              # dynamic glow alpha from proximity (default 0.15)
+    glowGoldMix*: float            # gold tint blend for full-group proximity (0..0.15)
 
 proc newCharacter*(id: string): Character =
   result.x = 0.0
@@ -80,6 +83,9 @@ proc newCharacter*(id: string): Character =
   result.proximityTarget = -1
   result.celebrateTimer = 0.0
   result.celebrating = false
+  result.glowScale = 1.8
+  result.glowAlpha = 0.15
+  result.glowGoldMix = 0.0
   case id
   of "pip":
     result.width = 24; result.height = 24

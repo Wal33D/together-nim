@@ -308,17 +308,27 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
     # Shift glow color toward warm yellow based on contentment
     if not ch.isDying():
       block:
-        let glowScale = if isActive: 2.7 else: 1.8
-        let glowAlpha = if isActive: 0.25 else: 0.15
+        let glowScale = ch.glowScale
+        let glowAlpha = ch.glowAlpha
         let pulse = glowAlpha + 0.05 * sin(game.elapsedTime * PI * 2.0 / 3.0)
         let charW = dw.float
         let charH = dh.float
         let charX = dx.float
         let charY = dy.float
         let warmth = ch.contentment * 0.3
-        let glowR = uint8(float(chColor.r) * (1.0 - warmth) + 255.0 * warmth)
-        let glowG = uint8(float(chColor.g) * (1.0 - warmth) + 230.0 * warmth)
-        let glowB = uint8(max(0.0, float(chColor.b) * (1.0 - warmth) + 80.0 * warmth))
+        var glowRf = float(chColor.r) * (1.0 - warmth) + 255.0 * warmth
+        var glowGf = float(chColor.g) * (1.0 - warmth) + 230.0 * warmth
+        var glowBf = max(0.0, float(chColor.b) * (1.0 - warmth) + 80.0 * warmth)
+        if ch.glowGoldMix > 0.001:
+          let baseCol = chroma.color(glowRf / 255.0, glowGf / 255.0, glowBf / 255.0)
+          let goldCol = chroma.color(1.0, 215.0 / 255.0, 0.0)
+          let mixed = chroma.mix(baseCol, goldCol, ch.glowGoldMix)
+          glowRf = float(mixed.r) * 255.0
+          glowGf = float(mixed.g) * 255.0
+          glowBf = float(mixed.b) * 255.0
+        let glowR = uint8(min(255.0, glowRf))
+        let glowG = uint8(min(255.0, glowGf))
+        let glowB = uint8(max(0.0, min(255.0, glowBf)))
         renderer.setDrawBlendMode(BlendMode_Add)
         for pass in 0 .. 2:
           let t = float(2 - pass) / 2.0  # 1.0, 0.5, 0.0
