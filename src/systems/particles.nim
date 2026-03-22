@@ -255,6 +255,25 @@ proc emitSwitchRing*(system: var ParticleSystem, x, y, w, h: float, color: Color
     color: color
   ))
 
+proc emitSparkle*(system: var ParticleSystem, x, y: float, color: Color) =
+  ## Emit a single small sparkle particle with a gentle upward drift.
+  if system.particles.len >= MAX_PARTICLES:
+    return
+  let angle = rand(2.0 * PI)
+  let speed = randRange(20.0, 50.0)
+  let life = randRange(0.3, 0.6)
+  pushParticle(system, Particle(
+    x: x + randRange(-4.0, 4.0),
+    y: y + randRange(-4.0, 4.0),
+    vx: cos(angle) * speed,
+    vy: sin(angle) * speed - 30.0,
+    life: life,
+    maxLife: life,
+    color: color,
+    size: randRange(2.0, 3.5),
+    gravityScale: -0.2
+  ))
+
 proc updateRingParticles*(system: var ParticleSystem, dt: float) =
   ## Advance ring particle lifetimes and remove dead ones.
   var i = 0

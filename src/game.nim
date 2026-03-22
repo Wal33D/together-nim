@@ -822,6 +822,18 @@ proc update*(game: var Game, dt: float) =
                           else: -1.0
         game.characters[i].pupilOffset += (facingPupil - game.characters[i].pupilOffset) * min(1.0, 3.3 * scaledDt)
 
+      # Detect new proximity contact — emit sparkle burst at midpoint
+      const SparkleCount = 5
+      if game.characters[i].proximityTarget >= 0 and
+         game.characters[i].prevProximityTarget < 0:
+        let other = game.characters[game.characters[i].proximityTarget]
+        let midX = (characterCenterX(game.characters[i]) + characterCenterX(other)) / 2.0
+        let midY = (characterCenterY(game.characters[i]) + characterCenterY(other)) / 2.0
+        let sparkColor: Color = (r: 255'u8, g: 240'u8, b: 180'u8)
+        for _ in 0 ..< SparkleCount:
+          emitSparkle(game.particles, midX, midY, sparkColor)
+      game.characters[i].prevProximityTarget = game.characters[i].proximityTarget
+
       # Anticipation build/decay
       if bestApproach > 0.0:
         game.characters[i].anticipation = min(1.0, game.characters[i].anticipation + bestApproach * 2.0 * scaledDt)
