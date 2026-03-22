@@ -327,6 +327,13 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
   # Ambient lighting overlay — per-act tint and vignette.
   renderAmbientOverlay(renderer, game.currentLevel)
 
+  # Screen brightening for level 30 finale.
+  if game.screenBrightness > 0.001:
+    renderer.setDrawBlendMode(BlendMode_Blend)
+    renderer.setDrawColor(255, 255, 255, uint8(min(255.0, game.screenBrightness * 255.0)))
+    drawFilledRect(renderer, 0, 0, DEFAULT_WIDTH.cint, DEFAULT_HEIGHT.cint)
+    renderer.setDrawBlendMode(BlendMode_None)
+
 proc renderPaused(renderer: RendererPtr, game: Game) =
   ## Render gameplay only; the animated dim overlay is handled by the Silky UI layer.
   renderGameplay(renderer, game)

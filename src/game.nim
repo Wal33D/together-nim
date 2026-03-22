@@ -49,6 +49,10 @@ type
     exitEmitTimers*: seq[float]
     charDimTimer*: float
     prevActiveCharacterIndex*: int
+    triggeredMoments*: set[uint8]
+    finaleTimer*: float
+    finaleActive*: bool
+    screenBrightness*: float
 
 const
   ActTitleFadeIn* = 1.0
@@ -328,6 +332,9 @@ proc loadLevel*(game: var Game, idx: int) =
   game.narrationRevealed = 0
   game.narrationTimer = 0.0
   game.narrationActive = level.narration.len > 0
+  game.finaleActive = false
+  game.finaleTimer = 0.0
+  game.screenBrightness = 0.0
   game.levelWinTimer = 0.0
   game.jumpPressed = false
   # Set tonal palette for this act.
@@ -396,7 +403,78 @@ proc showActTitle(game: var Game, levelIdx: int) =
   game.actTitleTimer = 0.0
   game.actTitleTarget = levelIdx
 
+proc checkScriptedMoments*(game: var Game) =
+  ## Check and trigger scripted emotional moments after physics each frame.
+  let levelNum = game.currentLevel + 1
+
+  # Level 7: Bruno's first button press triggers celebration bounce.
+  if levelNum == 7 and 7'u8 notin game.triggeredMoments:
+    for b in game.currentLevelState.buttons:
+      if b.active and not b.prevActive:
+        game.triggeredMoments.incl(7'u8)
+        for j in 0..<game.characters.len:
+          if game.characters[j].grounded:
+            game.characters[j].vy = -100.0
+        break
+
+  # Level 13: All 6 at exits triggers special narration.
+  if levelNum == 13 and 13'u8 notin game.triggeredMoments:
+    if game.characters.len > 0:
+      var allAtExit = true
+      for c in game.characters:
+        if not c.atExit:
+          allAtExit = false
+          break
+      if allAtExit:
+        game.triggeredMoments.incl(13'u8)
+        game.narrationText = "Together. Finally, together."
+        game.narrationRevealed = 0
+        game.narrationTimer = 0.0
+        game.narrationActive = true
+
+  # Level 19: Pip reaching other characters triggers reunion narration.
+  if levelNum == 19 and 19'u8 notin game.triggeredMoments:
+    var pipIdx = -1
+    for i, c in game.characters:
+      if c.id == "pip":
+        pipIdx = i
+        break
+    if pipIdx >= 0 and game.characters.len > 1:
+      let pip = game.characters[pipIdx]
+      let pipCx = pip.x + float(pip.width) * 0.5
+      let pipCy = pip.y + float(pip.height) * 0.5
+      var nearAny = false
+      for i, c in game.characters:
+        if i == pipIdx: continue
+        let cx = c.x + float(c.width) * 0.5
+        let cy = c.y + float(c.height) * 0.5
+        let dx = pipCx - cx
+        let dy = pipCy - cy
+        if dx * dx + dy * dy < 80.0 * 80.0:
+          nearAny = true
+          break
+      if nearAny:
+        game.triggeredMoments.incl(19'u8)
+        game.narrationText = "They were waiting. They had always been waiting."
+        game.narrationRevealed = 0
+        game.narrationTimer = 0.0
+        game.narrationActive = true
+
+  # Level 30: Finale — all at exit, hold with screen brightening.
+  if levelNum == 30 and 30'u8 notin game.triggeredMoments:
+    if game.characters.len > 0:
+      var allAtExit = true
+      for c in game.characters:
+        if not c.atExit:
+          allAtExit = false
+          break
+      if allAtExit:
+        game.triggeredMoments.incl(30'u8)
+        game.finaleActive = true
+        game.finaleTimer = 0.0
+
 proc startGame*(game: var Game) =
+  game.triggeredMoments = {}
   if isFirstLevelOfAct(0):
     game.showActTitle(0)
   else:
@@ -551,6 +629,17 @@ proc update*(game: var Game, dt: float) =
         game.accentJump()
         playSound(soundJump)
 
+      # Scripted emotional moments
+      checkScriptedMoments(game)
+
+      # Finale hold and brighten for level 30
+      if game.finaleActive:
+        game.finaleTimer += scaledDt
+        game.screenBrightness = min(1.0, game.finaleTimer / 2.0)
+        if game.finaleTimer >= 2.0:
+          game.finaleActive = false
+          game.state = credits
+
       # Check win — all characters at their exits
       if game.characters.len > 0:
         var allAtExit = true
@@ -558,7 +647,7 @@ proc update*(game: var Game, dt: float) =
           if not c.atExit:
             allAtExit = false
             break
-        if allAtExit and game.state == playing:
+        if allAtExit and game.state == playing and not game.finaleActive:
           game.emitCompletionParticles()
           game.accentLevelComplete()
           game.state = levelWin
