@@ -37,6 +37,7 @@ type
     contentment*: float           # 0-1 emotional glow
     anticipation*: float          # 0-1 moving toward another character
     inputDir*: int                # -1, 0, or 1 from current input
+    ridingCharacterId*: int       # index of character being stood on; -1 = none
 
 proc newCharacter*(id: string): Character =
   result.x = 0.0
@@ -60,6 +61,7 @@ proc newCharacter*(id: string): Character =
   result.landingTimer = 0.0
   result.contentment = 0.0
   result.anticipation = 0.0
+  result.ridingCharacterId = -1
   case id
   of "pip":
     result.width = 24; result.height = 24

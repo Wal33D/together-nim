@@ -1,3 +1,4 @@
+import std/math
 import unittest
 import "../src/systems/physics"
 import "../src/entities/character"
@@ -431,3 +432,100 @@ suite "character-character collision":
     var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[])
     discard updatePhysics(chars, level, FIXED_TIMESTEP)
     check chars[0].x == origX0
+
+suite "character stacking and riding":
+  test "rider follows base character horizontally":
+    var chars = @[newCharacter("pip"), newCharacter("bruno")]
+    # Bruno on ground, Pip stacked on top.
+    let platform = Platform(x: 0.0, y: 500.0, width: 1000.0, height: 20.0)
+    chars[1].x = 200.0
+    chars[1].y = 500.0 - float(chars[1].height)  # Bruno feet on platform
+    chars[1].grounded = true
+    chars[1].vy = 0.0
+    chars[1].vx = 300.0  # pre-set velocity for clear displacement
+    chars[0].x = 210.0
+    chars[0].y = chars[1].y - float(chars[0].height)  # Pip on top of Bruno
+    chars[0].grounded = true
+    chars[0].vy = 0.0
+    chars[0].vx = 0.0
+    let pipStartX = chars[0].x
+    let brunoStartX = chars[1].x
+    var level = Level(platforms: @[platform], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    let brunoDx = chars[1].x - brunoStartX
+    let pipDx = chars[0].x - pipStartX
+    check brunoDx > 1.0  # Bruno moved meaningfully
+    check chars[0].ridingCharacterId == 1
+    check abs(pipDx - brunoDx) < 0.05
+
+  test "three-character stack moves together":
+    var chars = @[newCharacter("pip"), newCharacter("luca"), newCharacter("bruno")]
+    let platform = Platform(x: 0.0, y: 500.0, width: 1000.0, height: 20.0)
+    # Bruno at bottom
+    chars[2].x = 200.0
+    chars[2].y = 500.0 - float(chars[2].height)
+    chars[2].grounded = true
+    chars[2].vy = 0.0
+    chars[2].vx = 300.0
+    # Luca on Bruno
+    chars[1].x = 206.0
+    chars[1].y = chars[2].y - float(chars[1].height)
+    chars[1].grounded = true
+    chars[1].vy = 0.0
+    chars[1].vx = 0.0
+    # Pip on Luca
+    chars[0].x = 210.0
+    chars[0].y = chars[1].y - float(chars[0].height)
+    chars[0].grounded = true
+    chars[0].vy = 0.0
+    chars[0].vx = 0.0
+    let brunoStartX = chars[2].x
+    let lucaStartX = chars[1].x
+    let pipStartX = chars[0].x
+    var level = Level(platforms: @[platform], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    let brunoDx = chars[2].x - brunoStartX
+    let lucaDx = chars[1].x - lucaStartX
+    let pipDx = chars[0].x - pipStartX
+    check brunoDx > 1.0
+    check abs(lucaDx - brunoDx) < 0.05
+    check abs(pipDx - brunoDx) < 0.05
+
+  test "jumping clears riding relationship":
+    var chars = @[newCharacter("pip"), newCharacter("bruno")]
+    let platform = Platform(x: 0.0, y: 500.0, width: 1000.0, height: 20.0)
+    chars[1].x = 200.0
+    chars[1].y = 500.0 - float(chars[1].height)
+    chars[1].grounded = true
+    chars[1].vy = 0.0
+    chars[0].x = 210.0
+    chars[0].y = chars[1].y - float(chars[0].height)
+    chars[0].grounded = true
+    chars[0].vy = 0.0
+    var level = Level(platforms: @[platform], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    # First frame: establish riding
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    check chars[0].ridingCharacterId == 1
+    # Now Pip jumps
+    applyJump(chars[0])
+    check chars[0].vy < 0.0
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    # After jumping, no longer riding
+    check chars[0].ridingCharacterId == -1
+
+  test "side-by-side characters do not ride":
+    var chars = @[newCharacter("pip"), newCharacter("bruno")]
+    let platform = Platform(x: 0.0, y: 500.0, width: 1000.0, height: 20.0)
+    # Both on the ground, side by side
+    chars[0].x = 100.0
+    chars[0].y = 500.0 - float(chars[0].height)
+    chars[0].grounded = true
+    chars[0].vy = 0.0
+    chars[1].x = 200.0
+    chars[1].y = 500.0 - float(chars[1].height)
+    chars[1].grounded = true
+    chars[1].vy = 0.0
+    var level = Level(platforms: @[platform], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    check chars[0].ridingCharacterId == -1
+    check chars[1].ridingCharacterId == -1

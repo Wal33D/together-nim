@@ -1,7 +1,7 @@
 ## Physics and collision detection system
 
 import
-  std/math,
+  std/[algorithm, math],
   "../constants",
   "../entities/character",
   "../entities/level"
@@ -131,6 +131,11 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
   for b in 0..<level.buttons.len:
     level.buttons[b].prevActive = level.buttons[b].active
     level.buttons[b].active = false
+
+  # Snapshot X positions before per-character physics so dx captures full displacement.
+  var prevX = newSeq[float](characters.len)
+  for i in 0..<characters.len:
+    prevX[i] = characters[i].x
 
   for i in 0..<characters.len:
     var c = characters[i]
@@ -302,3 +307,39 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
         else:
           characters[i].x += half
           characters[j].x -= half
+
+  # Detect riding relationships.
+  for i in 0..<characters.len:
+    characters[i].ridingCharacterId = -1
+  for i in 0..<characters.len:
+    if characters[i].isDying() or characters[i].isRespawning():
+      continue
+    for j in (i + 1)..<characters.len:
+      if characters[j].isDying() or characters[j].isRespawning():
+        continue
+      # Check if i is riding j or j is riding i.
+      for (upper, lower) in [(i, j), (j, i)]:
+        if not characters[upper].grounded:
+          continue
+        let feetY = characters[upper].y + float(characters[upper].height)
+        let topY = characters[lower].y
+        if abs(feetY - topY) > 2.0:
+          continue
+        let overlapX = characters[upper].x < characters[lower].x + float(characters[lower].width) and
+                       characters[upper].x + float(characters[upper].width) > characters[lower].x
+        if overlapX:
+          characters[upper].ridingCharacterId = lower
+
+  # Carry riders: process sorted by Y descending (base characters first).
+  var order = newSeq[tuple[y: float, idx: int]](characters.len)
+  for i in 0..<characters.len:
+    order[i] = (y: characters[i].y, idx: i)
+  order.sort(proc(a, b: tuple[y: float, idx: int]): int =
+    cmp(b.y, a.y))
+  for entry in order:
+    let idx = entry.idx
+    let dx = characters[idx].x - prevX[idx]
+    if abs(dx) > 0.0001:
+      for r in 0..<characters.len:
+        if characters[r].ridingCharacterId == idx:
+          characters[r].x += dx
