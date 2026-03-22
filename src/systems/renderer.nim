@@ -270,13 +270,16 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
         let dx = cx2 - cx1
         let dy = cy2 - cy1
         let dist = sqrt(dx * dx + dy * dy)
-        if dist < ProximityNear:
+        if dist < ProximityGlowRange:
           let avgColor: constants.Color = (
             r: uint8((int(ci.color.r) + int(cj.color.r)) div 2),
             g: uint8((int(ci.color.g) + int(cj.color.g)) div 2),
             b: uint8((int(ci.color.b) + int(cj.color.b)) div 2),
           )
-          let fade = uint8(15.0 + 5.0 * (1.0 - dist / ProximityNear))
+          let fade = if dist < ProximityNear:
+            uint8(15.0 + 5.0 * (1.0 - dist / ProximityNear))
+          else:
+            uint8(15.0 * (1.0 - (dist - ProximityNear) / (ProximityGlowRange - ProximityNear)))
           renderConnectionLine(renderer, cx1 - float(camX), cy1 - float(camY),
                                cx2 - float(camX), cy2 - float(camY), avgColor, fade)
     renderer.setDrawBlendMode(BlendMode_None)

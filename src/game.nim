@@ -69,7 +69,7 @@ type
 const
   ProximityNear* = 80.0
   ProximityFar* = 200.0
-  ProximityGlowRange = 120.0
+  ProximityGlowRange* = 120.0
 
   ActTitleFadeIn* = 1.0
   ActTitleHold* = 2.0
