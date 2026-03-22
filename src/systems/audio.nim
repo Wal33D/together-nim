@@ -164,13 +164,25 @@ when defined(withAudio):
       pitchScale: float
       ampScale: float
 
+    CharOscillator = object
+      phase: float
+      targetAmp: float
+      currentAmp: float
+      vibratoPhase: float
+      intermittentPhase: float
+
   const
     CrossfadeDuration = 2.5
     DefaultPaletteRoot = ActPalettes[0].baseFreqs[0]
+    IntermittentOnSec = 2.0
+    IntermittentCycleSec = 6.0
+    VibratoRate = 5.0
+    VibratoDepth = 2.0
 
   var
     gInstances: array[MAX_INSTANCES, SoundInstance]
     gMusicTracks: array[2, MusicTrack]
+    gCharOscillators: array[6, CharOscillator]
     gAudioOpen = false
     gQueue: AudioQueueRef
     gAudioMutex: PthreadMutex
@@ -204,8 +216,8 @@ when defined(withAudio):
     let s = int32(sin(phase * 2.0 * PI) * amp * 28000.0)
     max(-32767, min(32767, baseSample + s))
 
-  proc mixMusicTracks(buf: ptr UncheckedArray[int16], numSamples: int) =
-    # Advance palette crossfade per buffer.
+  proc mixMusicTracks(buf: ptr UncheckedArray[int16], numSamples: int): float =
+    ## Mix music tracks and return the current palette scale factor.
     var paletteScale: float
     if gCrossfading:
       gPaletteCrossfadeT += float(numSamples) / (CrossfadeDuration * float(SAMPLE_RATE))
@@ -258,6 +270,54 @@ when defined(withAudio):
             track.samplesPlayed = 0
           if track.stepIndex < track.pattern.len:
             track.phase *= 0.9
+    return paletteScale
+
+  proc mixCharOscillators(buf: ptr UncheckedArray[int16], numSamples: int, paletteScale: float) =
+    ## Mix per-character sine oscillators into the buffer.
+    let bufSeconds = float(numSamples) / float(SAMPLE_RATE)
+    let lerpFactor = min(1.0, 2.0 * bufSeconds)
+    for idx in 0..<6:
+      var osc = addr gCharOscillators[idx]
+      osc.currentAmp += (osc.targetAmp - osc.currentAmp) * lerpFactor
+      if osc.currentAmp < 0.0001:
+        # Advance phases even when silent to avoid discontinuity on re-entry.
+        osc.intermittentPhase += bufSeconds / IntermittentCycleSec
+        if osc.intermittentPhase >= 1.0:
+          osc.intermittentPhase -= 1.0
+        continue
+      let baseFreq = DefaultPaletteRoot * CharFreqRatios[idx] * paletteScale
+      for i in 0..<numSamples:
+        let freq = baseFreq + VibratoDepth * sin(osc.vibratoPhase * 2.0 * PI)
+        let s = int32(sin(osc.phase * 2.0 * PI) * osc.currentAmp * 28000.0)
+        buf[i] = int16(max(-32767, min(32767, int32(buf[i]) + s)))
+        osc.phase += freq / float(SAMPLE_RATE)
+        if osc.phase >= 1.0:
+          osc.phase -= 1.0
+        osc.vibratoPhase += VibratoRate / float(SAMPLE_RATE)
+        if osc.vibratoPhase >= 1.0:
+          osc.vibratoPhase -= 1.0
+      osc.intermittentPhase += bufSeconds / IntermittentCycleSec
+      if osc.intermittentPhase >= 1.0:
+        osc.intermittentPhase -= 1.0
+
+  proc setCharacterDistance*(charIdx: int, distToNearest: float) =
+    ## Set the target amplitude for a character oscillator based on proximity.
+    if not gAudioOpen: return
+    if charIdx < 0 or charIdx > 5: return
+    discard pthread_mutex_lock(addr gAudioMutex)
+    if distToNearest > 200.0:
+      # Intermittent faint tone when far away.
+      let inOnWindow = gCharOscillators[charIdx].intermittentPhase <
+          (IntermittentOnSec / IntermittentCycleSec)
+      if inOnWindow:
+        gCharOscillators[charIdx].targetAmp = 0.03
+      else:
+        gCharOscillators[charIdx].targetAmp = 0.0
+    else:
+      # Scale 0.03..0.10 as distance goes from 200 to 0.
+      gCharOscillators[charIdx].targetAmp =
+        0.03 + 0.07 * (1.0 - distToNearest / 200.0)
+    discard pthread_mutex_unlock(addr gAudioMutex)
 
   proc aqCallback(inUserData: pointer, inAQ: AudioQueueRef,
       inBuffer: AudioQueueBufferRef) {.cdecl.} =
@@ -270,7 +330,8 @@ when defined(withAudio):
 
     discard pthread_mutex_lock(addr gAudioMutex)
 
-    mixMusicTracks(buf, numSamples)
+    let paletteScale = mixMusicTracks(buf, numSamples)
+    mixCharOscillators(buf, numSamples, paletteScale)
 
     for inst in gInstances.mitems:
       if not inst.active: continue
@@ -466,3 +527,4 @@ else:
   proc shutdownAudio*() = discard
   proc playSound*(kind: SoundKind) = discard
   proc setActPalette*(palette: TonalPalette) = discard
+  proc setCharacterDistance*(charIdx: int, distToNearest: float) = discard

@@ -833,6 +833,10 @@ proc update*(game: var Game, dt: float) =
           if dist <= ProximityGlowRange:
             nearbyCounts[i] += 1
 
+      # Feed per-character distances to harmonic proximity oscillators.
+      for i in 0..<n:
+        setCharacterDistance(i, minDists[i])
+
       # Full group: all active characters within range of at least one other.
       var fullGroup = true
       var activeCount = 0
