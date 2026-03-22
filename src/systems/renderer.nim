@@ -221,6 +221,46 @@ proc renderLevelWin(renderer: RendererPtr, game: Game) =
 proc renderCredits(renderer: RendererPtr, game: Game) =
   renderMenu(renderer, game)
 
+proc renderActTitle(renderer: RendererPtr, game: Game) =
+  ## Render a cinematic act title card with fade in/out.
+  let actIdx = actForLevel(game.actTitleTarget)
+  if actIdx < 0:
+    return
+
+  let act = Acts[actIdx]
+  let alpha = game.actTitleAlpha()
+  let a = uint8(max(0.0, min(255.0, alpha * 255.0)))
+
+  # Black background (full screen).
+  renderer.setDrawColor(0, 0, 0, 255)
+  drawFilledRect(renderer, 0, 0, DEFAULT_WIDTH.cint, DEFAULT_HEIGHT.cint)
+
+  renderer.setDrawBlendMode(BlendMode_Blend)
+
+  # "Act N" small text indicator — rendered as a colored bar near the top.
+  let labelW = 80 + act.number * 10
+  let labelX = (DEFAULT_WIDTH - labelW) div 2
+  let labelY = 160
+  renderer.setDrawColor(act.themeColor.r, act.themeColor.g, act.themeColor.b, a div 2)
+  drawFilledRect(renderer, labelX.cint, labelY.cint, labelW.cint, 12)
+
+  # Act name — large centered block.
+  let nameW = act.name.len * 18
+  let nameH = 28
+  let nameX = (DEFAULT_WIDTH - nameW) div 2
+  let nameY = (DEFAULT_HEIGHT - nameH) div 2
+  renderer.setDrawColor(act.themeColor.r, act.themeColor.g, act.themeColor.b, a)
+  drawFilledRect(renderer, nameX.cint, nameY.cint, nameW.cint, nameH.cint)
+
+  # Subtle decorative lines above and below name.
+  let lineW = nameW + 40
+  let lineX = (DEFAULT_WIDTH - lineW) div 2
+  renderer.setDrawColor(act.themeColor.r, act.themeColor.g, act.themeColor.b, a div 3)
+  drawFilledRect(renderer, lineX.cint, (nameY - 8).cint, lineW.cint, 1)
+  drawFilledRect(renderer, lineX.cint, (nameY + nameH + 7).cint, lineW.cint, 1)
+
+  renderer.setDrawBlendMode(BlendMode_None)
+
 proc renderGame*(renderer: RendererPtr, game: Game) =
   renderer.setDrawColor(BG_COLOR.r, BG_COLOR.g, BG_COLOR.b, 255)
   renderer.clear()
@@ -236,3 +276,5 @@ proc renderGame*(renderer: RendererPtr, game: Game) =
     renderLevelWin(renderer, game)
   of credits:
     renderCredits(renderer, game)
+  of actTitle:
+    renderActTitle(renderer, game)

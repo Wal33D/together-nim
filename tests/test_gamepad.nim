@@ -1,8 +1,16 @@
 import unittest
 import sdl2/gamecontroller
 import "../src/game"
+import "../src/constants"
 import "../src/systems/gamepad"
 import "../src/entities/character"
+
+proc skipActTitle(game: var Game) =
+  if game.state == actTitle:
+    let scaledStep = FIXED_TIMESTEP * TIME_SCALE
+    let steps = int(ActTitleDuration / scaledStep) + 2
+    for _ in 0 ..< steps:
+      game.update(FIXED_TIMESTEP)
 
 suite "gamepad system":
   setup:
@@ -11,6 +19,7 @@ suite "gamepad system":
   test "A button triggers jump on grounded character":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     g.characters[0].grounded = true
     handleControllerButton(g, SDL_CONTROLLER_BUTTON_A.uint8, true)
     check g.characters[0].vy < 0.0
@@ -19,17 +28,19 @@ suite "gamepad system":
     var g = newGame()
     check g.state == menu
     handleControllerButton(g, SDL_CONTROLLER_BUTTON_A.uint8, true)
-    check g.state == playing
+    check g.state == actTitle
 
   test "Start button pauses playing game":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     handleControllerButton(g, SDL_CONTROLLER_BUTTON_START.uint8, true)
     check g.state == paused
 
   test "Start button resumes paused game":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     handleControllerButton(g, SDL_CONTROLLER_BUTTON_START.uint8, true)
     check g.state == paused
     handleControllerButton(g, SDL_CONTROLLER_BUTTON_START.uint8, true)
@@ -38,6 +49,7 @@ suite "gamepad system":
   test "B button restarts level":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     # Move character to verify restart resets position
     g.characters[0].x = 999.0
     handleControllerButton(g, SDL_CONTROLLER_BUTTON_B.uint8, true)
@@ -70,18 +82,21 @@ suite "gamepad system":
   test "D-pad left sets leftHeld":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     handleControllerButton(g, SDL_CONTROLLER_BUTTON_DPAD_LEFT.uint8, true)
     check g.leftHeld == true
 
   test "D-pad right sets rightHeld":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     handleControllerButton(g, SDL_CONTROLLER_BUTTON_DPAD_RIGHT.uint8, true)
     check g.rightHeld == true
 
   test "releasing D-pad left clears leftHeld":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     handleControllerButton(g, SDL_CONTROLLER_BUTTON_DPAD_LEFT.uint8, true)
     handleControllerButton(g, SDL_CONTROLLER_BUTTON_DPAD_LEFT.uint8, false)
     check g.leftHeld == false
@@ -90,6 +105,7 @@ suite "gamepad system":
     resetPadState()
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     handleControllerAxis(g, SDL_CONTROLLER_AXIS_LEFTX.uint8, -20000'i16)
     check g.leftHeld == true
 
@@ -97,6 +113,7 @@ suite "gamepad system":
     resetPadState()
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     handleControllerAxis(g, SDL_CONTROLLER_AXIS_LEFTX.uint8, 20000'i16)
     check g.rightHeld == true
 
@@ -104,6 +121,7 @@ suite "gamepad system":
     resetPadState()
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     handleControllerAxis(g, SDL_CONTROLLER_AXIS_LEFTX.uint8, 20000'i16)
     check g.rightHeld == true
     handleControllerAxis(g, SDL_CONTROLLER_AXIS_LEFTX.uint8, 100'i16)
@@ -117,11 +135,12 @@ suite "gamepad system":
     var g = newGame()
     check g.state == menu
     applyControllerSnapshot(g, true, false, false, false, false, false, false, 0'i16)
-    check g.state == playing
+    check g.state == actTitle
 
   test "polling snapshot keeps stick input active when dpad releases":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
 
     applyControllerSnapshot(g, false, false, false, false, false, true, false, -20000'i16)
     check g.leftHeld == true

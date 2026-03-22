@@ -4,22 +4,32 @@ import "../src/constants"
 import "../src/systems/input"
 import "../src/entities/character"
 
+proc skipActTitle(game: var Game) =
+  if game.state == actTitle:
+    let scaledStep = FIXED_TIMESTEP * TIME_SCALE
+    let steps = int(ActTitleDuration / scaledStep) + 2
+    for _ in 0 ..< steps:
+      game.update(FIXED_TIMESTEP)
+
 suite "input system":
   test "left arrow sets leftHeld":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     processKey(g, SCANCODE_LEFT, true)
     check g.leftHeld == true
 
   test "right arrow sets rightHeld":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     processKey(g, SCANCODE_RIGHT, true)
     check g.rightHeld == true
 
   test "releasing left clears leftHeld":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     processKey(g, SCANCODE_LEFT, true)
     processKey(g, SCANCODE_LEFT, false)
     check g.leftHeld == false
@@ -27,6 +37,7 @@ suite "input system":
   test "space triggers jump on grounded character":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     g.characters[0].grounded = true
     processKey(g, SCANCODE_SPACE, true)
     check g.characters[0].vy < 0.0
@@ -34,6 +45,7 @@ suite "input system":
   test "releasing space cuts jump height":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     g.characters[0].grounded = true
     processKey(g, SCANCODE_SPACE, true)
     let fullJumpVy = g.characters[0].vy
@@ -44,17 +56,19 @@ suite "input system":
   test "enter starts game from menu":
     var g = newGame()
     processKey(g, SCANCODE_RETURN, true)
-    check g.state == playing
+    check g.state == actTitle
 
   test "escape pauses playing game":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     processKey(g, SCANCODE_ESCAPE, true)
     check g.state == paused
 
   test "escape resumes paused game":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     processKey(g, SCANCODE_ESCAPE, true)
     processKey(g, SCANCODE_ESCAPE, true)
     check g.state == playing
@@ -62,6 +76,7 @@ suite "input system":
   test "key 1 switches active character":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     g.activeCharacterIndex = 1
     processKey(g, SCANCODE_1, true)
     check g.activeCharacterIndex == 0
@@ -69,6 +84,7 @@ suite "input system":
   test "F11 does not affect gameplay input state":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     processKey(g, SCANCODE_F11, true)
     check g.state == playing
     check g.leftHeld == false

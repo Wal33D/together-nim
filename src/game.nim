@@ -12,7 +12,14 @@ import systems/particles
 
 type
   GameState* = enum
-    menu, playing, paused, levelWin, credits
+    menu, playing, paused, levelWin, credits, actTitle
+
+  ActDef* = object
+    number*: int
+    name*: string
+    startLevel*: int
+    endLevel*: int
+    themeColor*: Color
 
   Game* = object
     state*: GameState
@@ -34,6 +41,22 @@ type
     menuTime*: float
     elapsedTime*: float
     menuAtmosphere*: Atmosphere
+    actTitleTimer*: float
+    actTitleTarget*: int
+
+const
+  ActTitleFadeIn* = 1.0
+  ActTitleHold* = 2.0
+  ActTitleFadeOut* = 1.0
+  ActTitleDuration* = ActTitleFadeIn + ActTitleHold + ActTitleFadeOut
+
+  Acts*: array[5, ActDef] = [
+    ActDef(number: 1, name: "Awakening",      startLevel: 1,  endLevel: 6,  themeColor: PIP_COLOR),
+    ActDef(number: 2, name: "Belonging",       startLevel: 7,  endLevel: 12, themeColor: LUCA_COLOR),
+    ActDef(number: 3, name: "Challenge",       startLevel: 13, endLevel: 18, themeColor: BRUNO_COLOR),
+    ActDef(number: 4, name: "Separation",      startLevel: 19, endLevel: 24, themeColor: CARA_COLOR),
+    ActDef(number: 5, name: "Transcendence",   startLevel: 25, endLevel: 30, themeColor: IVY_COLOR),
+  ]
 
 const
   SCANCODE_RETURN* = 40.cint
@@ -293,17 +316,57 @@ proc newGame*(): Game =
     menuAtmosphere: newAtmosphere(allColors),
   )
 
+proc actForLevel*(levelIdx: int): int =
+  ## Return the act index (0-based) for a given level index, or -1 if none.
+  let levelNum = levelIdx + 1
+  for i, act in Acts:
+    if levelNum >= act.startLevel and levelNum <= act.endLevel:
+      return i
+  -1
+
+proc isFirstLevelOfAct*(levelIdx: int): bool =
+  ## Return true if this level index is the first level of its act.
+  let levelNum = levelIdx + 1
+  for act in Acts:
+    if levelNum == act.startLevel:
+      return true
+  false
+
+proc actTitleAlpha*(game: Game): float =
+  ## Return the current opacity (0.0..1.0) for the act title card.
+  let t = game.actTitleTimer
+  if t < ActTitleFadeIn:
+    t / ActTitleFadeIn
+  elif t < ActTitleFadeIn + ActTitleHold:
+    1.0
+  else:
+    let fadeT = t - ActTitleFadeIn - ActTitleHold
+    max(0.0, 1.0 - fadeT / ActTitleFadeOut)
+
+proc showActTitle(game: var Game, levelIdx: int) =
+  ## Enter the actTitle state before loading the given level.
+  game.state = actTitle
+  game.actTitleTimer = 0.0
+  game.actTitleTarget = levelIdx
+
 proc startGame*(game: var Game) =
-  game.state = playing
-  game.loadLevel(0)
+  if isFirstLevelOfAct(0):
+    game.showActTitle(0)
+  else:
+    game.state = playing
+    game.loadLevel(0)
 
 proc restartLevel*(game: var Game) =
   game.loadLevel(game.currentLevel)
 
 proc nextLevel*(game: var Game) =
-  if game.currentLevel + 1 < allLevels.len:
-    game.loadLevel(game.currentLevel + 1)
-    game.state = playing
+  let nextIdx = game.currentLevel + 1
+  if nextIdx < allLevels.len:
+    if isFirstLevelOfAct(nextIdx):
+      game.showActTitle(nextIdx)
+    else:
+      game.loadLevel(nextIdx)
+      game.state = playing
   else:
     game.state = credits
 
@@ -326,6 +389,8 @@ proc handleKey*(game: var Game, scancode: cint) =
   of credits:
     if scancode == SCANCODE_RETURN:
       game.state = menu
+  of actTitle:
+    discard
 
 proc update*(game: var Game, dt: float) =
   let scaledDt = dt * TIME_SCALE
@@ -443,6 +508,12 @@ proc update*(game: var Game, dt: float) =
       updateCamera(game.camera, ch.x, ch.y, float(ch.width), float(ch.height),
                    ch.vx, ch.vy, ch.facingRight, level.levelWidth,
                    level.levelHeight, scaledDt)
+
+  of actTitle:
+    game.actTitleTimer += scaledDt
+    if game.actTitleTimer >= ActTitleDuration:
+      game.loadLevel(game.actTitleTarget)
+      game.state = playing
 
   else:
     discard

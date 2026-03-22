@@ -5,26 +5,38 @@ import "../src/entities/character"
 import "../src/entities/level"
 import "../src/systems/particles"
 
+proc skipActTitle(game: var Game) =
+  ## Advance past any act title card into the playing state.
+  if game.state == actTitle:
+    let scaledStep = FIXED_TIMESTEP * TIME_SCALE
+    let steps = int(ActTitleDuration / scaledStep) + 2
+    for _ in 0 ..< steps:
+      game.update(FIXED_TIMESTEP)
+
 suite "game state machine":
   test "game starts in menu state":
     let g = newGame()
     check g.state == menu
 
-  test "enter transitions menu to playing and loads level":
+  test "enter transitions menu to actTitle then playing":
     var g = newGame()
     g.handleKey(SCANCODE_RETURN)
+    check g.state == actTitle
+    g.skipActTitle()
     check g.state == playing
     check g.characters.len > 0
 
   test "escape transitions playing to paused":
     var g = newGame()
     g.handleKey(SCANCODE_RETURN)
+    g.skipActTitle()
     g.handleKey(SCANCODE_ESCAPE)
     check g.state == paused
 
   test "escape transitions paused to playing":
     var g = newGame()
     g.handleKey(SCANCODE_RETURN)
+    g.skipActTitle()
     g.handleKey(SCANCODE_ESCAPE)
     g.handleKey(SCANCODE_ESCAPE)
     check g.state == playing
@@ -37,6 +49,7 @@ suite "game state machine":
   test "startGame loads level 0 with pip":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     check g.characters.len == 1
     check g.characters[0].id == "pip"
 
@@ -87,6 +100,7 @@ suite "game state machine":
   test "jump spawns particles":
     var g = newGame()
     g.startGame()
+    g.skipActTitle()
     g.characters[0].grounded = true
 
     g.pressJump()
@@ -231,3 +245,73 @@ suite "game state machine":
     check g.state == levelWin
     check g.particles.particles.len > 0
     check g.camera.holdTimer > 0.0
+
+suite "act title cards":
+  test "startGame shows act title for level 0":
+    var g = newGame()
+    g.startGame()
+    check g.state == actTitle
+    check g.actTitleTarget == 0
+
+  test "act title transitions to playing after duration":
+    var g = newGame()
+    g.startGame()
+    check g.state == actTitle
+
+    g.skipActTitle()
+
+    check g.state == playing
+    check g.characters.len > 0
+
+  test "actForLevel maps levels to correct acts":
+    check actForLevel(0) == 0   # Level 1 -> Act 1
+    check actForLevel(5) == 0   # Level 6 -> Act 1
+    check actForLevel(6) == 1   # Level 7 -> Act 2
+    check actForLevel(11) == 1  # Level 12 -> Act 2
+
+  test "isFirstLevelOfAct identifies act boundaries":
+    check isFirstLevelOfAct(0) == true    # Level 1
+    check isFirstLevelOfAct(1) == false   # Level 2
+    check isFirstLevelOfAct(6) == true    # Level 7
+
+  test "nextLevel shows act title at act boundary":
+    var g = newGame()
+    g.state = playing
+    g.currentLevel = 5  # Level 6, last of Act 1
+    g.nextLevel()
+    check g.state == actTitle
+    check g.actTitleTarget == 6  # Level 7, first of Act 2
+
+  test "nextLevel skips title for mid-act levels":
+    var g = newGame()
+    g.state = playing
+    g.currentLevel = 0  # Level 1
+    g.nextLevel()
+    check g.state == playing
+    check g.currentLevel == 1
+
+  test "act title alpha fades in and out":
+    var g = newGame()
+    g.state = actTitle
+    g.actTitleTimer = 0.0
+    check g.actTitleAlpha() == 0.0
+
+    g.actTitleTimer = ActTitleFadeIn * 0.5
+    check g.actTitleAlpha() > 0.4
+    check g.actTitleAlpha() < 0.6
+
+    g.actTitleTimer = ActTitleFadeIn + 0.5
+    check g.actTitleAlpha() == 1.0
+
+    g.actTitleTimer = ActTitleFadeIn + ActTitleHold + ActTitleFadeOut
+    check g.actTitleAlpha() == 0.0
+
+  test "act definitions cover correct ranges":
+    check Acts[0].number == 1
+    check Acts[0].name == "Awakening"
+    check Acts[0].startLevel == 1
+    check Acts[0].endLevel == 6
+    check Acts[4].number == 5
+    check Acts[4].name == "Transcendence"
+    check Acts[4].startLevel == 25
+    check Acts[4].endLevel == 30
