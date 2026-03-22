@@ -6,7 +6,7 @@ A quiet puzzle-platformer about colored rectangles who discover consciousness, f
 
 Inspired by [Thomas Was Alone](https://store.steampowered.com/app/220780/Thomas_Was_Alone/). Built in **Nim** with Windy, Boxy, Silky, and SDL2. Developed with [Scriptorium](https://github.com/monofuel/scriptorium).
 
-![Gameplay — Pip in Level 1: Awakening](assets/screenshots/gameplay.png)
+![Gameplay — Pip in Level 1: Awakening](assets/screenshots/gameplay.png?raw=true)
 
 ## The Cast
 
