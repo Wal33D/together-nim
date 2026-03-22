@@ -269,9 +269,34 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
       if not ch.deathVisible():
         continue
     let isActive = i == game.activeCharacterIndex
-    let chColor = CHAR_COLORS[ch.colorIndex mod 6]
+    var chColor = CHAR_COLORS[ch.colorIndex mod 6]
 
-    let dx = (ch.drawX() + ch.idleOffsetX).cint - camX
+    # Proximity lean offset — shift toward proximityTarget
+    var leanOffset = 0.0
+    if ch.proximityTarget >= 0 and ch.proximityTarget < game.characters.len:
+      let target = game.characters[ch.proximityTarget]
+      let targetCx = target.x + float(target.width) * 0.5
+      let selfCx = ch.x + float(ch.width) * 0.5
+      if targetCx > selfCx:
+        leanOffset = ch.proximityLean
+      else:
+        leanOffset = -ch.proximityLean
+
+      # Color brighten based on proximity distance
+      let tdx = targetCx - selfCx
+      let tdy = (target.y + float(target.height) * 0.5) - (ch.y + float(ch.height) * 0.5)
+      let dist = sqrt(tdx * tdx + tdy * tdy)
+      let brightenAmt = 0.05 * (1.0 - min(1.0, dist / 80.0))
+      if brightenAmt > 0.001:
+        let chromaCol = chroma.color(chColor.r.float32 / 255.0,
+                                     chColor.g.float32 / 255.0,
+                                     chColor.b.float32 / 255.0)
+        let brightened = chroma.lighten(chromaCol, brightenAmt)
+        chColor.r = uint8(min(255.0, brightened.r * 255.0))
+        chColor.g = uint8(min(255.0, brightened.g * 255.0))
+        chColor.b = uint8(min(255.0, brightened.b * 255.0))
+
+    let dx = (ch.drawX() + ch.idleOffsetX + leanOffset).cint - camX
     let dy = (ch.drawY() + ch.idleSway()).cint - camY
     let dw = ch.drawWidth().cint
     let dh = ch.drawHeight().cint
@@ -337,7 +362,12 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
       let leftEyeX = (centerX - eyeSep / 2.0 - eyeRadius.float).cint
       let rightEyeX = (centerX + eyeSep / 2.0 - eyeRadius.float).cint
       let pupilOffset: cint =
-        if ch.lookDir != 0: ch.lookDir.cint
+        if ch.proximityTarget >= 0 and ch.proximityTarget < game.characters.len:
+          let target = game.characters[ch.proximityTarget]
+          let targetCx = target.x + float(target.width) * 0.5
+          let selfCx = ch.x + float(ch.width) * 0.5
+          if targetCx > selfCx: 1.cint else: -1.cint
+        elif ch.lookDir != 0: ch.lookDir.cint
         elif ch.facingRight: 1
         else: -1
 

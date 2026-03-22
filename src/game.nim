@@ -709,10 +709,12 @@ proc update*(game: var Game, dt: float) =
     # Character proximity emotional system
     for i in 0..<game.characters.len:
       if game.characters[i].isDying() or game.characters[i].isRespawning():
+        game.characters[i].proximityTarget = -1
         continue
 
       var nearAny = false
       var closestDist = 1e9
+      var closestIdx = -1
       var bestApproach = 0.0
 
       for j in 0..<game.characters.len:
@@ -722,7 +724,9 @@ proc update*(game: var Game, dt: float) =
         let dx = characterCenterX(game.characters[j]) - characterCenterX(game.characters[i])
         let dy = characterCenterY(game.characters[j]) - characterCenterY(game.characters[i])
         let dist = sqrt(dx * dx + dy * dy)
-        if dist < closestDist: closestDist = dist
+        if dist < closestDist:
+          closestDist = dist
+          closestIdx = j
 
         # Near: build contentment
         if dist < ProximityNear:
@@ -734,6 +738,15 @@ proc update*(game: var Game, dt: float) =
           let dot = game.characters[i].vx * (dx / dist) + game.characters[i].vy * (dy / dist)
           if dot > 0.0:
             bestApproach = max(bestApproach, min(1.0, dot / 150.0))
+
+      # Proximity lean toward nearest character
+      if closestIdx >= 0 and closestDist < ProximityNear:
+        game.characters[i].proximityTarget = closestIdx
+        let targetLean = 2.0 * (1.0 - closestDist / ProximityNear)
+        game.characters[i].proximityLean += (targetLean - game.characters[i].proximityLean) * min(1.0, 3.0 * scaledDt)
+      else:
+        game.characters[i].proximityTarget = -1
+        game.characters[i].proximityLean += (0.0 - game.characters[i].proximityLean) * min(1.0, 3.0 * scaledDt)
 
       # Anticipation build/decay
       if bestApproach > 0.0:
