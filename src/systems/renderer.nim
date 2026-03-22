@@ -12,7 +12,9 @@ import "particles"
 import "render_backend"
 import "screenEffects"
 import math
+import random
 import chroma
+import vmath
 
 const
   ActTints: array[5, (uint8, uint8, uint8, uint8)] = [
@@ -25,7 +27,78 @@ const
   VignetteDepth = 100
   VignettePasses = 3
 
+  BgCharCount = 8
+  BgCharMinSize = 24.0
+  BgCharMaxSize = 56.0
+  BgCharMinAlpha = 0.5
+  BgCharMaxAlpha = 0.7
+  BgCharMaxSpeed = 30.0
+
+type
+  BgChar = object
+    pos: Vec2
+    vel: Vec2
+    charIdx: int    # 0-5, maps to character color
+    size: float     # 24..56 px — smaller = further back (slower)
+    alpha: float    # 0.5..0.7
+
+var
+  bgChars: array[BgCharCount, BgChar]
+  bgCharsInit: bool = false
+
+proc initBgChars() =
+  ## Populate background character shapes with random positions and slow drift.
+  for i in 0 ..< BgCharCount:
+    let size = BgCharMinSize + rand(BgCharMaxSize - BgCharMinSize)
+    let speedFactor = float32(size / BgCharMaxSize)
+    bgChars[i] = BgChar(
+      pos: vec2(float32(rand(DEFAULT_WIDTH.float - size)),
+                float32(rand(DEFAULT_HEIGHT.float - size))),
+      vel: vec2(float32((rand(2.0) - 1.0) * BgCharMaxSpeed) * speedFactor,
+                float32((rand(2.0) - 1.0) * BgCharMaxSpeed) * speedFactor),
+      charIdx: i mod 6,
+      size: size,
+      alpha: BgCharMinAlpha + rand(BgCharMaxAlpha - BgCharMinAlpha),
+    )
+  bgCharsInit = true
+
+proc updateBgChars(dt: float) =
+  ## Drift and bounce background character shapes off screen edges.
+  let dt32 = dt.float32
+  for i in 0 ..< BgCharCount:
+    bgChars[i].pos += bgChars[i].vel * dt32
+    let sz = bgChars[i].size.float32
+    # Bounce off left/right.
+    if bgChars[i].pos.x < 0.0:
+      bgChars[i].pos.x = 0.0
+      bgChars[i].vel.x = -bgChars[i].vel.x
+    elif bgChars[i].pos.x + sz > DEFAULT_WIDTH.float32:
+      bgChars[i].pos.x = DEFAULT_WIDTH.float32 - sz
+      bgChars[i].vel.x = -bgChars[i].vel.x
+    # Bounce off top/bottom.
+    if bgChars[i].pos.y < 0.0:
+      bgChars[i].pos.y = 0.0
+      bgChars[i].vel.y = -bgChars[i].vel.y
+    elif bgChars[i].pos.y + sz > DEFAULT_HEIGHT.float32:
+      bgChars[i].pos.y = DEFAULT_HEIGHT.float32 - sz
+      bgChars[i].vel.y = -bgChars[i].vel.y
+
+proc renderBgChars(renderer: RendererPtr) =
+  ## Draw background character silhouettes on the Boxy layer.
+  renderer.setDrawBlendMode(BlendMode_Blend)
+  for i in 0 ..< BgCharCount:
+    let bg = bgChars[i]
+    let c = CHAR_COLORS[bg.charIdx]
+    let a = uint8(bg.alpha * 255.0)
+    renderer.setDrawColor(c.r, c.g, c.b, a)
+    drawFilledRect(renderer, bg.pos.x, bg.pos.y, bg.size, bg.size)
+  renderer.setDrawBlendMode(BlendMode_None)
+
 proc renderMenu(renderer: RendererPtr, game: Game) =
+  if not bgCharsInit:
+    initBgChars()
+  updateBgChars(game.deltaTime)
+
   let top = (r: 8'u8, g: 11'u8, b: 18'u8)
   let bottom = (r: 18'u8, g: 24'u8, b: 34'u8)
   for i in 0 ..< 14:
@@ -38,6 +111,9 @@ proc renderMenu(renderer: RendererPtr, game: Game) =
     )
     renderer.setDrawColor(bandColor.r, bandColor.g, bandColor.b, 255)
     drawFilledRect(renderer, 0, bandY.cint, DEFAULT_WIDTH.cint, (DEFAULT_HEIGHT div 14 + 1).cint)
+
+  # Bouncing character shapes — behind UI fog panels.
+  renderBgChars(renderer)
 
   renderer.setDrawBlendMode(BlendMode_Blend)
   renderer.setDrawColor(84, 110, 150, 28)
