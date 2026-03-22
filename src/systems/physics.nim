@@ -64,24 +64,50 @@ proc resolveCollision(c: var Character, rect: Rect) =
           c.vy = 120.0
     c.vx = 0.0
 
+proc nextWaypointIndex*(mp: MovingPlatform): int =
+  ## Return the index of the next waypoint based on current direction.
+  let n = mp.waypoints.len
+  if mp.forward:
+    (mp.currentWaypoint + 1) mod n
+  else:
+    (mp.currentWaypoint - 1 + n) mod n
+
 proc updateMovingPlatforms*(level: var Level, dt: float) =
   for i in 0..<level.movingPlatforms.len:
     var mp = level.movingPlatforms[i]
     mp.prevX = mp.x
     mp.prevY = mp.y
-    # Ping-pong interpolation
-    if mp.forward:
-      mp.currentT += mp.speed * dt
-      if mp.currentT >= 1.0:
-        mp.currentT = 1.0
-        mp.forward = false
+    let n = mp.waypoints.len
+    if n < 2:
+      level.movingPlatforms[i] = mp
+      continue
+
+    let nextIdx = nextWaypointIndex(mp)
+    let cur = mp.waypoints[mp.currentWaypoint]
+    let nxt = mp.waypoints[nextIdx]
+    let dx = nxt.x - cur.x
+    let dy = nxt.y - cur.y
+    let dist = sqrt(dx * dx + dy * dy)
+    if dist > 0.0:
+      mp.progress += dt * mp.speed / dist
     else:
-      mp.currentT -= mp.speed * dt
-      if mp.currentT <= 0.0:
-        mp.currentT = 0.0
-        mp.forward = true
-    mp.x = mp.startX + (mp.endX - mp.startX) * mp.currentT
-    mp.y = mp.startY + (mp.endY - mp.startY) * mp.currentT
+      mp.progress = 1.0
+
+    if mp.progress >= 1.0:
+      mp.progress -= 1.0
+      mp.currentWaypoint = nextIdx
+      if mp.pingPong:
+        if mp.forward and mp.currentWaypoint >= n - 1:
+          mp.forward = false
+        elif not mp.forward and mp.currentWaypoint <= 0:
+          mp.forward = true
+
+    # Sinusoidal ease: smooth accel/decel at endpoints.
+    let curWp = mp.waypoints[mp.currentWaypoint]
+    let nxtWp = mp.waypoints[nextWaypointIndex(mp)]
+    let t = (1.0 - cos(mp.progress * PI)) / 2.0
+    mp.x = curWp.x + (nxtWp.x - curWp.x) * t
+    mp.y = curWp.y + (nxtWp.y - curWp.y) * t
     level.movingPlatforms[i] = mp
 
 proc applyJump*(c: var Character) =

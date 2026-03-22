@@ -1,5 +1,8 @@
 ## Level entity types
 
+import
+  std/math
+
 type
   Platform* = object
     x*, y*: float
@@ -29,14 +32,15 @@ type
     isOpen*: bool
 
   MovingPlatform* = object
-    startX*, startY*: float
-    endX*, endY*: float
+    waypoints*: seq[tuple[x, y: float]]
     width*, height*: float
-    speed*: float          # 0.0-1.0 interpolation speed per second
-    currentT*: float       # 0.0-1.0 interpolation parameter
-    forward*: bool         # ping-pong direction
-    x*, y*: float          # current rendered position
-    prevX*, prevY*: float  # previous frame position (for rider displacement)
+    speed*: float             # px/s
+    currentWaypoint*: int     # index of current origin waypoint
+    progress*: float          # 0.0-1.0 between current and next waypoint
+    pingPong*: bool           # true = reverse, false = loop
+    forward*: bool            # direction for ping-pong
+    x*, y*: float             # current rendered position
+    prevX*, prevY*: float     # previous frame position (for rider displacement)
 
   Level* = object
     id*: int
@@ -53,11 +57,16 @@ type
     levelHeight*: float
 
 proc newMovingPlatform*(startX, startY, endX, endY, width, height, speed: float): MovingPlatform =
+  ## Migration constructor: converts old two-point linear params to waypoint system.
+  let dx = endX - startX
+  let dy = endY - startY
+  let dist = sqrt(dx * dx + dy * dy)
+  let pxSpeed = if dist > 0.0: speed * dist else: speed
   MovingPlatform(
-    startX: startX, startY: startY,
-    endX: endX, endY: endY,
+    waypoints: @[(x: startX, y: startY), (x: endX, y: endY)],
     width: width, height: height,
-    speed: speed, currentT: 0.0, forward: true,
+    speed: pxSpeed, currentWaypoint: 0, progress: 0.0,
+    pingPong: true, forward: true,
     x: startX, y: startY,
     prevX: startX, prevY: startY,
   )

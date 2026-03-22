@@ -147,6 +147,21 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
     drawFilledRect(renderer, p.x.cint - camX, p.y.cint - camY, p.width.cint, 2)
     renderer.setDrawColor(90, 90, 110, 255)
 
+  # Moving platform waypoint path indicators
+  renderer.setDrawBlendMode(BlendMode_Blend)
+  for mp in level.movingPlatforms:
+    let n = mp.waypoints.len
+    for wi in 0 ..< n - 1:
+      let a = mp.waypoints[wi]
+      let b = mp.waypoints[wi + 1]
+      for di in 1 .. 3:
+        let frac = float(di) / 4.0
+        let dotX = a.x + (b.x - a.x) * frac + mp.width / 2.0
+        let dotY = a.y + (b.y - a.y) * frac + mp.height / 2.0
+        renderer.setDrawColor(150, 150, 175, 80)
+        drawFilledRect(renderer, (dotX - 2).cint - camX, (dotY - 2).cint - camY, 4, 4)
+  renderer.setDrawBlendMode(BlendMode_None)
+
   # Moving platforms (lighter gray to distinguish)
   for mp in level.movingPlatforms:
     renderer.setDrawColor(130, 130, 155, 255)

@@ -275,13 +275,13 @@ suite "moving platforms":
                       movingPlatforms: @[mp])
     var chars: seq[Character] = @[]
     discard updatePhysics(chars, level, 0.5)
-    # After 0.5s at speed 1.0, currentT should be 0.5 → x = 50
+    # After 0.5s at migrated speed, platform should have moved partway.
     check level.movingPlatforms[0].x > 0.0
     check level.movingPlatforms[0].x < 100.0
 
   test "moving platform ping-pongs at end":
     var mp = newMovingPlatform(0.0, 0.0, 100.0, 0.0, 80.0, 20.0, 1.0)
-    mp.currentT = 0.95
+    mp.progress = 0.95
     mp.x = 95.0
     mp.prevX = 95.0
     var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[],
@@ -293,7 +293,8 @@ suite "moving platforms":
 
   test "moving platform ping-pongs at start":
     var mp = newMovingPlatform(0.0, 0.0, 100.0, 0.0, 80.0, 20.0, 1.0)
-    mp.currentT = 0.05
+    mp.currentWaypoint = 1
+    mp.progress = 0.95
     mp.forward = false
     mp.x = 5.0
     mp.prevX = 5.0
@@ -328,3 +329,22 @@ suite "moving platforms":
     discard updatePhysics(chars, level, FIXED_TIMESTEP)
     # Platform moved right, character should have moved with it
     check chars[0].x > startX
+
+  test "multi-waypoint platform traverses segments":
+    var mp = MovingPlatform(
+      waypoints: @[(x: 0.0, y: 0.0), (x: 100.0, y: 0.0), (x: 100.0, y: 100.0)],
+      width: 80.0, height: 20.0, speed: 200.0,
+      pingPong: true, forward: true,
+      x: 0.0, y: 0.0, prevX: 0.0, prevY: 0.0,
+    )
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[],
+                      movingPlatforms: @[mp])
+    var chars: seq[Character] = @[]
+    # Advance through most of first segment.
+    discard updatePhysics(chars, level, 0.4)
+    check level.movingPlatforms[0].x > 0.0
+    # Advance past first segment into second.
+    for step in 0 ..< 10:
+      discard updatePhysics(chars, level, 0.1)
+    # Platform should have moved into the vertical segment.
+    check level.movingPlatforms[0].y > 0.0
