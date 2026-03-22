@@ -35,6 +35,7 @@ type
     idleTimer*: float             # for idle sway
     landingTimer*: float          # flash on landing
     contentment*: float           # 0-1 emotional glow
+    anticipation*: float          # 0-1 moving toward another character
     inputDir*: int                # -1, 0, or 1 from current input
 
 proc newCharacter*(id: string): Character =
@@ -58,6 +59,7 @@ proc newCharacter*(id: string): Character =
   result.idleTimer = 0.0
   result.landingTimer = 0.0
   result.contentment = 0.0
+  result.anticipation = 0.0
   case id
   of "pip":
     result.width = 24; result.height = 24
@@ -120,12 +122,6 @@ proc updateAnimation*(c: var Character, dt: float) =
   # Idle sway
   c.idleTimer += dt
 
-  # Contentment — builds when near exit
-  if c.atExit:
-    c.contentment = min(1.0, c.contentment + 2.0 * dt)
-  else:
-    c.contentment = max(0.0, c.contentment - 0.5 * dt)
-
 proc triggerLanding*(c: var Character) =
   c.squashX = 1.3
   c.squashY = 0.7
@@ -150,9 +146,10 @@ proc drawY*(c: Character): float =
   c.y + float(c.height) - c.drawHeight()
 
 proc idleSway*(c: Character): float =
-  ## Gentle breathing motion
+  ## Gentle breathing motion. Sways more when contentment is low (lonely).
   if c.grounded and abs(c.vx) < 5.0:
-    sin(c.idleTimer * 2.0) * 1.5
+    let amplitude = 1.5 + (1.0 - c.contentment) * 1.0
+    sin(c.idleTimer * 2.0) * amplitude
   else:
     0.0
 

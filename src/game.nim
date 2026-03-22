@@ -55,6 +55,9 @@ type
     screenBrightness*: float
 
 const
+  ProximityNear* = 80.0
+  ProximityFar* = 200.0
+
   ActTitleFadeIn* = 1.0
   ActTitleHold* = 2.0
   ActTitleFadeOut* = 1.0
@@ -697,6 +700,50 @@ proc update*(game: var Game, dt: float) =
       if game.characters[i].jumpBufferTimer > 0.0:
         game.characters[i].jumpBufferTimer =
           max(0.0, game.characters[i].jumpBufferTimer - scaledDt)
+
+    # Character proximity emotional system
+    for i in 0..<game.characters.len:
+      if game.characters[i].isDying() or game.characters[i].isRespawning():
+        continue
+
+      var nearAny = false
+      var closestDist = 1e9
+      var bestApproach = 0.0
+
+      for j in 0..<game.characters.len:
+        if i == j: continue
+        if game.characters[j].isDying() or game.characters[j].isRespawning():
+          continue
+        let dx = characterCenterX(game.characters[j]) - characterCenterX(game.characters[i])
+        let dy = characterCenterY(game.characters[j]) - characterCenterY(game.characters[i])
+        let dist = sqrt(dx * dx + dy * dy)
+        if dist < closestDist: closestDist = dist
+
+        # Near: build contentment
+        if dist < ProximityNear:
+          nearAny = true
+          game.characters[i].contentment = min(1.0, game.characters[i].contentment + 1.5 * scaledDt)
+
+        # Anticipation: moving toward another character
+        if dist > 0.001:
+          let dot = game.characters[i].vx * (dx / dist) + game.characters[i].vy * (dy / dist)
+          if dot > 0.0:
+            bestApproach = max(bestApproach, min(1.0, dot / 150.0))
+
+      # Anticipation build/decay
+      if bestApproach > 0.0:
+        game.characters[i].anticipation = min(1.0, game.characters[i].anticipation + bestApproach * 2.0 * scaledDt)
+      else:
+        game.characters[i].anticipation = max(0.0, game.characters[i].anticipation - 1.0 * scaledDt)
+
+      # Contentment from exit
+      if game.characters[i].atExit:
+        game.characters[i].contentment = min(1.0, game.characters[i].contentment + 2.0 * scaledDt)
+
+      # Contentment decay — faster when far from all others
+      if not nearAny:
+        let rate = if game.characters.len > 1 and closestDist > ProximityFar: 0.8 else: 0.5
+        game.characters[i].contentment = max(0.0, game.characters[i].contentment - rate * scaledDt)
 
     # Update atmospheric background effects
     game.atmosphere.update(scaledDt)
