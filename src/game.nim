@@ -16,7 +16,7 @@ import systems/[particles, animation, screenEffects]
 
 type
   GameState* = enum
-    menu, playing, paused, levelWin, credits, actTitle
+    menu, playing, paused, levelWin, credits, actTitle, settings
 
   ActDef* = object
     number*: int
@@ -59,6 +59,11 @@ type
     deathOccurred*: bool
     secretCollected*: bool
     earnedStars*: array[3, bool]
+    previousState*: GameState
+    settingsCursor*: int
+    settingsWindowPreset*: int
+    fullscreenEnabled*: bool
+    vsyncEnabled*: bool
 
 const
   ProximityNear* = 80.0
@@ -511,6 +516,12 @@ proc nextLevel*(game: var Game) =
   else:
     game.state = credits
 
+proc openSettings*(game: var Game) =
+  ## Enter the settings screen, remembering where to return.
+  game.previousState = game.state
+  game.settingsCursor = 0
+  game.state = settings
+
 proc handleKey*(game: var Game, button: windy.Button) =
   case game.state
   of menu:
@@ -531,6 +542,8 @@ proc handleKey*(game: var Game, button: windy.Button) =
     if button == KeyEnter:
       game.state = menu
   of actTitle:
+    discard
+  of settings:
     discard
 
 proc update*(game: var Game, dt: float) =

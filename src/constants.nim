@@ -22,6 +22,11 @@ const DEFAULT_HEIGHT* = 500
 const DEFAULT_WINDOW_WIDTH* = 1120
 const DEFAULT_WINDOW_HEIGHT* = 700
 
+# Window presets for settings screen
+const WindowPresets*: array[4, tuple[w, h: int]] = [
+  (800, 500), (1120, 700), (1440, 900), (1920, 1200)
+]
+
 # Save file
 const SAVE_FILE* = "together_save.json"
 

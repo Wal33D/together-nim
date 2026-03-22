@@ -8,10 +8,11 @@ import
 type
   SaveData* = object
     fullscreen*: bool
+    vsync*: bool
     levelStars*: Table[int, array[3, bool]]
 
 proc defaultSave*(): SaveData =
-  SaveData(fullscreen: false, levelStars: initTable[int, array[3, bool]]())
+  SaveData(fullscreen: false, vsync: true, levelStars: initTable[int, array[3, bool]]())
 
 proc writeSave*(data: SaveData) =
   writeFile(SAVE_FILE, data.toJson())
@@ -27,4 +28,9 @@ proc loadSave*(): SaveData =
 proc saveFullscreen*(fullscreen: bool) =
   var data = loadSave()
   data.fullscreen = fullscreen
+  writeSave(data)
+
+proc saveVsync*(vsync: bool) =
+  var data = loadSave()
+  data.vsync = vsync
   writeSave(data)

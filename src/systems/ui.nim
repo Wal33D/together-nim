@@ -223,10 +223,18 @@ proc cycleMenuSpotlight*(ui: UiRenderer, delta: int) =
     playSound(soundMenuHover)
 
 proc cyclePauseSelection*(ui: UiRenderer, delta: int) =
-  const count = 3
+  const count = 4
   let prev = ui.pauseSelection
   ui.pauseSelection = (ui.pauseSelection + delta + count * 4) mod count
   if ui.pauseSelection != prev:
+    playSound(soundMenuHover)
+
+proc cycleSettingsCursor*(game: var Game, delta: int) =
+  ## Move settings cursor up/down (0=WindowSize, 1=Fullscreen, 2=VSync, 3=Back).
+  const count = 4
+  let prev = game.settingsCursor
+  game.settingsCursor = (game.settingsCursor + delta + count * 4) mod count
+  if game.settingsCursor != prev:
     playSound(soundMenuHover)
 
 proc activateFocusedAction*(ui: UiRenderer, game: var Game) =
@@ -244,6 +252,8 @@ proc activateFocusedAction*(ui: UiRenderer, game: var Game) =
       game.state = playing
     of 2:
       game.state = menu
+    of 3:
+      game.openSettings()
     else:
       discard
   else:
@@ -697,6 +707,23 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
     renderCastCard(ui, sk, window, layout, tileX, tileY, i,
                    castNames[i], castGifts[i],
                    game.elapsedTime, game.deltaTime)
+  # Settings link at bottom-right.
+  let settingsLabel = "Settings"
+  let settingsTextSize = sk.uiTextSize(layout, "Small", settingsLabel)
+  let settingsLinkPos = vec2(layout.right - settingsTextSize.x - layout.px(20),
+                             layout.bottom - settingsTextSize.y - layout.px(18))
+  let settingsLinkRect = rect(settingsLinkPos.x - layout.px(6),
+                              settingsLinkPos.y - layout.px(4),
+                              settingsTextSize.x + layout.px(12),
+                              settingsTextSize.y + layout.px(8))
+  let settingsHovered = window.mousePos.vec2.overlaps(settingsLinkRect)
+  let settingsColor = if settingsHovered: rgbx(220, 226, 236, 255)
+                      else: rgbx(150, 160, 182, 255)
+  discard sk.drawUiText(layout, "Small", settingsLabel, settingsLinkPos, settingsColor)
+  if settingsHovered and window.buttonPressed[MouseLeft]:
+    game.openSettings()
+    playSound(soundMenuSelect)
+
   drawCenteredText(sk, layout, "Small", "1-6 or arrow keys preview the cast • Enter begins",
                    heroCenter, layout.bottom - layout.px(28), rgbx(122, 134, 152, 255))
 
@@ -704,9 +731,9 @@ proc renderPauseModal(ui: UiRenderer, sk: Silky, window: Window,
                       layout: UiLayout, game: var Game) =
   let
     baseX = DEFAULT_WIDTH.float32 * 0.5 - 168
-    baseY = DEFAULT_HEIGHT.float32 * 0.5 - 96 + pauseModalY
+    baseY = DEFAULT_HEIGHT.float32 * 0.5 - 116 + pauseModalY
     pos = layout.p(baseX, baseY)
-    size = layout.sz(336, 192)
+    size = layout.sz(336, 240)
     levelText =
       if game.currentLevel >= 0 and game.currentLevel < allLevels.len:
         let level = game.currentLevelState
@@ -719,6 +746,8 @@ proc renderPauseModal(ui: UiRenderer, sk: Silky, window: Window,
     restartSize = layout.sz(118, 42)
     menuPos = layout.p(baseX + 34 + 130, baseY + 166)
     menuSize = layout.sz(336 - 68 - 130, 42)
+    settingsPos = layout.p(baseX + 34, baseY + 218)
+    settingsSize = layout.sz(336 - 68, 42)
   sk.drawSoftPanel(pos, size, rgbx(10, 12, 18, 232), rgbx(90, 104, 132, 180))
   discard sk.drawUiText(layout, "Display", "Paused", pos + layout.d(34, 24), rgbx(248, 249, 251, 255))
   discard sk.drawUiText(layout, "Small", levelText, pos + layout.d(36, 72), rgbx(162, 174, 194, 255))
@@ -755,6 +784,16 @@ proc renderPauseModal(ui: UiRenderer, sk: Silky, window: Window,
       ui.pauseSelection = 2
       ui.activateFocusedAction(game)
 
+  if pauseBtn3Alpha > 0.01:
+    if window.mousePos.vec2.overlaps(rect(settingsPos.x, settingsPos.y, settingsSize.x, settingsSize.y)):
+      ui.pauseSelection = 3
+    if button(ui, sk, window, layout, settingsPos, settingsSize,
+              "Settings", "",
+              "pause_settings", muted(rgbx(160, 160, 180, 255), uint8(pauseBtn3Alpha * 255)),
+              selected = ui.pauseSelection == 3):
+      ui.pauseSelection = 3
+      ui.activateFocusedAction(game)
+
 proc renderWinModal(ui: UiRenderer, sk: Silky, window: Window,
                     layout: UiLayout, game: var Game) =
   let
@@ -788,6 +827,99 @@ proc renderCredits(ui: UiRenderer, sk: Silky, window: Window,
                      "Return to Menu", "Back to the title screen.",
                      "credits_menu", rgbx(108, 168, 232, 255)):
     game.state = menu
+
+proc renderSettings(ui: UiRenderer, sk: Silky, window: Window,
+                     layout: UiLayout, game: var Game) =
+  ## Render the settings screen with option rows and Back button.
+  let
+    panelW = 420.0'f32
+    panelH = 280.0'f32
+    baseX = DEFAULT_WIDTH.float32 * 0.5 - panelW * 0.5
+    baseY = DEFAULT_HEIGHT.float32 * 0.5 - panelH * 0.5
+    pos = layout.p(baseX, baseY)
+    size = layout.sz(panelW, panelH)
+
+  # Dark background overlay.
+  sk.drawRect(vec2(0, 0), vec2(layout.frameSize.x.float32, layout.frameSize.y.float32),
+              rgbx(0, 0, 0, 180))
+
+  sk.drawSoftPanel(pos, size, rgbx(10, 12, 18, 232), rgbx(90, 104, 132, 180))
+  drawCenteredText(sk, layout, "Display", "Settings", layout.centerX,
+                   pos.y + layout.px(24), rgbx(248, 249, 251, 255))
+
+  # Option rows.
+  let rowStartY = baseY + 80
+  let rowH = 38.0'f32
+  let labelX = baseX + 40
+  let valueX = baseX + panelW - 40
+
+  for i in 0 ..< 3:
+    let rowY = rowStartY + i.float32 * rowH
+    let focused = game.settingsCursor == i
+    let textAlpha: uint8 = if focused: 255 else: 180
+    let textColor = rgbx(244, 247, 250, textAlpha)
+    let valueColor = rgbx(180, 196, 220, textAlpha)
+
+    # Highlight bar for focused row.
+    if focused:
+      sk.drawRect(layout.p(baseX + 20, rowY - 4),
+                  layout.sz(panelW - 40, rowH),
+                  rgbx(40, 48, 64, 160))
+
+    let label = case i
+      of 0: "Window Size"
+      of 1: "Fullscreen"
+      of 2: "VSync"
+      else: ""
+
+    let value = case i
+      of 0:
+        let preset = WindowPresets[game.settingsWindowPreset]
+        $preset.w & " x " & $preset.h
+      of 1:
+        if game.fullscreenEnabled: "On" else: "Off"
+      of 2:
+        if game.vsyncEnabled: "On" else: "Off"
+      else: ""
+
+    discard sk.drawUiText(layout, "Body", label,
+                          layout.p(labelX, rowY), textColor)
+    let valSize = sk.uiTextSize(layout, "Body", value)
+    discard sk.drawUiText(layout, "Body", value,
+                          layout.p(valueX, rowY) - vec2(valSize.x, 0),
+                          valueColor)
+
+    # Arrow hints for focused row.
+    if focused:
+      let arrowColor = rgbx(140, 155, 180, 200)
+      let leftArrowPos = layout.p(valueX, rowY) - vec2(valSize.x + layout.px(20), 0)
+      let rightArrowPos = layout.p(valueX, rowY) + vec2(layout.px(8), 0)
+      discard sk.drawUiText(layout, "Body", "<", leftArrowPos, arrowColor)
+      discard sk.drawUiText(layout, "Body", ">", rightArrowPos, arrowColor)
+
+  # Back button.
+  let backY = rowStartY + 3.0 * rowH + 10
+  let focused = game.settingsCursor == 3
+  let backColor = if focused: rgbx(244, 247, 250, 255) else: rgbx(180, 196, 220, 180)
+  if focused:
+    sk.drawRect(layout.p(baseX + 20, backY - 4),
+                layout.sz(panelW - 40, rowH),
+                rgbx(40, 48, 64, 160))
+  drawCenteredText(sk, layout, "Body", "Back", layout.centerX,
+                   layout.p(0, backY).y, backColor)
+
+  # Mouse interaction for rows.
+  for i in 0 ..< 4:
+    let rowY = if i < 3: rowStartY + i.float32 * rowH
+               else: rowStartY + 3.0 * rowH + 10
+    let rowRect = rect(layout.p(baseX + 20, rowY - 4).x,
+                       layout.p(baseX + 20, rowY - 4).y,
+                       layout.px(panelW - 40),
+                       layout.px(rowH))
+    if window.mousePos.vec2.overlaps(rowRect):
+      if game.settingsCursor != i:
+        game.settingsCursor = i
+        playSound(soundMenuHover)
 
 proc renderOverlay*(ui: UiRenderer, window: Window, game: var Game,
                     frameSize: IVec2) =
@@ -858,6 +990,8 @@ proc renderOverlay*(ui: UiRenderer, window: Window, game: var Game,
     ui.renderCredits(sk, window, layout, game)
   of actTitle:
     discard
+  of settings:
+    ui.renderSettings(sk, window, layout, game)
 
   # Render pause exit animation overlay even after state leaves paused.
   if pauseExiting and not nowPaused and pauseOverlayAlpha > 0.001:

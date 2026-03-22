@@ -578,6 +578,11 @@ proc renderGame*(renderer: RendererPtr, game: Game) =
     renderCredits(renderer, game)
   of actTitle:
     renderActTitle(renderer, game)
+  of settings:
+    if game.previousState == paused:
+      renderPaused(renderer, game)
+    else:
+      renderMenu(renderer, game)
 
   # Screen flash overlay — fades out over time.
   if game.screenEffects.flashActive():

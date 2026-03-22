@@ -15,6 +15,34 @@ import systems/gamepad
 import systems/save
 import systems/ui
 
+when defined(macosx):
+  type CGLContextObj = pointer
+  proc CGLGetCurrentContext(): CGLContextObj
+    {.importc, dynlib: "/System/Library/Frameworks/OpenGL.framework/OpenGL".}
+  proc CGLSetParameter(ctx: CGLContextObj, pname: int32, params: ptr int32): int32
+    {.importc, dynlib: "/System/Library/Frameworks/OpenGL.framework/OpenGL".}
+  const KCGLCPSwapInterval: int32 = 222
+elif defined(windows):
+  var wglSwapIntervalEXTProc: proc(interval: int32): int32 {.stdcall.}
+elif defined(linux):
+  proc glXSwapIntervalMESA(interval: int32) {.importc, dynlib: "libGL.so".}
+
+proc setVSync(enabled: bool) =
+  ## Set the OpenGL swap interval for VSync control.
+  let interval: int32 = if enabled: 1 else: 0
+  when defined(macosx):
+    let ctx = CGLGetCurrentContext()
+    if ctx != nil:
+      var val = interval
+      discard CGLSetParameter(ctx, KCGLCPSwapInterval, val.addr)
+  elif defined(windows):
+    if wglSwapIntervalEXTProc != nil:
+      discard wglSwapIntervalEXTProc(interval)
+  elif defined(linux):
+    glXSwapIntervalMESA(interval)
+  else:
+    discard
+
 type
   WindowModeState = object
     pseudoFullscreen: bool
@@ -22,61 +50,6 @@ type
     windowedPos: IVec2
     windowedSize: IVec2
     windowedStyle: WindowStyle
-
-proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer) =
-  case game.state
-  of menu:
-    if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA]:
-      ui.cycleMenuSpotlight(-1)
-    if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD]:
-      ui.cycleMenuSpotlight(1)
-    if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
-      ui.activateFocusedAction(game)
-    return
-  of paused:
-    if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA] or
-       window.buttonPressed[KeyUp] or window.buttonPressed[KeyW]:
-      ui.cyclePauseSelection(-1)
-    if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD] or
-       window.buttonPressed[KeyDown] or window.buttonPressed[KeyS]:
-      ui.cyclePauseSelection(1)
-    if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
-      ui.activateFocusedAction(game)
-    if window.buttonPressed[KeyEscape]:
-      game.handleKey(KeyEscape)
-    return
-  of actTitle:
-    return
-  else:
-    discard
-
-  game.leftHeld = window.buttonDown[KeyLeft] or window.buttonDown[KeyA]
-  game.rightHeld = window.buttonDown[KeyRight] or window.buttonDown[KeyD]
-
-  if window.buttonPressed[KeySpace]:
-    game.pressJump()
-  if window.buttonReleased[KeySpace]:
-    game.releaseJump()
-
-  if window.buttonPressed[Key1] and game.selectActiveCharacter(0):
-    playSound(soundCharSwitch)
-  if window.buttonPressed[Key2] and game.selectActiveCharacter(1):
-    playSound(soundCharSwitch)
-  if window.buttonPressed[Key3] and game.selectActiveCharacter(2):
-    playSound(soundCharSwitch)
-  if window.buttonPressed[Key4] and game.selectActiveCharacter(3):
-    playSound(soundCharSwitch)
-  if window.buttonPressed[Key5] and game.selectActiveCharacter(4):
-    playSound(soundCharSwitch)
-  if window.buttonPressed[Key6] and game.selectActiveCharacter(5):
-    playSound(soundCharSwitch)
-
-  if window.buttonPressed[KeyEnter]:
-    game.handleKey(KeyEnter)
-  if window.buttonPressed[KeyEscape]:
-    game.handleKey(KeyEscape)
-  if window.buttonPressed[KeyR]:
-    game.handleKey(KeyR)
 
 proc primaryScreenSize(window: Window): IVec2 =
   let screens = getScreens()
@@ -132,8 +105,131 @@ proc setFullscreen(window: Window, state: var WindowModeState, enabled: bool) =
   else:
     window.fullscreen = enabled
 
+proc applySettingsChange(window: Window, game: var Game,
+                          windowMode: var WindowModeState) =
+  ## Apply the change for the currently focused settings option.
+  case game.settingsCursor
+  of 0:
+    # Window size — already cycled by caller; apply the preset.
+    let preset = WindowPresets[game.settingsWindowPreset]
+    let scale = max(window.contentScale, 1.0'f32)
+    window.size = ivec2(
+      round(preset.w.float32 * scale).int32,
+      round(preset.h.float32 * scale).int32
+    )
+    playSound(soundMenuHover)
+  of 1:
+    # Fullscreen toggle.
+    game.fullscreenEnabled = not game.fullscreenEnabled
+    window.setFullscreen(windowMode, game.fullscreenEnabled)
+    saveFullscreen(game.fullscreenEnabled)
+    playSound(soundMenuHover)
+  of 2:
+    # VSync toggle.
+    game.vsyncEnabled = not game.vsyncEnabled
+    setVSync(game.vsyncEnabled)
+    saveVsync(game.vsyncEnabled)
+    playSound(soundMenuHover)
+  else:
+    discard
+
+proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer,
+                          windowMode: var WindowModeState) =
+  case game.state
+  of menu:
+    if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA]:
+      ui.cycleMenuSpotlight(-1)
+    if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD]:
+      ui.cycleMenuSpotlight(1)
+    if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
+      ui.activateFocusedAction(game)
+    if window.buttonPressed[KeyEscape]:
+      game.openSettings()
+      playSound(soundMenuSelect)
+    return
+  of paused:
+    if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA] or
+       window.buttonPressed[KeyUp] or window.buttonPressed[KeyW]:
+      ui.cyclePauseSelection(-1)
+    if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD] or
+       window.buttonPressed[KeyDown] or window.buttonPressed[KeyS]:
+      ui.cyclePauseSelection(1)
+    if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
+      ui.activateFocusedAction(game)
+    if window.buttonPressed[KeyEscape]:
+      game.handleKey(KeyEscape)
+    return
+  of settings:
+    if window.buttonPressed[KeyUp] or window.buttonPressed[KeyW]:
+      game.cycleSettingsCursor(-1)
+    if window.buttonPressed[KeyDown] or window.buttonPressed[KeyS]:
+      game.cycleSettingsCursor(1)
+    if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA]:
+      case game.settingsCursor
+      of 0:
+        game.settingsWindowPreset = (game.settingsWindowPreset - 1 + WindowPresets.len) mod WindowPresets.len
+        applySettingsChange(window, game, windowMode)
+      of 1:
+        applySettingsChange(window, game, windowMode)
+      of 2:
+        applySettingsChange(window, game, windowMode)
+      else: discard
+    if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD]:
+      case game.settingsCursor
+      of 0:
+        game.settingsWindowPreset = (game.settingsWindowPreset + 1) mod WindowPresets.len
+        applySettingsChange(window, game, windowMode)
+      of 1:
+        applySettingsChange(window, game, windowMode)
+      of 2:
+        applySettingsChange(window, game, windowMode)
+      else: discard
+    if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
+      if game.settingsCursor == 3:
+        # Back.
+        game.state = game.previousState
+        playSound(soundMenuBack)
+      elif game.settingsCursor >= 0 and game.settingsCursor <= 2:
+        applySettingsChange(window, game, windowMode)
+    if window.buttonPressed[KeyEscape]:
+      game.state = game.previousState
+      playSound(soundMenuBack)
+    return
+  of actTitle:
+    return
+  else:
+    discard
+
+  game.leftHeld = window.buttonDown[KeyLeft] or window.buttonDown[KeyA]
+  game.rightHeld = window.buttonDown[KeyRight] or window.buttonDown[KeyD]
+
+  if window.buttonPressed[KeySpace]:
+    game.pressJump()
+  if window.buttonReleased[KeySpace]:
+    game.releaseJump()
+
+  if window.buttonPressed[Key1] and game.selectActiveCharacter(0):
+    playSound(soundCharSwitch)
+  if window.buttonPressed[Key2] and game.selectActiveCharacter(1):
+    playSound(soundCharSwitch)
+  if window.buttonPressed[Key3] and game.selectActiveCharacter(2):
+    playSound(soundCharSwitch)
+  if window.buttonPressed[Key4] and game.selectActiveCharacter(3):
+    playSound(soundCharSwitch)
+  if window.buttonPressed[Key5] and game.selectActiveCharacter(4):
+    playSound(soundCharSwitch)
+  if window.buttonPressed[Key6] and game.selectActiveCharacter(5):
+    playSound(soundCharSwitch)
+
+  if window.buttonPressed[KeyEnter]:
+    game.handleKey(KeyEnter)
+  if window.buttonPressed[KeyEscape]:
+    game.handleKey(KeyEscape)
+  if window.buttonPressed[KeyR]:
+    game.handleKey(KeyR)
+
 proc main() =
-  var fullscreenEnabled = loadSave().fullscreen
+  let savedData = loadSave()
   var windowMode = WindowModeState()
 
   let window = newWindow(
@@ -145,11 +241,19 @@ proc main() =
   makeContextCurrent(window)
   loadExtensions()
 
-  if not fullscreenEnabled:
+  when defined(windows):
+    wglSwapIntervalEXTProc = cast[typeof(wglSwapIntervalEXTProc)](
+      wglGetProcAddress("wglSwapIntervalEXT"))
+
+  if not savedData.fullscreen:
     window.size = window.defaultWindowSize()
 
-  if fullscreenEnabled:
+  if savedData.fullscreen:
     window.setFullscreen(windowMode, true)
+
+  # Apply saved VSync preference.
+  if not savedData.vsync:
+    setVSync(false)
 
   initAudio()
   openFirstController()
@@ -157,6 +261,22 @@ proc main() =
   let renderer = newRenderer()
   let ui = newUiRenderer()
   var g = newGame()
+  g.fullscreenEnabled = savedData.fullscreen
+  g.vsyncEnabled = savedData.vsync
+
+  # Find the window preset index closest to the current window size.
+  block:
+    let scale = max(window.contentScale, 1.0'f32)
+    let curW = round(DEFAULT_WINDOW_WIDTH.float32 * scale).int
+    var bestIdx = 1
+    var bestDiff = high(int)
+    for i, preset in WindowPresets:
+      let diff = abs(preset.w - curW)
+      if diff < bestDiff:
+        bestDiff = diff
+        bestIdx = i
+    g.settingsWindowPreset = bestIdx
+
   var accumulator = 0.0
   var lastTime = epochTime()
 
@@ -169,11 +289,11 @@ proc main() =
     accumulator += frameTime
 
     if window.buttonPressed[KeyF11]:
-      fullscreenEnabled = not fullscreenEnabled
-      window.setFullscreen(windowMode, fullscreenEnabled)
-      saveFullscreen(fullscreenEnabled)
+      g.fullscreenEnabled = not g.fullscreenEnabled
+      window.setFullscreen(windowMode, g.fullscreenEnabled)
+      saveFullscreen(g.fullscreenEnabled)
 
-    handleKeyboardInput(window, g, ui)
+    handleKeyboardInput(window, g, ui, windowMode)
     pollControllerInput(g)
 
     while accumulator >= FIXED_TIMESTEP:
