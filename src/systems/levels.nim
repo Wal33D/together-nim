@@ -880,4 +880,255 @@ const level25* = Level(
   levelHeight: 600.0,
 )
 
-const allLevels*: array[25, Level] = [level1, level2, level3, level4, level5, level6, level7, level8, level9, level10, level11, level12, level13, level14, level15, level16, level17, level18, level19, level20, level21, level22, level23, level24, level25]
+const level26* = Level(
+  id: 26,
+  name: "Colors",
+  narration: "They were colors. Each one necessary.",
+  characters: @["pip", "luca", "bruno", "cara", "felix", "ivy"],
+  platforms: @[
+    Platform(x: 0.0,    y: 560.0, width: 200.0, height: 20.0),   # start ground
+    Platform(x: 280.0,  y: 560.0, width: 100.0, height: 20.0),   # pink zone (pip)
+    Platform(x: 460.0,  y: 500.0, width: 100.0, height: 20.0),   # blue zone (luca)
+    Platform(x: 640.0,  y: 560.0, width: 120.0, height: 20.0),   # green zone (bruno)
+    Platform(x: 840.0,  y: 480.0, width: 80.0,  height: 20.0),   # yellow zone (cara)
+    Platform(x: 1000.0, y: 560.0, width: 100.0, height: 20.0),   # orange zone (felix)
+    Platform(x: 1180.0, y: 440.0, width: 80.0,  height: 20.0),   # purple zone (ivy)
+    Platform(x: 1340.0, y: 560.0, width: 200.0, height: 20.0),   # convergence ground
+    Platform(x: 1340.0, y: 400.0, width: 80.0,  height: 20.0),   # high convergence
+    Platform(x: 1500.0, y: 480.0, width: 80.0,  height: 20.0),   # step to exit
+    Platform(x: 1620.0, y: 560.0, width: 200.0, height: 20.0),   # exit ground
+  ],
+  hazards: @[
+    Hazard(x: 200.0,  y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 380.0,  y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 560.0,  y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 760.0,  y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 920.0,  y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 1100.0, y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 1260.0, y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 1540.0, y: 570.0, width: 80.0,  height: 10.0),
+  ],
+  exits: @[
+    Exit(x: 1640.0, y: 510.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 1680.0, y: 510.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 1720.0, y: 510.0, width: 40.0, height: 50.0, characterId: "bruno"),
+    Exit(x: 1760.0, y: 510.0, width: 40.0, height: 50.0, characterId: "cara"),
+    Exit(x: 1660.0, y: 510.0, width: 40.0, height: 50.0, characterId: "felix"),
+    Exit(x: 1700.0, y: 510.0, width: 40.0, height: 50.0, characterId: "ivy"),
+  ],
+  buttons: @[
+    Button(x: 300.0,  y: 550.0, width: 40.0, height: 10.0, doorId: 1, requiresHeavy: false),
+    Button(x: 660.0,  y: 550.0, width: 40.0, height: 10.0, doorId: 2, requiresHeavy: true),
+    Button(x: 1200.0, y: 430.0, width: 40.0, height: 10.0, doorId: 3, requiresHeavy: false),
+  ],
+  doors: @[
+    Door(id: 1, x: 420.0,  y: 480.0, width: 20.0, height: 80.0, isOpen: false),
+    Door(id: 2, x: 800.0,  y: 480.0, width: 20.0, height: 80.0, isOpen: false),
+    Door(id: 3, x: 1580.0, y: 480.0, width: 20.0, height: 80.0, isOpen: false),
+  ],
+  starChallenge: StarChallenge(timeTarget: 120.0, secretX: 1360.0, secretY: 375.0),
+  levelWidth: 1820.0,
+  levelHeight: 600.0,
+)
+
+const level27* = Level(
+  id: 27,
+  name: "Shapes",
+  narration: "They were shapes. Each one perfect.",
+  characters: @["pip", "luca", "bruno", "cara", "felix", "ivy"],
+  platforms: @[
+    Platform(x: 0.0,    y: 560.0, width: 200.0, height: 20.0),   # start ground
+    Platform(x: 280.0,  y: 500.0, width: 40.0,  height: 20.0),   # narrow for cara
+    Platform(x: 400.0,  y: 560.0, width: 180.0, height: 20.0),   # wide for bruno
+    Platform(x: 660.0,  y: 480.0, width: 60.0,  height: 20.0),   # medium for pip
+    Platform(x: 800.0,  y: 420.0, width: 140.0, height: 20.0),   # wide for luca
+    Platform(x: 1020.0, y: 560.0, width: 50.0,  height: 20.0),   # narrow for felix
+    Platform(x: 1150.0, y: 480.0, width: 80.0,  height: 20.0),   # medium for ivy
+    Platform(x: 1310.0, y: 400.0, width: 20.0,  height: 180.0),  # wall-jump pillar left
+    Platform(x: 1410.0, y: 400.0, width: 20.0,  height: 180.0),  # wall-jump pillar right
+    Platform(x: 1310.0, y: 380.0, width: 120.0, height: 20.0),   # top of shaft
+    Platform(x: 1510.0, y: 560.0, width: 200.0, height: 20.0),   # exit ground wide
+    Platform(x: 1510.0, y: 420.0, width: 80.0,  height: 20.0),   # high exit platform
+  ],
+  hazards: @[
+    Hazard(x: 200.0,  y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 320.0,  y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 580.0,  y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 720.0,  y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 940.0,  y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 1070.0, y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 1230.0, y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 1430.0, y: 570.0, width: 80.0,  height: 10.0),
+  ],
+  exits: @[
+    Exit(x: 1530.0, y: 510.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 1570.0, y: 510.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 1610.0, y: 510.0, width: 40.0, height: 50.0, characterId: "bruno"),
+    Exit(x: 1650.0, y: 510.0, width: 40.0, height: 50.0, characterId: "cara"),
+    Exit(x: 1550.0, y: 510.0, width: 40.0, height: 50.0, characterId: "felix"),
+    Exit(x: 1590.0, y: 510.0, width: 40.0, height: 50.0, characterId: "ivy"),
+  ],
+  buttons: @[
+    Button(x: 440.0,  y: 550.0, width: 40.0, height: 10.0, doorId: 1, requiresHeavy: true),
+    Button(x: 840.0,  y: 410.0, width: 40.0, height: 10.0, doorId: 2, requiresHeavy: false),
+    Button(x: 1340.0, y: 370.0, width: 40.0, height: 10.0, doorId: 3, requiresHeavy: false),
+  ],
+  doors: @[
+    Door(id: 1, x: 620.0,  y: 480.0, width: 20.0, height: 80.0, isOpen: false),
+    Door(id: 2, x: 980.0,  y: 480.0, width: 20.0, height: 80.0, isOpen: false),
+    Door(id: 3, x: 1470.0, y: 480.0, width: 20.0, height: 80.0, isOpen: false),
+  ],
+  starChallenge: StarChallenge(timeTarget: 130.0, secretX: 1360.0, secretY: 355.0),
+  levelWidth: 1710.0,
+  levelHeight: 600.0,
+)
+
+const level28* = Level(
+  id: 28,
+  name: "Consciousness",
+  narration: "They were consciousness discovering itself.",
+  characters: @["pip", "luca", "bruno", "cara", "felix", "ivy"],
+  platforms: @[
+    # Brain/heart shape layout — platforms form a symmetrical organic shape
+    Platform(x: 0.0,    y: 560.0, width: 160.0, height: 20.0),   # start ground (left base)
+    Platform(x: 200.0,  y: 480.0, width: 100.0, height: 20.0),   # left lobe lower
+    Platform(x: 360.0,  y: 400.0, width: 80.0,  height: 20.0),   # left lobe upper
+    Platform(x: 500.0,  y: 340.0, width: 100.0, height: 20.0),   # left crown
+    Platform(x: 660.0,  y: 300.0, width: 80.0,  height: 20.0),   # top center left
+    Platform(x: 800.0,  y: 280.0, width: 100.0, height: 20.0),   # apex (top of heart)
+    Platform(x: 960.0,  y: 300.0, width: 80.0,  height: 20.0),   # top center right
+    Platform(x: 1100.0, y: 340.0, width: 100.0, height: 20.0),   # right crown
+    Platform(x: 1260.0, y: 400.0, width: 80.0,  height: 20.0),   # right lobe upper
+    Platform(x: 1400.0, y: 480.0, width: 100.0, height: 20.0),   # right lobe lower
+    Platform(x: 1540.0, y: 560.0, width: 160.0, height: 20.0),   # right base
+    Platform(x: 780.0,  y: 560.0, width: 140.0, height: 20.0),   # center bottom (heart point)
+    Platform(x: 780.0,  y: 420.0, width: 140.0, height: 20.0),   # center platform (inner)
+  ],
+  hazards: @[
+    Hazard(x: 160.0,  y: 570.0, width: 40.0,  height: 10.0),
+    Hazard(x: 440.0,  y: 570.0, width: 60.0,  height: 10.0),
+    Hazard(x: 740.0,  y: 570.0, width: 40.0,  height: 10.0),
+    Hazard(x: 920.0,  y: 570.0, width: 40.0,  height: 10.0),
+    Hazard(x: 1200.0, y: 570.0, width: 60.0,  height: 10.0),
+    Hazard(x: 1500.0, y: 570.0, width: 40.0,  height: 10.0),
+  ],
+  exits: @[
+    Exit(x: 820.0, y: 510.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 860.0, y: 510.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 800.0, y: 510.0, width: 40.0, height: 50.0, characterId: "bruno"),
+    Exit(x: 840.0, y: 510.0, width: 40.0, height: 50.0, characterId: "cara"),
+    Exit(x: 880.0, y: 510.0, width: 40.0, height: 50.0, characterId: "felix"),
+    Exit(x: 900.0, y: 510.0, width: 40.0, height: 50.0, characterId: "ivy"),
+  ],
+  buttons: @[
+    Button(x: 520.0,  y: 330.0, width: 40.0, height: 10.0, doorId: 1, requiresHeavy: false),
+    Button(x: 830.0,  y: 270.0, width: 40.0, height: 10.0, doorId: 2, requiresHeavy: false),
+    Button(x: 1120.0, y: 330.0, width: 40.0, height: 10.0, doorId: 3, requiresHeavy: true),
+  ],
+  doors: @[
+    Door(id: 1, x: 740.0,  y: 340.0, width: 20.0, height: 80.0, isOpen: false),
+    Door(id: 2, x: 850.0,  y: 420.0, width: 20.0, height: 80.0, isOpen: false),
+    Door(id: 3, x: 1360.0, y: 400.0, width: 20.0, height: 80.0, isOpen: false),
+  ],
+  starChallenge: StarChallenge(timeTarget: 140.0, secretX: 830.0, secretY: 255.0),
+  levelWidth: 1700.0,
+  levelHeight: 600.0,
+)
+
+const level29* = Level(
+  id: 29,
+  name: "Family",
+  narration: "They were family. Not because they were alike. Because they chose each other.",
+  characters: @["pip", "luca", "bruno", "cara", "felix", "ivy"],
+  platforms: @[
+    Platform(x: 0.0,    y: 560.0, width: 200.0, height: 20.0),   # start ground
+    Platform(x: 280.0,  y: 500.0, width: 80.0,  height: 20.0),   # step 1
+    Platform(x: 440.0,  y: 440.0, width: 100.0, height: 20.0),   # button platform 1
+    Platform(x: 620.0,  y: 560.0, width: 120.0, height: 20.0),   # after door 1
+    Platform(x: 820.0,  y: 480.0, width: 80.0,  height: 20.0),   # narrow step
+    Platform(x: 980.0,  y: 400.0, width: 20.0,  height: 180.0),  # wall-jump pillar left
+    Platform(x: 1080.0, y: 400.0, width: 20.0,  height: 180.0),  # wall-jump pillar right
+    Platform(x: 980.0,  y: 380.0, width: 120.0, height: 20.0),   # top of shaft
+    Platform(x: 1180.0, y: 560.0, width: 120.0, height: 20.0),   # after door 2
+    Platform(x: 1380.0, y: 480.0, width: 100.0, height: 20.0),   # button platform 3
+    Platform(x: 1560.0, y: 400.0, width: 80.0,  height: 20.0),   # high narrow
+    Platform(x: 1720.0, y: 560.0, width: 120.0, height: 20.0),   # after door 3
+    Platform(x: 1920.0, y: 500.0, width: 80.0,  height: 20.0),   # coyote step
+    Platform(x: 2080.0, y: 440.0, width: 100.0, height: 20.0),   # button platform 4
+    Platform(x: 2260.0, y: 560.0, width: 200.0, height: 20.0),   # exit ground
+    Platform(x: 2260.0, y: 380.0, width: 100.0, height: 20.0),   # high exit platform
+  ],
+  hazards: @[
+    Hazard(x: 200.0,  y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 360.0,  y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 540.0,  y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 740.0,  y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 900.0,  y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 1100.0, y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 1300.0, y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 1480.0, y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 1640.0, y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 1840.0, y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 2000.0, y: 570.0, width: 80.0,  height: 10.0),
+    Hazard(x: 2180.0, y: 570.0, width: 80.0,  height: 10.0),
+  ],
+  exits: @[
+    Exit(x: 2280.0, y: 510.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 2320.0, y: 510.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 2360.0, y: 510.0, width: 40.0, height: 50.0, characterId: "bruno"),
+    Exit(x: 2400.0, y: 510.0, width: 40.0, height: 50.0, characterId: "cara"),
+    Exit(x: 2300.0, y: 510.0, width: 40.0, height: 50.0, characterId: "felix"),
+    Exit(x: 2340.0, y: 510.0, width: 40.0, height: 50.0, characterId: "ivy"),
+  ],
+  buttons: @[
+    Button(x: 460.0,  y: 430.0, width: 40.0, height: 10.0, doorId: 1, requiresHeavy: true),
+    Button(x: 1010.0, y: 370.0, width: 40.0, height: 10.0, doorId: 2, requiresHeavy: false),
+    Button(x: 1400.0, y: 470.0, width: 40.0, height: 10.0, doorId: 3, requiresHeavy: false),
+    Button(x: 2100.0, y: 430.0, width: 40.0, height: 10.0, doorId: 4, requiresHeavy: false),
+    Button(x: 2280.0, y: 370.0, width: 40.0, height: 10.0, doorId: 5, requiresHeavy: false),
+  ],
+  doors: @[
+    Door(id: 1, x: 580.0,  y: 480.0, width: 20.0, height: 80.0, isOpen: false),
+    Door(id: 2, x: 1140.0, y: 480.0, width: 20.0, height: 80.0, isOpen: false),
+    Door(id: 3, x: 1680.0, y: 480.0, width: 20.0, height: 80.0, isOpen: false),
+    Door(id: 4, x: 2220.0, y: 480.0, width: 20.0, height: 80.0, isOpen: false),
+    Door(id: 5, x: 2440.0, y: 480.0, width: 20.0, height: 80.0, isOpen: false),
+  ],
+  starChallenge: StarChallenge(timeTarget: 170.0, secretX: 1030.0, secretY: 355.0),
+  levelWidth: 2460.0,
+  levelHeight: 600.0,
+)
+
+const level30* = Level(
+  id: 30,
+  name: "Together",
+  narration: "One exit. One family. Together. Because that's what family does.",
+  characters: @["pip", "luca", "bruno", "cara", "felix", "ivy"],
+  platforms: @[
+    Platform(x: 0.0,   y: 460.0, width: 200.0, height: 20.0),    # start ground
+    Platform(x: 260.0, y: 420.0, width: 100.0, height: 20.0),     # gentle step up
+    Platform(x: 420.0, y: 460.0, width: 160.0, height: 20.0),     # middle ground
+    Platform(x: 640.0, y: 420.0, width: 100.0, height: 20.0),     # gentle step
+    Platform(x: 800.0, y: 460.0, width: 300.0, height: 20.0),     # wide exit platform
+  ],
+  hazards: @[
+    Hazard(x: 200.0, y: 470.0, width: 60.0, height: 10.0),
+    Hazard(x: 580.0, y: 470.0, width: 60.0, height: 10.0),
+  ],
+  exits: @[
+    # ONE shared exit — all 6 characters at the same position
+    Exit(x: 900.0, y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 900.0, y: 410.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 900.0, y: 410.0, width: 40.0, height: 50.0, characterId: "bruno"),
+    Exit(x: 900.0, y: 410.0, width: 40.0, height: 50.0, characterId: "cara"),
+    Exit(x: 900.0, y: 410.0, width: 40.0, height: 50.0, characterId: "felix"),
+    Exit(x: 900.0, y: 410.0, width: 40.0, height: 50.0, characterId: "ivy"),
+  ],
+  buttons: @[],
+  doors: @[],
+  starChallenge: StarChallenge(timeTarget: 60.0, secretX: 440.0, secretY: 435.0),
+  levelWidth: 1100.0,
+  levelHeight: 500.0,
+)
+
+const allLevels*: array[30, Level] = [level1, level2, level3, level4, level5, level6, level7, level8, level9, level10, level11, level12, level13, level14, level15, level16, level17, level18, level19, level20, level21, level22, level23, level24, level25, level26, level27, level28, level29, level30]
