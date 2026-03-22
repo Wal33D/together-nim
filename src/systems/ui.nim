@@ -40,6 +40,8 @@ var
   menuButtonScale: float = 0.0
   menuEntrancePlaying: bool = false
   menuTweenPool: TweenPool = initTweenPool()
+  btnScale: float = 1.0
+  btnHovered: bool = false
 
 proc triggerMenuEntrance() =
   ## Reset animation state and start the menu entrance sequence.
@@ -48,6 +50,8 @@ proc triggerMenuEntrance() =
     menuCardOffsets[i] = 200.0
     menuCardHoverAlphas[i] = 0.0
   menuButtonScale = 0.0
+  btnScale = 1.0
+  btnHovered = false
   menuEntrancePlaying = true
   menuTweenPool = initTweenPool()
 
@@ -469,15 +473,44 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
                         maxWidth = heroLineWidth, maxHeight = layout.px(36), wordWrap = true)
 
   let
-    scaledBtnW = buttonSize.x * menuButtonScale.float32
-    scaledBtnH = buttonSize.y * menuButtonScale.float32
+    combinedScale = menuButtonScale.float32 * btnScale.float32
+    scaledBtnW = buttonSize.x * combinedScale
+    scaledBtnH = buttonSize.y * combinedScale
     scaledBtnPos = vec2(
       buttonPos.x + (buttonSize.x - scaledBtnW) * 0.5,
       buttonPos.y + (buttonSize.y - scaledBtnH) * 0.5)
     scaledBtnSize = vec2(scaledBtnW, scaledBtnH)
+
+  # Idle glow halo.
+  if combinedScale > 0.0:
+    let
+      glowA = uint8(20 + 15 * sin(game.elapsedTime * PI))
+      glowColor = rgbx(108, 168, 232, glowA)
+      glowExpand = layout.px(8)
+      glowPos = vec2(scaledBtnPos.x - glowExpand, scaledBtnPos.y - glowExpand)
+      glowSize = vec2(scaledBtnW + glowExpand * 2, scaledBtnH + glowExpand * 2)
+    sk.drawRect(glowPos, glowSize, glowColor)
+
+  # Hover detection for tween triggers.
+  let btnRect = rect(scaledBtnPos.x, scaledBtnPos.y, scaledBtnW, scaledBtnH)
+  let hoveredNow = window.mousePos.vec2.overlaps(btnRect) and combinedScale > 0.0
+  if hoveredNow and not btnHovered:
+    discard startTween(menuTweenPool, btnScale, 1.05, 0.15, easeIn,
+      proc(v: float) = btnScale = v)
+  elif not hoveredNow and btnHovered:
+    discard startTween(menuTweenPool, btnScale, 1.0, 0.15, easeOutCubic,
+      proc(v: float) = btnScale = v)
+  btnHovered = hoveredNow
+
   if button(ui, sk, window, layout, scaledBtnPos, scaledBtnSize,
             "Begin Journey", "Press Enter or click to start.",
             "begin_journey", rgbx(108, 168, 232, 255), selected = true):
+    # Press bounce: squash down then elastic bounce back.
+    discard startTween(menuTweenPool, 1.0, 0.95, 0.05, linear,
+      proc(v: float) = btnScale = v,
+      onComplete = proc() =
+        discard startTween(menuTweenPool, 0.95, 1.0, 0.2, easeOutElastic,
+          proc(v: float) = btnScale = v))
     game.startGame()
     playSound(soundCharSwitch)
 
