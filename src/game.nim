@@ -10,7 +10,7 @@ import
   systems/camera,
   systems/atmosphere,
   systems/audio
-import systems/particles
+import systems/[particles, animation]
 
 type
   GameState* = enum
@@ -59,6 +59,12 @@ const
     ActDef(number: 4, name: "Separation",      startLevel: 19, endLevel: 24, themeColor: CARA_COLOR),
     ActDef(number: 5, name: "Transcendence",   startLevel: 25, endLevel: 30, themeColor: IVY_COLOR),
   ]
+
+var
+  transitionAlpha*: float = 0.0
+  transitionColor*: Color = (r: 255'u8, g: 255'u8, b: 255'u8)
+  transitionPool: TweenPool = initTweenPool()
+  transitionPendingNextLevel: bool = false
 
 
 proc jumpGraceWindow(c: Character): float =
@@ -386,8 +392,7 @@ proc handleKey*(game: var Game, button: windy.Button) =
     if button == KeyEscape:
       game.state = playing
   of levelWin:
-    if button == KeyEnter:
-      game.nextLevel()
+    discard
   of credits:
     if button == KeyEnter:
       game.state = menu
@@ -424,6 +429,12 @@ proc update*(game: var Game, dt: float) =
         for i in 0..<game.characters.len:
           if game.characters[i].id == deadId:
             game.emitDeathParticles(i)
+            transitionColor = (r: 255'u8, g: 255'u8, b: 255'u8)
+            discard startTween(transitionPool, 0.0, 1.0, 0.05, linear,
+                proc(v: float) = transitionAlpha = v,
+                proc() =
+                  discard startTween(transitionPool, 1.0, 0.0, 0.05, linear,
+                      proc(v: float) = transitionAlpha = v))
             game.characters[i].x = game.characters[i].spawnX
             game.characters[i].y = game.characters[i].spawnY
             game.characters[i].vx = 0
@@ -486,6 +497,11 @@ proc update*(game: var Game, dt: float) =
           game.state = levelWin
           game.levelWinTimer = 0.0
           playSound(soundLevelComplete)
+          transitionColor = CHAR_COLORS[
+              game.characters[game.activeCharacterIndex].colorIndex mod 6]
+          discard startTween(transitionPool, 0.0, 1.0, 0.4, easeOutCubic,
+              proc(v: float) = transitionAlpha = v,
+              proc() = transitionPendingNextLevel = true)
 
       # Update camera to follow active character
       if game.activeCharacterIndex < game.characters.len:
@@ -532,5 +548,12 @@ proc update*(game: var Game, dt: float) =
 
   else:
     discard
+
+  updateTweens(transitionPool, scaledDt)
+  if transitionPendingNextLevel:
+    transitionPendingNextLevel = false
+    game.nextLevel()
+    discard startTween(transitionPool, 1.0, 0.0, 0.4, easeOutCubic,
+        proc(v: float) = transitionAlpha = v)
 
   game.particles.update(scaledDt)
