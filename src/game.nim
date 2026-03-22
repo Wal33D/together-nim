@@ -55,6 +55,7 @@ type
     finaleActive*: bool
     screenBrightness*: float
     screenEffects*: ScreenEffects
+    prevFullGroup*: bool
     levelStartTime*: float
     deathOccurred*: bool
     secretCollected*: bool
@@ -895,6 +896,12 @@ proc update*(game: var Game, dt: float) =
           fullGroup = false
       if activeCount < 2:
         fullGroup = false
+
+      # Rising-edge detection: flash when full group forms for the first time.
+      if fullGroup and not game.prevFullGroup:
+        let warmAmber: Color = (r: 255'u8, g: 220'u8, b: 130'u8)
+        game.screenEffects.triggerFlash(warmAmber, 0.35)
+      game.prevFullGroup = fullGroup
 
       let lerpRate = min(1.0, 4.0 * scaledDt)
       for i in 0..<n:
