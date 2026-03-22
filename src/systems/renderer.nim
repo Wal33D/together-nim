@@ -10,6 +10,7 @@ import "atmosphere"
 import "backdrop"
 import "particles"
 import "render_backend"
+import "screenEffects"
 import math
 
 const
@@ -450,6 +451,15 @@ proc renderGame*(renderer: RendererPtr, game: Game) =
     renderCredits(renderer, game)
   of actTitle:
     renderActTitle(renderer, game)
+
+  # Screen flash overlay — fades out over time.
+  if game.screenEffects.flashActive():
+    let fc = game.screenEffects.flashColor
+    let alpha = uint8(game.screenEffects.flashAlpha() * 255.0)
+    renderer.setDrawBlendMode(BlendMode_Blend)
+    renderer.setDrawColor(fc.r, fc.g, fc.b, alpha)
+    drawFilledRect(renderer, 0, 0, DEFAULT_WIDTH.cint, DEFAULT_HEIGHT.cint)
+    renderer.setDrawBlendMode(BlendMode_None)
 
   if transitionAlpha > 0.001:
     renderer.setDrawBlendMode(BlendMode_Blend)

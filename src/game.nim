@@ -11,7 +11,7 @@ import
   systems/camera,
   systems/atmosphere,
   systems/audio
-import systems/[particles, animation]
+import systems/[particles, animation, screenEffects]
 
 type
   GameState* = enum
@@ -53,6 +53,7 @@ type
     finaleTimer*: float
     finaleActive*: bool
     screenBrightness*: float
+    screenEffects*: ScreenEffects
 
 const
   ProximityNear* = 80.0
@@ -371,6 +372,7 @@ proc newGame*(): Game =
     menuTime: 0.0,
     elapsedTime: 0.0,
     menuAtmosphere: newAtmosphere(allColors),
+    screenEffects: initScreenEffects(),
   )
 
 proc actForLevel*(levelIdx: int): int =
@@ -558,7 +560,7 @@ proc update*(game: var Game, dt: float) =
             game.characters[i].vy = 0
             game.emitDeathParticles(i)
             game.accentDeath(i)
-            game.camera.triggerShake(4.0, 0.3)
+            game.screenEffects.triggerShake(game.camera, 4.0, 0.3)
             playSound(soundDeath)
 
       # Landing sound
@@ -653,6 +655,8 @@ proc update*(game: var Game, dt: float) =
         if allAtExit and game.state == playing and not game.finaleActive:
           game.emitCompletionParticles()
           game.accentLevelComplete()
+          let flashWhite: Color = (r: 255'u8, g: 255'u8, b: 255'u8)
+          game.screenEffects.triggerFlash(flashWhite, 0.5)
           game.state = levelWin
           game.levelWinTimer = 0.0
           playSound(soundLevelComplete)
@@ -789,4 +793,5 @@ proc update*(game: var Game, dt: float) =
         proc(v: float) = transitionAlpha = v)
 
   game.camera.updateShake(scaledDt)
+  game.screenEffects.updateScreenEffects(scaledDt)
   game.particles.update(scaledDt)
