@@ -231,6 +231,25 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
     drawOutlineRect(renderer, e.x.cint - camX, e.y.cint - camY, e.width.cint, e.height.cint)
   renderer.setDrawBlendMode(BlendMode_None)
 
+  # Secret collectible orb — glowing yellow-white circle with alpha pulse
+  block:
+    let sc = level.starChallenge
+    if (sc.secretX != 0.0 or sc.secretY != 0.0) and not game.secretCollected:
+      let pulse = 0.6 + 0.4 * sin(game.elapsedTime * PI * 2.0)
+      let orbX = sc.secretX.cint - camX
+      let orbY = sc.secretY.cint - camY
+      renderer.setDrawBlendMode(BlendMode_Blend)
+      # Outer glow
+      renderer.setDrawColor(255, 245, 157, uint8(30.0 * pulse))
+      drawFilledRect(renderer, orbX - 12, orbY - 12, 24, 24)
+      # Inner glow
+      renderer.setDrawColor(255, 250, 200, uint8(80.0 * pulse))
+      drawFilledRect(renderer, orbX - 8, orbY - 8, 16, 16)
+      # Core
+      renderer.setDrawColor(255, 255, 230, uint8(180.0 * pulse))
+      drawFilledRect(renderer, orbX - 4, orbY - 4, 8, 8)
+      renderer.setDrawBlendMode(BlendMode_None)
+
   renderParticleSystem(renderer, game.particles, camX, camY)
 
   # Connection lines between nearby characters
@@ -475,6 +494,29 @@ proc renderLevelWin(renderer: RendererPtr, game: Game) =
   renderer.setDrawColor(0, 0, 0, 120)
   drawFilledRect(renderer, 0, 0, DEFAULT_WIDTH.cint, DEFAULT_HEIGHT.cint)
   renderer.setDrawBlendMode(BlendMode_None)
+
+  # Star HUD — show earned/missed stars centered at top
+  if game.levelWinTimer < 1.0:
+    let starSize = 16
+    let starGap = 8
+    let totalW = 3 * starSize + 2 * starGap
+    let startX = (DEFAULT_WIDTH - totalW) div 2
+    let starY = 40
+    renderer.setDrawBlendMode(BlendMode_Blend)
+    for i in 0 ..< 3:
+      let sx = startX + i * (starSize + starGap)
+      if game.earnedStars[i]:
+        # Filled gold star
+        renderer.setDrawColor(255, 215, 0, 220)
+        drawFilledRect(renderer, sx.cint, starY.cint, starSize.cint, starSize.cint)
+        renderer.setDrawColor(255, 245, 157, 120)
+        drawFilledRect(renderer, (sx - 2).cint, (starY - 2).cint,
+                       (starSize + 4).cint, (starSize + 4).cint)
+      else:
+        # Gray outline
+        renderer.setDrawColor(120, 120, 120, 160)
+        drawOutlineRect(renderer, sx.cint, starY.cint, starSize.cint, starSize.cint)
+    renderer.setDrawBlendMode(BlendMode_None)
 
 proc renderCredits(renderer: RendererPtr, game: Game) =
   renderMenu(renderer, game)

@@ -18,6 +18,7 @@ const level1* = Level(
   ],
   buttons: @[],
   doors: @[],
+  starChallenge: StarChallenge(timeTarget: 30.0, secretX: 370.0, secretY: 395.0),
   levelWidth: 800.0,
   levelHeight: 500.0,
 )
@@ -40,6 +41,7 @@ const level2* = Level(
   ],
   buttons: @[],
   doors: @[],
+  starChallenge: StarChallenge(timeTarget: 35.0, secretX: 270.0, secretY: 395.0),
   levelWidth: 800.0,
   levelHeight: 500.0,
 )
@@ -62,6 +64,7 @@ const level3* = Level(
   ],
   buttons: @[],
   doors: @[],
+  starChallenge: StarChallenge(timeTarget: 40.0, secretX: 750.0, secretY: 135.0),
   levelWidth: 800.0,
   levelHeight: 500.0,
 )
@@ -89,6 +92,7 @@ const level4* = Level(
   ],
   buttons: @[],
   doors: @[],
+  starChallenge: StarChallenge(timeTarget: 45.0, secretX: 400.0, secretY: 175.0),
   levelWidth: 1000.0,
   levelHeight: 500.0,
 )
@@ -123,6 +127,7 @@ const level5* = Level(
                    pingPong: true, forward: true,
                    x: 410.0, y: 460.0, prevX: 410.0, prevY: 460.0),
   ],
+  starChallenge: StarChallenge(timeTarget: 50.0, secretX: 880.0, secretY: 355.0),
   levelWidth: 1200.0,
   levelHeight: 500.0,
 )
@@ -148,6 +153,7 @@ const level6* = Level(
   doors: @[
     Door(id: 1, x: 370.0, y: 380.0, width: 20.0, height: 80.0, isOpen: false),
   ],
+  starChallenge: StarChallenge(timeTarget: 55.0, secretX: 380.0, secretY: 355.0),
   levelWidth: 800.0,
   levelHeight: 500.0,
 )
@@ -180,6 +186,7 @@ const level7* = Level(
                    pingPong: true, forward: true,
                    x: 850.0, y: 460.0, prevX: 850.0, prevY: 460.0),
   ],
+  starChallenge: StarChallenge(timeTarget: 60.0, secretX: 240.0, secretY: 315.0),
   levelWidth: 1000.0,
   levelHeight: 500.0,
 )
@@ -208,6 +215,7 @@ const level8* = Level(
   doors: @[
     Door(id: 1, x: 550.0, y: 360.0, width: 20.0, height: 80.0, isOpen: false),
   ],
+  starChallenge: StarChallenge(timeTarget: 65.0, secretX: 380.0, secretY: 175.0),
   levelWidth: 800.0,
   levelHeight: 500.0,
 )
@@ -251,6 +259,7 @@ const level9* = Level(
                    pingPong: true, forward: true,
                    x: 300.0, y: 460.0, prevX: 300.0, prevY: 460.0),
   ],
+  starChallenge: StarChallenge(timeTarget: 70.0, secretX: 530.0, secretY: 275.0),
   levelWidth: 1000.0,
   levelHeight: 500.0,
 )
@@ -281,6 +290,7 @@ const level10* = Level(
   doors: @[
     Door(id: 1, x: 440.0, y: 300.0, width: 20.0, height: 60.0, isOpen: false),
   ],
+  starChallenge: StarChallenge(timeTarget: 75.0, secretX: 140.0, secretY: 295.0),
   levelWidth: 800.0,
   levelHeight: 500.0,
 )
@@ -308,6 +318,7 @@ const level11* = Level(
   ],
   buttons: @[],
   doors: @[],
+  starChallenge: StarChallenge(timeTarget: 80.0, secretX: 570.0, secretY: 435.0),
   levelWidth: 1000.0,
   levelHeight: 500.0,
 )
@@ -334,6 +345,7 @@ const level12* = Level(
   ],
   buttons: @[],
   doors: @[],
+  starChallenge: StarChallenge(timeTarget: 85.0, secretX: 170.0, secretY: 75.0),
   levelWidth: 800.0,
   levelHeight: 500.0,
 )
@@ -362,6 +374,7 @@ const level13* = Level(
   ],
   buttons: @[],
   doors: @[],
+  starChallenge: StarChallenge(timeTarget: 90.0, secretX: 540.0, secretY: 315.0),
   levelWidth: 960.0,
   levelHeight: 500.0,
 )
@@ -397,6 +410,7 @@ const level14* = Level(
   doors: @[
     Door(id: 1, x: 540.0, y: 380.0, width: 20.0, height: 80.0, isOpen: false),
   ],
+  starChallenge: StarChallenge(timeTarget: 95.0, secretX: 130.0, secretY: 295.0),
   levelWidth: 840.0,
   levelHeight: 500.0,
 )
@@ -429,6 +443,7 @@ const level15* = Level(
   ],
   buttons: @[],
   doors: @[],
+  starChallenge: StarChallenge(timeTarget: 100.0, secretX: 750.0, secretY: 935.0),
   levelWidth: 800.0,
   levelHeight: 1000.0,
 )
@@ -449,6 +464,7 @@ const level16* = Level(
   ],
   buttons: @[],
   doors: @[],
+  starChallenge: StarChallenge(timeTarget: 105.0, secretX: 660.0, secretY: 235.0),
   levelWidth: 800.0,
   levelHeight: 500.0,
 )
@@ -471,6 +487,7 @@ const level17* = Level(
   ],
   buttons: @[],
   doors: @[],
+  starChallenge: StarChallenge(timeTarget: 110.0, secretX: 480.0, secretY: 195.0),
   levelWidth: 1000.0,
   levelHeight: 500.0,
 )
@@ -502,6 +519,7 @@ const level18* = Level(
                    pingPong: true, forward: true,
                    x: 250.0, y: 460.0, prevX: 250.0, prevY: 460.0),
   ],
+  starChallenge: StarChallenge(timeTarget: 115.0, secretX: 730.0, secretY: 195.0),
   levelWidth: 1200.0,
   levelHeight: 500.0,
 )

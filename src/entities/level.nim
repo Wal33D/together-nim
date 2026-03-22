@@ -42,6 +42,10 @@ type
     x*, y*: float             # current rendered position
     prevX*, prevY*: float     # previous frame position (for rider displacement)
 
+  StarChallenge* = object
+    timeTarget*: float        # seconds to beat for time star (0 = no time challenge)
+    secretX*, secretY*: float # position of secret collectible (0,0 = none)
+
   Level* = object
     id*: int
     name*: string
@@ -53,6 +57,7 @@ type
     buttons*: seq[Button]
     doors*: seq[Door]
     movingPlatforms*: seq[MovingPlatform]
+    starChallenge*: StarChallenge
     levelWidth*: float
     levelHeight*: float
 

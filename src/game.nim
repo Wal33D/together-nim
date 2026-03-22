@@ -1,7 +1,7 @@
 ## Game state machine, update logic, and level management
 
 import
-  std/math,
+  std/[math, tables],
   windy,
   constants,
   entities/character,
@@ -10,7 +10,8 @@ import
   systems/physics,
   systems/camera,
   systems/atmosphere,
-  systems/audio
+  systems/audio,
+  systems/save
 import systems/[particles, animation, screenEffects]
 
 type
@@ -54,6 +55,10 @@ type
     finaleActive*: bool
     screenBrightness*: float
     screenEffects*: ScreenEffects
+    levelStartTime*: float
+    deathOccurred*: bool
+    secretCollected*: bool
+    earnedStars*: array[3, bool]
 
 const
   ProximityNear* = 80.0
@@ -343,6 +348,10 @@ proc loadLevel*(game: var Game, idx: int) =
   game.screenBrightness = 0.0
   game.levelWinTimer = 0.0
   game.jumpPressed = false
+  game.levelStartTime = game.elapsedTime
+  game.deathOccurred = false
+  game.secretCollected = false
+  game.earnedStars = [false, false, false]
   # Set tonal palette for this act.
   let levelNum = idx + 1
   for ai, act in Acts:
@@ -560,6 +569,7 @@ proc update*(game: var Game, dt: float) =
             game.characters[i].deathFlashCount = 0
             game.characters[i].vx = 0
             game.characters[i].vy = 0
+            game.deathOccurred = true
             game.emitDeathParticles(i)
             game.accentDeath(i)
             game.screenEffects.triggerShake(game.camera, 4.0, 0.3)
@@ -628,6 +638,25 @@ proc update*(game: var Game, dt: float) =
               break
           game.particles.emitExitBeckoning(e.x, e.y, e.width, e.height, exitColor)
 
+      # Secret collectible overlap check
+      if not game.secretCollected:
+        let sc = level.starChallenge
+        if sc.secretX != 0.0 or sc.secretY != 0.0:
+          let secretRadius = 8.0
+          for c in game.characters:
+            if c.isDying() or c.isRespawning():
+              continue
+            let cx = c.x + float(c.width) * 0.5
+            let cy = c.y + float(c.height) * 0.5
+            let dx = cx - sc.secretX
+            let dy = cy - sc.secretY
+            if dx * dx + dy * dy < (secretRadius + float(c.width) * 0.5) * (secretRadius + float(c.width) * 0.5):
+              game.secretCollected = true
+              game.particles.emitExit(sc.secretX, sc.secretY,
+                  (r: 255'u8, g: 245'u8, b: 157'u8))
+              playSound(soundExitReached)
+              break
+
       # Buffered jump: if the active character landed this frame, spend the buffer immediately.
       if game.activeCharacterIndex < game.characters.len and
          game.characters[game.activeCharacterIndex].jumpBufferTimer > 0.0 and
@@ -663,6 +692,23 @@ proc update*(game: var Game, dt: float) =
           game.screenEffects.triggerFlash(flashWhite, 0.5)
           game.state = levelWin
           game.levelWinTimer = 0.0
+          # Award stars
+          let elapsed = game.elapsedTime - game.levelStartTime
+          let sc = level.starChallenge
+          if sc.timeTarget > 0.0 and elapsed <= sc.timeTarget:
+            game.earnedStars[0] = true
+          if not game.deathOccurred:
+            game.earnedStars[1] = true
+          if game.secretCollected:
+            game.earnedStars[2] = true
+          # Save star progress
+          var saveData = loadSave()
+          if not saveData.levelStars.hasKey(game.currentLevel):
+            saveData.levelStars[game.currentLevel] = [false, false, false]
+          for si in 0 ..< 3:
+            if game.earnedStars[si]:
+              saveData.levelStars[game.currentLevel][si] = true
+          writeSave(saveData)
           playSound(soundLevelComplete)
           playSound(soundTransitionSwoosh)
           transitionColor = CHAR_COLORS[

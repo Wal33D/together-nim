@@ -1,27 +1,26 @@
-## Save/load system for Together — persists user preferences
+## Save/load system for Together — persists user preferences and star progress
 
-import json
-import os
-import "../constants"
+import
+  std/[os, tables],
+  jsony,
+  "../constants"
 
 type
   SaveData* = object
     fullscreen*: bool
+    levelStars*: Table[int, array[3, bool]]
 
 proc defaultSave*(): SaveData =
-  SaveData(fullscreen: false)
+  SaveData(fullscreen: false, levelStars: initTable[int, array[3, bool]]())
 
 proc writeSave*(data: SaveData) =
-  let j = %* {"fullscreen": data.fullscreen}
-  writeFile(SAVE_FILE, $j)
+  writeFile(SAVE_FILE, data.toJson())
 
 proc loadSave*(): SaveData =
   result = defaultSave()
   if fileExists(SAVE_FILE):
     try:
-      let j = parseJson(readFile(SAVE_FILE))
-      if j.hasKey("fullscreen"):
-        result.fullscreen = j["fullscreen"].getBool()
+      result = readFile(SAVE_FILE).fromJson(SaveData)
     except CatchableError:
       discard
 
