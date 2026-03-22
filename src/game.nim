@@ -391,6 +391,7 @@ proc handleKey*(game: var Game, button: windy.Button) =
   of paused:
     if button == KeyEscape:
       game.state = playing
+      playSound(soundMenuBack)
   of levelWin:
     discard
   of credits:
@@ -505,6 +506,7 @@ proc update*(game: var Game, dt: float) =
           game.state = levelWin
           game.levelWinTimer = 0.0
           playSound(soundLevelComplete)
+          playSound(soundTransitionSwoosh)
           transitionColor = CHAR_COLORS[
               game.characters[game.activeCharacterIndex].colorIndex mod 6]
           discard startTween(transitionPool, 0.0, 1.0, 0.4, easeOutCubic,

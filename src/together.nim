@@ -28,10 +28,8 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer) =
   of menu:
     if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA]:
       ui.cycleMenuSpotlight(-1)
-      playSound(soundCharSwitch)
     if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD]:
       ui.cycleMenuSpotlight(1)
-      playSound(soundCharSwitch)
     if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
       ui.activateFocusedAction(game)
     return
@@ -39,11 +37,9 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer) =
     if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA] or
        window.buttonPressed[KeyUp] or window.buttonPressed[KeyW]:
       ui.cyclePauseSelection(-1)
-      playSound(soundCharSwitch)
     if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD] or
        window.buttonPressed[KeyDown] or window.buttonPressed[KeyS]:
       ui.cyclePauseSelection(1)
-      playSound(soundCharSwitch)
     if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
       ui.activateFocusedAction(game)
     if window.buttonPressed[KeyEscape]:
