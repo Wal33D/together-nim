@@ -429,3 +429,83 @@ suite "character proximity":
     cLonely.idleTimer = 0.785
 
     check abs(cLonely.idleSway()) > abs(cHappy.idleSway())
+
+suite "proximity glow":
+  proc makePlayingGame(chars: seq[Character]): Game =
+    ## Helper: game in playing state with a flat platform.
+    result = newGame()
+    result.state = playing
+    result.currentLevel = 0
+    result.currentLevelState = Level(
+      platforms: @[Platform(x: 0.0, y: 400.0, width: 800.0, height: 20.0)],
+      hazards: @[], exits: @[], buttons: @[], doors: @[],
+      movingPlatforms: @[],
+      levelWidth: 800.0, levelHeight: 500.0,
+    )
+    result.characters = chars
+    result.activeCharacterIndex = 0
+
+  test "alone character glow lerps toward dim, small target":
+    # Two characters 300px apart — well beyond ProximityGlowRange (120px).
+    var pip = newCharacter("pip")
+    pip.x = 50.0; pip.y = 370.0; pip.grounded = true
+    var luca = newCharacter("luca")
+    luca.x = 400.0; luca.y = 370.0; luca.grounded = true
+    var g = makePlayingGame(@[pip, luca])
+
+    # Advance enough frames for lerp to converge (4.0/s rate, ~60 frames)
+    for _ in 0..120:
+      g.update(FIXED_TIMESTEP)
+
+    # Both characters should approach the lonely targets
+    check g.characters[0].glowScale < 1.5   # converging toward 1.2
+    check g.characters[0].glowAlpha < 0.12  # converging toward 0.08
+    check g.characters[1].glowScale < 1.5
+    check g.characters[1].glowAlpha < 0.12
+
+  test "close characters glow larger and brighter":
+    # Two characters 30px apart — well within ProximityGlowRange (120px).
+    var pip = newCharacter("pip")
+    pip.x = 50.0; pip.y = 370.0; pip.grounded = true
+    var luca = newCharacter("luca")
+    luca.x = 80.0; luca.y = 370.0; luca.grounded = true
+    var g = makePlayingGame(@[pip, luca])
+
+    for _ in 0..120:
+      g.update(FIXED_TIMESTEP)
+
+    # t ≈ 0.75 at 30px → targetScale ≈ 2.55, targetAlpha ≈ 0.225
+    check g.characters[0].glowScale > 2.0
+    check g.characters[0].glowAlpha > 0.18
+    check g.characters[1].glowScale > 2.0
+
+  test "full group activates gold mix":
+    # Three characters all within 50px of each other.
+    var pip = newCharacter("pip")
+    pip.x = 50.0; pip.y = 370.0; pip.grounded = true
+    var luca = newCharacter("luca")
+    luca.x = 90.0; luca.y = 370.0; luca.grounded = true
+    var bruno = newCharacter("bruno")
+    bruno.x = 130.0; bruno.y = 370.0; bruno.grounded = true
+    var g = makePlayingGame(@[pip, luca, bruno])
+
+    for _ in 0..120:
+      g.update(FIXED_TIMESTEP)
+
+    # Full group — gold mix should be rising toward 0.15
+    check g.characters[0].glowGoldMix > 0.05
+    check g.characters[1].glowGoldMix > 0.05
+    check g.characters[2].glowGoldMix > 0.05
+
+  test "separated characters have no gold mix":
+    var pip = newCharacter("pip")
+    pip.x = 50.0; pip.y = 370.0; pip.grounded = true; pip.glowGoldMix = 0.1
+    var luca = newCharacter("luca")
+    luca.x = 600.0; luca.y = 370.0; luca.grounded = true; luca.glowGoldMix = 0.1
+    var g = makePlayingGame(@[pip, luca])
+
+    for _ in 0..120:
+      g.update(FIXED_TIMESTEP)
+
+    check g.characters[0].glowGoldMix < 0.02
+    check g.characters[1].glowGoldMix < 0.02
