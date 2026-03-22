@@ -220,11 +220,8 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
       renderer.setDrawBlendMode(BlendMode_None)
 
 proc renderPaused(renderer: RendererPtr, game: Game) =
+  ## Render gameplay only; the animated dim overlay is handled by the Silky UI layer.
   renderGameplay(renderer, game)
-  renderer.setDrawBlendMode(BlendMode_Blend)
-  renderer.setDrawColor(0, 0, 0, 150)
-  drawFilledRect(renderer, 0, 0, DEFAULT_WIDTH.cint, DEFAULT_HEIGHT.cint)
-  renderer.setDrawBlendMode(BlendMode_None)
 
 proc renderLevelWin(renderer: RendererPtr, game: Game) =
   renderGameplay(renderer, game)

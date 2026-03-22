@@ -42,6 +42,14 @@ var
   menuTweenPool: TweenPool = initTweenPool()
   btnScale: float = 1.0
   btnHovered: bool = false
+  pauseOverlayAlpha: float = 0.0
+  pauseModalY: float = 0.0
+  pauseBtn1Alpha: float = 0.0
+  pauseBtn2Alpha: float = 0.0
+  pauseBtn3Alpha: float = 0.0
+  pauseTweenPool: TweenPool = initTweenPool()
+  wasPaused: bool = false
+  pauseExiting: bool = false
 
 proc triggerMenuEntrance() =
   ## Reset animation state and start the menu entrance sequence.
@@ -68,6 +76,39 @@ proc triggerMenuEntrance() =
   discard startTween(menuTweenPool, 0.0, 1.0, 0.3, easeOutElastic,
     proc(v: float) = menuButtonScale = v,
     delay = buttonDelay)
+
+proc triggerPauseEnter() =
+  ## Start the pause menu entrance animation.
+  pauseTweenPool = initTweenPool()
+  pauseExiting = false
+  pauseOverlayAlpha = 0.0
+  pauseModalY = -300.0
+  pauseBtn1Alpha = 0.0
+  pauseBtn2Alpha = 0.0
+  pauseBtn3Alpha = 0.0
+  discard startTween(pauseTweenPool, 0.0, 0.6, 0.2, easeOutCubic,
+    proc(v: float) = pauseOverlayAlpha = v)
+  discard startTween(pauseTweenPool, -300.0, 0.0, 0.25, easeOutCubic,
+    proc(v: float) = pauseModalY = v)
+  discard startTween(pauseTweenPool, 0.0, 1.0, 0.15, easeOutCubic,
+    proc(v: float) = pauseBtn1Alpha = v, delay = 0.05)
+  discard startTween(pauseTweenPool, 0.0, 1.0, 0.15, easeOutCubic,
+    proc(v: float) = pauseBtn2Alpha = v, delay = 0.10)
+  discard startTween(pauseTweenPool, 0.0, 1.0, 0.15, easeOutCubic,
+    proc(v: float) = pauseBtn3Alpha = v, delay = 0.15)
+
+proc triggerPauseExit() =
+  ## Start the pause menu exit animation.
+  pauseTweenPool = initTweenPool()
+  pauseExiting = true
+  pauseBtn1Alpha = 0.0
+  pauseBtn2Alpha = 0.0
+  pauseBtn3Alpha = 0.0
+  discard startTween(pauseTweenPool, pauseOverlayAlpha, 0.0, 0.15, linear,
+    proc(v: float) = pauseOverlayAlpha = v)
+  discard startTween(pauseTweenPool, pauseModalY, -300.0, 0.15, easeIn,
+    proc(v: float) = pauseModalY = v,
+    onComplete = proc() = pauseExiting = false)
 
 proc newUiRenderer*(): UiRenderer =
   let atlas = ensureUiAtlas()
@@ -527,7 +568,9 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
 proc renderPauseModal(ui: UiRenderer, sk: Silky, window: Window,
                       layout: UiLayout, game: var Game) =
   let
-    pos = layout.p(DEFAULT_WIDTH.float32 * 0.5 - 168, DEFAULT_HEIGHT.float32 * 0.5 - 96)
+    baseX = DEFAULT_WIDTH.float32 * 0.5 - 168
+    baseY = DEFAULT_HEIGHT.float32 * 0.5 - 96 + pauseModalY
+    pos = layout.p(baseX, baseY)
     size = layout.sz(336, 192)
     levelText =
       if game.currentLevel >= 0 and game.currentLevel < allLevels.len:
@@ -535,11 +578,11 @@ proc renderPauseModal(ui: UiRenderer, sk: Silky, window: Window,
         &"Level {level.id}: {level.name}"
       else:
         "Current room"
-    resumePos = layout.p(DEFAULT_WIDTH.float32 * 0.5 - 168 + 34, DEFAULT_HEIGHT.float32 * 0.5 - 96 + 102)
+    resumePos = layout.p(baseX + 34, baseY + 102)
     resumeSize = layout.sz(336 - 68, 54)
-    restartPos = layout.p(DEFAULT_WIDTH.float32 * 0.5 - 168 + 34, DEFAULT_HEIGHT.float32 * 0.5 - 96 + 166)
+    restartPos = layout.p(baseX + 34, baseY + 166)
     restartSize = layout.sz(118, 42)
-    menuPos = layout.p(DEFAULT_WIDTH.float32 * 0.5 - 168 + 34 + 130, DEFAULT_HEIGHT.float32 * 0.5 - 96 + 166)
+    menuPos = layout.p(baseX + 34 + 130, baseY + 166)
     menuSize = layout.sz(336 - 68 - 130, 42)
   sk.drawSoftPanel(pos, size, rgbx(10, 12, 18, 232), rgbx(90, 104, 132, 180))
   discard sk.drawUiText(layout, "Display", "Paused", pos + layout.d(34, 24), rgbx(248, 249, 251, 255))
@@ -547,33 +590,35 @@ proc renderPauseModal(ui: UiRenderer, sk: Silky, window: Window,
   discard sk.drawUiText(layout, "Small", "Esc resumes • arrows change focus • Enter confirms",
                         pos + layout.d(36, 90), rgbx(134, 146, 166, 255))
 
-  if window.mousePos.vec2.overlaps(rect(resumePos.x, resumePos.y, resumeSize.x, resumeSize.y)):
-    ui.pauseSelection = 0
-  if window.mousePos.vec2.overlaps(rect(restartPos.x, restartPos.y, restartSize.x, restartSize.y)):
-    ui.pauseSelection = 1
-  if window.mousePos.vec2.overlaps(rect(menuPos.x, menuPos.y, menuSize.x, menuSize.y)):
-    ui.pauseSelection = 2
+  if pauseBtn1Alpha > 0.01:
+    if window.mousePos.vec2.overlaps(rect(resumePos.x, resumePos.y, resumeSize.x, resumeSize.y)):
+      ui.pauseSelection = 0
+    if button(ui, sk, window, layout, resumePos, resumeSize,
+              "Resume", "Back to the current level.",
+              "pause_resume", muted(rgbx(108, 168, 232, 255), uint8(pauseBtn1Alpha * 255)),
+              selected = ui.pauseSelection == 0):
+      ui.pauseSelection = 0
+      ui.activateFocusedAction(game)
 
-  if button(ui, sk, window, layout, resumePos, resumeSize,
-            "Resume", "Back to the current level.",
-            "pause_resume", rgbx(108, 168, 232, 255),
-            selected = ui.pauseSelection == 0):
-    ui.pauseSelection = 0
-    ui.activateFocusedAction(game)
+  if pauseBtn2Alpha > 0.01:
+    if window.mousePos.vec2.overlaps(rect(restartPos.x, restartPos.y, restartSize.x, restartSize.y)):
+      ui.pauseSelection = 1
+    if button(ui, sk, window, layout, restartPos, restartSize,
+              "Restart", "",
+              "pause_restart", muted(rgbx(232, 178, 92, 255), uint8(pauseBtn2Alpha * 255)),
+              selected = ui.pauseSelection == 1):
+      ui.pauseSelection = 1
+      ui.activateFocusedAction(game)
 
-  if button(ui, sk, window, layout, restartPos, restartSize,
-            "Restart", "",
-            "pause_restart", rgbx(232, 178, 92, 255),
-            selected = ui.pauseSelection == 1):
-    ui.pauseSelection = 1
-    ui.activateFocusedAction(game)
-
-  if button(ui, sk, window, layout, menuPos, menuSize,
-            "Menu", "",
-            "pause_menu", rgbx(178, 112, 128, 255),
-            selected = ui.pauseSelection == 2):
-    ui.pauseSelection = 2
-    ui.activateFocusedAction(game)
+  if pauseBtn3Alpha > 0.01:
+    if window.mousePos.vec2.overlaps(rect(menuPos.x, menuPos.y, menuSize.x, menuSize.y)):
+      ui.pauseSelection = 2
+    if button(ui, sk, window, layout, menuPos, menuSize,
+              "Menu", "",
+              "pause_menu", muted(rgbx(178, 112, 128, 255), uint8(pauseBtn3Alpha * 255)),
+              selected = ui.pauseSelection == 2):
+      ui.pauseSelection = 2
+      ui.activateFocusedAction(game)
 
 proc renderWinModal(ui: UiRenderer, sk: Silky, window: Window,
                     layout: UiLayout, game: var Game) =
@@ -624,6 +669,17 @@ proc renderOverlay*(ui: UiRenderer, window: Window, game: var Game,
   if inMenu:
     updateTweens(menuTweenPool, game.deltaTime)
 
+  # Detect pause state transitions.
+  let nowPaused = game.state == paused
+  if nowPaused and not wasPaused:
+    triggerPauseEnter()
+  elif not nowPaused and wasPaused:
+    triggerPauseExit()
+  wasPaused = nowPaused
+
+  if nowPaused or pauseExiting:
+    updateTweens(pauseTweenPool, game.deltaTime)
+
   case game.state
   of menu:
     sk.drawRect(vec2(0, 0), vec2(frameSize.x.float32, frameSize.y.float32),
@@ -632,8 +688,9 @@ proc renderOverlay*(ui: UiRenderer, window: Window, game: var Game,
   of playing:
     sk.renderGameplayHud(layout, game)
   of paused:
+    let overlayA = uint8(pauseOverlayAlpha * 255)
     sk.drawRect(vec2(0, 0), vec2(frameSize.x.float32, frameSize.y.float32),
-                rgbx(0, 0, 0, 136))
+                rgbx(0, 0, 0, overlayA))
     ui.renderPauseModal(sk, window, layout, game)
   of levelWin:
     sk.renderGameplayHud(layout, game)
@@ -646,6 +703,13 @@ proc renderOverlay*(ui: UiRenderer, window: Window, game: var Game,
     ui.renderCredits(sk, window, layout, game)
   of actTitle:
     discard
+
+  # Render pause exit animation overlay even after state leaves paused.
+  if pauseExiting and not nowPaused and pauseOverlayAlpha > 0.001:
+    let overlayA = uint8(pauseOverlayAlpha * 255)
+    sk.drawRect(vec2(0, 0), vec2(frameSize.x.float32, frameSize.y.float32),
+                rgbx(0, 0, 0, overlayA))
+    ui.renderPauseModal(sk, window, layout, game)
 
   sk.renderBuildStamp(layout)
   sk.endUi()
