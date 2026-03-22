@@ -117,6 +117,7 @@ proc applySettingsChange(window: Window, game: var Game,
       round(preset.w.float32 * scale).int32,
       round(preset.h.float32 * scale).int32
     )
+    saveWindowPreset(game.settingsWindowPreset)
     playSound(soundMenuHover)
   of 1:
     # Fullscreen toggle.
@@ -245,8 +246,20 @@ proc main() =
     wglSwapIntervalEXTProc = cast[typeof(wglSwapIntervalEXTProc)](
       wglGetProcAddress("wglSwapIntervalEXT"))
 
-  if not savedData.fullscreen:
+  # Apply saved window preset (clamped to valid range).
+  let presetIdx = clamp(savedData.windowPreset, 0, WindowPresets.len - 1)
+  let preset = WindowPresets[presetIdx]
+  let startScale = max(window.contentScale, 1.0'f32)
+  let presetSize = ivec2(
+    round(preset.w.float32 * startScale).int32,
+    round(preset.h.float32 * startScale).int32
+  )
+  # Fall back to default if preset exceeds screen.
+  let screen = window.primaryScreenSize()
+  if presetSize.x > screen.x or presetSize.y > screen.y:
     window.size = window.defaultWindowSize()
+  else:
+    window.size = presetSize
 
   if savedData.fullscreen:
     window.setFullscreen(windowMode, true)
@@ -264,18 +277,7 @@ proc main() =
   g.fullscreenEnabled = savedData.fullscreen
   g.vsyncEnabled = savedData.vsync
 
-  # Find the window preset index closest to the current window size.
-  block:
-    let scale = max(window.contentScale, 1.0'f32)
-    let curW = round(DEFAULT_WINDOW_WIDTH.float32 * scale).int
-    var bestIdx = 1
-    var bestDiff = high(int)
-    for i, preset in WindowPresets:
-      let diff = abs(preset.w - curW)
-      if diff < bestDiff:
-        bestDiff = diff
-        bestIdx = i
-    g.settingsWindowPreset = bestIdx
+  g.settingsWindowPreset = presetIdx
 
   var accumulator = 0.0
   var lastTime = epochTime()

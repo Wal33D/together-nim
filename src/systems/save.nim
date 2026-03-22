@@ -9,10 +9,12 @@ type
   SaveData* = object
     fullscreen*: bool
     vsync*: bool
+    windowPreset*: int
     levelStars*: Table[int, array[3, bool]]
 
 proc defaultSave*(): SaveData =
-  SaveData(fullscreen: false, vsync: true, levelStars: initTable[int, array[3, bool]]())
+  SaveData(fullscreen: false, vsync: true, windowPreset: 1,
+           levelStars: initTable[int, array[3, bool]]())
 
 proc writeSave*(data: SaveData) =
   writeFile(SAVE_FILE, data.toJson())
@@ -22,6 +24,13 @@ proc loadSave*(): SaveData =
   if fileExists(SAVE_FILE):
     try:
       result = readFile(SAVE_FILE).fromJson(SaveData)
+      # Migration: old saves lack windowPreset and vsync fields.
+      # jsony deserializes missing int as 0 and missing bool as false.
+      # If windowPreset == 0 and fullscreen == false, treat as a migrated
+      # old save and apply sane defaults for the new fields.
+      if result.windowPreset == 0 and not result.fullscreen:
+        result.windowPreset = 1
+        result.vsync = true
     except CatchableError:
       discard
 
@@ -33,4 +42,9 @@ proc saveFullscreen*(fullscreen: bool) =
 proc saveVsync*(vsync: bool) =
   var data = loadSave()
   data.vsync = vsync
+  writeSave(data)
+
+proc saveWindowPreset*(preset: int) =
+  var data = loadSave()
+  data.windowPreset = preset
   writeSave(data)
