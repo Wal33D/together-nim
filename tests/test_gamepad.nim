@@ -1,8 +1,9 @@
-import unittest
-import "../src/game"
-import "../src/constants"
-import "../src/systems/gamepad"
-import "../src/entities/character"
+import
+  unittest,
+  game,
+  constants,
+  systems/gamepad,
+  entities/character
 
 proc skipActTitle(game: var Game) =
   if game.state == actTitle:
