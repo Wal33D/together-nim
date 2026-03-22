@@ -4,6 +4,7 @@ nimcache/
 *.dll
 *.so
 *.dylib
+src/systems/renderer
 .scriptorium/
 .claude/
 queue/

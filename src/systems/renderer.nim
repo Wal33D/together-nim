@@ -12,6 +12,7 @@ import "particles"
 import "render_backend"
 import "screenEffects"
 import math
+import chroma
 
 const
   ActTints: array[5, (uint8, uint8, uint8, uint8)] = [
@@ -324,6 +325,42 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
     # Skip decorations during death/respawn animation
     if ch.isDying() or ch.isRespawning():
       continue
+
+    # Face — eyes and mouth
+    block:
+      let eyeRadius = max(2, ch.width div 12)
+      let eyeSize = (eyeRadius * 2).cint
+      let pupilSize = (eyeSize - 2).cint
+      let centerX = dx.float + dw.float / 2.0
+      let eyeSep = dw.float / 3.0
+      let eyeY = (dy.float + dh.float * 0.25).cint
+      let leftEyeX = (centerX - eyeSep / 2.0 - eyeRadius.float).cint
+      let rightEyeX = (centerX + eyeSep / 2.0 - eyeRadius.float).cint
+      let pupilOffset: cint = if ch.facingRight: 1 else: -1
+
+      # White sclera
+      renderer.setDrawColor(255, 255, 255, 255)
+      drawFilledRect(renderer, leftEyeX, eyeY, eyeSize, eyeSize)
+      drawFilledRect(renderer, rightEyeX, eyeY, eyeSize, eyeSize)
+
+      # Dark pupils
+      renderer.setDrawColor(30, 30, 30, 255)
+      drawFilledRect(renderer, leftEyeX + 1 + pupilOffset, eyeY + 1, pupilSize, pupilSize)
+      drawFilledRect(renderer, rightEyeX + 1 + pupilOffset, eyeY + 1, pupilSize, pupilSize)
+
+      # Mouth
+      let mouthW = (dw.float * 0.25).cint
+      let mouthX = (centerX - mouthW.float / 2.0).cint
+      let mouthY = (dy.float + dh.float * 0.72).cint
+      let chromaColor = chroma.color(chColor.r.float32 / 255.0,
+                                      chColor.g.float32 / 255.0,
+                                      chColor.b.float32 / 255.0)
+      let darkened = chroma.darken(chromaColor, 0.3)
+      let mouthR = uint8(darkened.r * 255.0)
+      let mouthG = uint8(darkened.g * 255.0)
+      let mouthB = uint8(darkened.b * 255.0)
+      renderer.setDrawColor(mouthR, mouthG, mouthB, 255)
+      drawFilledRect(renderer, mouthX, mouthY, mouthW, 2)
 
     # Dim overlay on previously active character during switch
     if i == game.prevActiveCharacterIndex and game.charDimTimer > 0.0:
