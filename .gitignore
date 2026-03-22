@@ -5,6 +5,7 @@ nimcache/
 *.so
 *.dylib
 src/systems/renderer
+src/systems/levels
 .scriptorium/
 .claude/
 queue/
