@@ -68,14 +68,14 @@ proc initTweenPool*(): TweenPool =
 
 proc startTween*(pool: var TweenPool, startVal, endVal, duration: float,
     easing: proc(t: float): float, onUpdate: proc(val: float),
-    onComplete: proc() = nil): int =
+    onComplete: proc() = nil, delay: float = 0.0): int =
   ## Start a new tween. Returns tween index, or -1 if pool is full.
   # Reuse a completed/cancelled slot first.
   for i in 0..<pool.count:
     if not pool.tweens[i].active:
       pool.tweens[i] = Tween(
         startVal: startVal, endVal: endVal, duration: duration,
-        elapsed: 0.0, easing: easing, onUpdate: onUpdate,
+        elapsed: -delay, easing: easing, onUpdate: onUpdate,
         onComplete: onComplete, active: true)
       return i
   # No inactive slots — expand if room remains.
@@ -84,7 +84,7 @@ proc startTween*(pool: var TweenPool, startVal, endVal, duration: float,
   let idx = pool.count
   pool.tweens[idx] = Tween(
     startVal: startVal, endVal: endVal, duration: duration,
-    elapsed: 0.0, easing: easing, onUpdate: onUpdate,
+    elapsed: -delay, easing: easing, onUpdate: onUpdate,
     onComplete: onComplete, active: true)
   pool.count += 1
   idx
