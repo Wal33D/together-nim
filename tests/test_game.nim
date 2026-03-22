@@ -1,3 +1,4 @@
+import std/math
 import unittest
 import windy
 import "../src/game"
@@ -322,3 +323,109 @@ suite "act title cards":
     check Acts[4].name == "Transcendence"
     check Acts[4].startLevel == 25
     check Acts[4].endLevel == 30
+
+suite "character proximity":
+  test "nearby characters build contentment":
+    var g = newGame()
+    g.state = playing
+    g.currentLevel = 0
+    g.currentLevelState = Level(
+      platforms: @[Platform(x: 0.0, y: 200.0, width: 400.0, height: 20.0)],
+      hazards: @[],
+      exits: @[],
+      buttons: @[],
+      doors: @[],
+      movingPlatforms: @[],
+      levelWidth: 800.0,
+      levelHeight: 500.0,
+    )
+    g.characters = @[newCharacter("pip"), newCharacter("luca")]
+    g.activeCharacterIndex = 0
+    # Place within 80px of each other
+    g.characters[0].x = 100.0
+    g.characters[0].y = 170.0
+    g.characters[0].grounded = true
+    g.characters[1].x = 140.0
+    g.characters[1].y = 170.0
+    g.characters[1].grounded = true
+
+    for _ in 0 .. 10:
+      g.update(FIXED_TIMESTEP)
+
+    check g.characters[0].contentment > 0.0
+    check g.characters[1].contentment > 0.0
+
+  test "far apart characters decay contentment faster":
+    var g = newGame()
+    g.state = playing
+    g.currentLevel = 0
+    g.currentLevelState = Level(
+      platforms: @[Platform(x: 0.0, y: 200.0, width: 800.0, height: 20.0)],
+      hazards: @[],
+      exits: @[],
+      buttons: @[],
+      doors: @[],
+      movingPlatforms: @[],
+      levelWidth: 800.0,
+      levelHeight: 500.0,
+    )
+    g.characters = @[newCharacter("pip"), newCharacter("luca")]
+    g.activeCharacterIndex = 0
+    # Place far apart (>200px)
+    g.characters[0].x = 50.0
+    g.characters[0].y = 170.0
+    g.characters[0].grounded = true
+    g.characters[0].contentment = 0.8
+    g.characters[1].x = 500.0
+    g.characters[1].y = 170.0
+    g.characters[1].grounded = true
+    g.characters[1].contentment = 0.8
+
+    for _ in 0 .. 10:
+      g.update(FIXED_TIMESTEP)
+
+    # Far apart decays at 0.8/s — should have dropped noticeably
+    check g.characters[0].contentment < 0.8
+    check g.characters[1].contentment < 0.8
+
+  test "anticipation builds when moving toward another character":
+    var g = newGame()
+    g.state = playing
+    g.currentLevel = 0
+    g.currentLevelState = Level(
+      platforms: @[Platform(x: 0.0, y: 200.0, width: 800.0, height: 20.0)],
+      hazards: @[],
+      exits: @[],
+      buttons: @[],
+      doors: @[],
+      movingPlatforms: @[],
+      levelWidth: 800.0,
+      levelHeight: 500.0,
+    )
+    g.characters = @[newCharacter("pip"), newCharacter("luca")]
+    g.activeCharacterIndex = 0
+    g.characters[0].x = 50.0
+    g.characters[0].y = 170.0
+    g.characters[0].grounded = true
+    g.characters[0].vx = 100.0  # Moving right toward luca
+    g.characters[1].x = 300.0
+    g.characters[1].y = 170.0
+    g.characters[1].grounded = true
+
+    for _ in 0 .. 5:
+      g.update(FIXED_TIMESTEP)
+
+    check g.characters[0].anticipation > 0.0
+
+  test "lonely character sways more":
+    var cHappy = newCharacter("pip")
+    cHappy.contentment = 1.0
+    cHappy.grounded = true
+    cHappy.idleTimer = 0.785  # near sin peak
+
+    var cLonely = newCharacter("pip")
+    cLonely.contentment = 0.0
+    cLonely.grounded = true
+    cLonely.idleTimer = 0.785
+
+    check abs(cLonely.idleSway()) > abs(cHappy.idleSway())

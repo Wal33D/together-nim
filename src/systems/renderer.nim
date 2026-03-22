@@ -124,6 +124,17 @@ proc renderAmbientOverlay(renderer: RendererPtr, levelIdx: int) =
 
   renderer.setDrawBlendMode(BlendMode_None)
 
+proc renderConnectionLine(renderer: RendererPtr, x1, y1, x2, y2: float,
+                           color: constants.Color, alpha: uint8) =
+  ## Draw a faint dotted line between two points.
+  let steps = 8
+  for s in 0 .. steps:
+    let t = float(s) / float(steps)
+    let px = x1 + (x2 - x1) * t
+    let py = y1 + (y2 - y1) * t
+    renderer.setDrawColor(color.r, color.g, color.b, alpha)
+    drawFilledRect(renderer, px - 1.0, py - 1.0, 2.0, 2.0)
+
 proc renderGameplay(renderer: RendererPtr, game: Game) =
   if game.currentLevel < 0 or game.currentLevel >= allLevels.len:
     return
@@ -220,6 +231,35 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
 
   renderParticleSystem(renderer, game.particles, camX, camY)
 
+  # Connection lines between nearby characters
+  if game.characters.len > 1:
+    renderer.setDrawBlendMode(BlendMode_Blend)
+    for i in 0 ..< game.characters.len:
+      if game.characters[i].isDying() or game.characters[i].isRespawning():
+        continue
+      for j in (i + 1) ..< game.characters.len:
+        if game.characters[j].isDying() or game.characters[j].isRespawning():
+          continue
+        let ci = game.characters[i]
+        let cj = game.characters[j]
+        let cx1 = ci.x + float(ci.width) * 0.5
+        let cy1 = ci.y + float(ci.height) * 0.5
+        let cx2 = cj.x + float(cj.width) * 0.5
+        let cy2 = cj.y + float(cj.height) * 0.5
+        let dx = cx2 - cx1
+        let dy = cy2 - cy1
+        let dist = sqrt(dx * dx + dy * dy)
+        if dist < ProximityNear:
+          let avgColor: constants.Color = (
+            r: uint8((int(ci.color.r) + int(cj.color.r)) div 2),
+            g: uint8((int(ci.color.g) + int(cj.color.g)) div 2),
+            b: uint8((int(ci.color.b) + int(cj.color.b)) div 2),
+          )
+          let fade = uint8(15.0 + 5.0 * (1.0 - dist / ProximityNear))
+          renderConnectionLine(renderer, cx1 - float(camX), cy1 - float(camY),
+                               cx2 - float(camX), cy2 - float(camY), avgColor, fade)
+    renderer.setDrawBlendMode(BlendMode_None)
+
   # Characters
   for i, ch in game.characters:
     # During death: flash red 3 times then hide; during respawn: fade in
@@ -238,6 +278,7 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
     let baseAlpha = ch.respawnAlpha()
 
     # Colored halo glow behind character (3-pass soft falloff with additive blending)
+    # Shift glow color toward warm yellow based on contentment
     if not ch.isDying():
       block:
         let glowScale = if isActive: 2.7 else: 1.8
@@ -247,6 +288,10 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
         let charH = dh.float
         let charX = dx.float
         let charY = dy.float
+        let warmth = ch.contentment * 0.3
+        let glowR = uint8(float(chColor.r) * (1.0 - warmth) + 255.0 * warmth)
+        let glowG = uint8(float(chColor.g) * (1.0 - warmth) + 230.0 * warmth)
+        let glowB = uint8(max(0.0, float(chColor.b) * (1.0 - warmth) + 80.0 * warmth))
         renderer.setDrawBlendMode(BlendMode_Add)
         for pass in 0 .. 2:
           let t = float(2 - pass) / 2.0  # 1.0, 0.5, 0.0
@@ -256,7 +301,7 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
           let gh = charH * scale
           let gx = charX - (gw - charW) / 2.0
           let gy = charY - (gh - charH) / 2.0
-          renderer.setDrawColor(chColor.r, chColor.g, chColor.b, uint8(alpha * 255.0))
+          renderer.setDrawColor(glowR, glowG, glowB, uint8(alpha * 255.0))
           drawFilledRect(renderer, gx, gy, gw, gh)
         renderer.setDrawBlendMode(BlendMode_None)
 
