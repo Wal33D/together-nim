@@ -142,6 +142,10 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer,
       ui.cycleMenuSpotlight(-1)
     if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD]:
       ui.cycleMenuSpotlight(1)
+    if window.buttonPressed[KeyUp] or window.buttonPressed[KeyW]:
+      cycleMenuCursor(-1)
+    if window.buttonPressed[KeyDown] or window.buttonPressed[KeyS]:
+      cycleMenuCursor(1)
     if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
       ui.activateFocusedAction(game)
     if window.buttonPressed[KeyEscape]:

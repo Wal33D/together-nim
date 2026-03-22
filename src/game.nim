@@ -504,6 +504,16 @@ proc startGame*(game: var Game) =
     game.state = playing
     game.loadLevel(0)
 
+proc continueGame*(game: var Game) =
+  ## Resume from the furthest completed level.
+  let resumeLevel = min(savedContinueLevel(), allLevels.len - 1)
+  game.triggeredMoments = {}
+  if isFirstLevelOfAct(resumeLevel):
+    game.showActTitle(resumeLevel)
+  else:
+    game.state = playing
+    game.loadLevel(resumeLevel)
+
 proc restartLevel*(game: var Game) =
   game.loadLevel(game.currentLevel)
 

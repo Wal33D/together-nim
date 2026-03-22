@@ -14,6 +14,7 @@ import "../entities/character"
 import "animation"
 import "audio"
 import "levels"
+import "save"
 import "ui_assets"
 
 type
@@ -39,6 +40,9 @@ var
   menuCardHoverAlphas: array[6, float]
   menuButtonScale: float = 0.0
   menuEntrancePlaying: bool = false
+  menuCursor: int = 0
+  menuBtnAlphas: array[4, float]
+  menuHasSave: bool = false
   menuTweenPool: TweenPool = initTweenPool()
   btnScale: float = 1.0
   btnHovered: bool = false
@@ -83,6 +87,10 @@ proc triggerMenuEntrance() =
   btnHovered = false
   menuEntrancePlaying = true
   menuTweenPool = initTweenPool()
+  menuCursor = 0
+  menuHasSave = hasSaveProgress()
+  for i in 0..<4:
+    menuBtnAlphas[i] = 0.0
 
   discard startTween(menuTweenPool, 0.0, 1.0, 0.4, easeOutCubic,
     proc(v: float) = menuTitleAlpha = v)
@@ -94,9 +102,11 @@ proc triggerMenuEntrance() =
       delay = float(idx) * 0.08)
 
   let buttonDelay = 5.0 * 0.08 + 0.5 + 0.2
-  discard startTween(menuTweenPool, 0.0, 1.0, 0.3, easeOutElastic,
-    proc(v: float) = menuButtonScale = v,
-    delay = buttonDelay)
+  for i in 0..<4:
+    let idx = i
+    discard startTween(menuTweenPool, 0.0, 1.0, 0.25, easeOutCubic,
+      proc(v: float) = menuBtnAlphas[idx] = v,
+      delay = buttonDelay + float(idx) * 0.06)
 
 proc triggerPauseEnter() =
   ## Start the pause menu entrance animation.
@@ -222,6 +232,14 @@ proc cycleMenuSpotlight*(ui: UiRenderer, delta: int) =
   if ui.menuSpotlight != prev:
     playSound(soundMenuHover)
 
+proc cycleMenuCursor*(delta: int) =
+  ## Move the main menu cursor up or down among the 4 buttons.
+  const count = 4
+  let prev = menuCursor
+  menuCursor = (menuCursor + delta + count * 4) mod count
+  if menuCursor != prev:
+    playSound(soundMenuHover)
+
 proc cyclePauseSelection*(ui: UiRenderer, delta: int) =
   const count = 4
   let prev = ui.pauseSelection
@@ -240,8 +258,15 @@ proc cycleSettingsCursor*(game: var Game, delta: int) =
 proc activateFocusedAction*(ui: UiRenderer, game: var Game) =
   case game.state
   of menu:
-    game.startGame()
     playSound(soundMenuSelect)
+    case menuCursor
+    of 0: game.startGame()
+    of 1:
+      if menuHasSave:
+        game.continueGame()
+    of 2: game.openSettings()
+    of 3: game.state = credits
+    else: discard
   of paused:
     playSound(soundMenuSelect)
     case ui.pauseSelection
@@ -658,47 +683,68 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
                         rgbx(220, 226, 236, 255),
                         maxWidth = heroLineWidth, maxHeight = layout.px(36), wordWrap = true)
 
+  # 4-button vertical menu below hero panel.
+  const
+    MenuLabels = ["New Game", "Continue", "Settings", "Credits"]
+    MenuAccents: array[4, ColorRGBX] = [
+      rgbx(108, 168, 232, 255),
+      rgbx(232, 184, 88, 255),
+      rgbx(160, 160, 180, 255),
+      rgbx(140, 152, 172, 255),
+    ]
   let
-    combinedScale = menuButtonScale.float32 * btnScale.float32
-    scaledBtnW = buttonSize.x * combinedScale
-    scaledBtnH = buttonSize.y * combinedScale
-    scaledBtnPos = vec2(
-      buttonPos.x + (buttonSize.x - scaledBtnW) * 0.5,
-      buttonPos.y + (buttonSize.y - scaledBtnH) * 0.5)
-    scaledBtnSize = vec2(scaledBtnW, scaledBtnH)
+    menuBtnW = 240.0'f32
+    menuBtnH = 42.0'f32
+    menuBtnGap = 8.0'f32
+    menuColumnX = DEFAULT_WIDTH.float32 * 0.5 - menuBtnW * 0.5
+    menuColumnY = 320.0'f32
 
-  # Idle glow halo.
-  if combinedScale > 0.0:
+  for i in 0..<4:
+    let alpha = menuBtnAlphas[i]
+    if alpha < 0.01:
+      continue
     let
-      glowA = uint8(20 + 15 * sin(game.elapsedTime * PI))
-      glowColor = rgbx(108, 168, 232, glowA)
-      glowExpand = layout.px(8)
-      glowPos = vec2(scaledBtnPos.x - glowExpand, scaledBtnPos.y - glowExpand)
-      glowSize = vec2(scaledBtnW + glowExpand * 2, scaledBtnH + glowExpand * 2)
-    sk.drawRect(glowPos, glowSize, glowColor)
+      bx = menuColumnX
+      by = menuColumnY + i.float32 * (menuBtnH + menuBtnGap)
+      pos = layout.p(bx, by)
+      size = layout.sz(menuBtnW, menuBtnH)
+      focused = menuCursor == i
+      dimmed = i == 1 and not menuHasSave
+      accent = MenuAccents[i]
+      textAlpha = uint8(alpha * (if dimmed: 100.0 else: 255.0))
+      accentMuted = rgbx(accent.r, accent.g, accent.b, textAlpha)
+      fill = if focused and not dimmed: rgbx(28, 34, 44, uint8(alpha * 244.0))
+             else: rgbx(20, 24, 32, uint8(alpha * 200.0))
+      edgeAlpha = uint8(alpha * (if focused and not dimmed: 255.0 else: 140.0))
+      edge = rgbx(accent.r, accent.g, accent.b, edgeAlpha)
+      btnRect = rect(pos.x, pos.y, size.x, size.y)
+      hovered = window.mousePos.vec2.overlaps(btnRect)
 
-  # Hover detection for tween triggers.
-  let btnRect = rect(scaledBtnPos.x, scaledBtnPos.y, scaledBtnW, scaledBtnH)
-  let hoveredNow = window.mousePos.vec2.overlaps(btnRect) and combinedScale > 0.0
-  if hoveredNow and not btnHovered:
-    discard startTween(menuTweenPool, btnScale, 1.05, 0.15, easeIn,
-      proc(v: float) = btnScale = v)
-  elif not hoveredNow and btnHovered:
-    discard startTween(menuTweenPool, btnScale, 1.0, 0.15, easeOutCubic,
-      proc(v: float) = btnScale = v)
-  btnHovered = hoveredNow
+    if hovered and not dimmed:
+      menuCursor = i
 
-  if button(ui, sk, window, layout, scaledBtnPos, scaledBtnSize,
-            "Begin Journey", "Press Enter or click to start.",
-            "begin_journey", rgbx(108, 168, 232, 255), selected = true):
-    # Press bounce: squash down then elastic bounce back.
-    discard startTween(menuTweenPool, 1.0, 0.95, 0.05, linear,
-      proc(v: float) = btnScale = v,
-      onComplete = proc() =
-        discard startTween(menuTweenPool, 0.95, 1.0, 0.2, easeOutElastic,
-          proc(v: float) = btnScale = v))
-    game.startGame()
-    playSound(soundMenuSelect)
+    sk.drawSoftPanel(pos, size, fill, edge)
+
+    let labelColor = if dimmed: rgbx(120, 130, 148, textAlpha)
+                     elif focused: rgbx(244, 247, 250, textAlpha)
+                     else: rgbx(200, 208, 222, textAlpha)
+    drawCenteredText(sk, layout, "Body", MenuLabels[i], layout.centerX,
+                     pos.y + layout.px(10), labelColor)
+
+    # Continue progress indicator.
+    if i == 1 and menuHasSave and alpha > 0.5:
+      let
+        contLevel = savedContinueLevel()
+        actIdx = actForLevel(min(contLevel, 29))
+        actName = if actIdx >= 0 and actIdx < Acts.len: Acts[actIdx].name else: ""
+        progressText = "Level " & $(contLevel + 1) & " — " & actName
+      drawCenteredText(sk, layout, "Small", progressText, layout.centerX,
+                       pos.y + size.y + layout.px(2),
+                       rgbx(156, 168, 188, uint8(alpha * 200.0)))
+
+    if hovered and not dimmed and window.buttonPressed[MouseLeft]:
+      menuCursor = i
+      ui.activateFocusedAction(game)
 
   sk.drawSoftPanel(ribbonPos, ribbonSize, rgbx(10, 12, 18, 110), rgbx(52, 62, 82, 120))
   for i in 0 ..< castNames.len:
@@ -707,24 +753,8 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
     renderCastCard(ui, sk, window, layout, tileX, tileY, i,
                    castNames[i], castGifts[i],
                    game.elapsedTime, game.deltaTime)
-  # Settings link at bottom-right.
-  let settingsLabel = "Settings"
-  let settingsTextSize = sk.uiTextSize(layout, "Small", settingsLabel)
-  let settingsLinkPos = vec2(layout.right - settingsTextSize.x - layout.px(20),
-                             layout.bottom - settingsTextSize.y - layout.px(18))
-  let settingsLinkRect = rect(settingsLinkPos.x - layout.px(6),
-                              settingsLinkPos.y - layout.px(4),
-                              settingsTextSize.x + layout.px(12),
-                              settingsTextSize.y + layout.px(8))
-  let settingsHovered = window.mousePos.vec2.overlaps(settingsLinkRect)
-  let settingsColor = if settingsHovered: rgbx(220, 226, 236, 255)
-                      else: rgbx(150, 160, 182, 255)
-  discard sk.drawUiText(layout, "Small", settingsLabel, settingsLinkPos, settingsColor)
-  if settingsHovered and window.buttonPressed[MouseLeft]:
-    game.openSettings()
-    playSound(soundMenuSelect)
 
-  drawCenteredText(sk, layout, "Small", "1-6 or arrow keys preview the cast • Enter begins",
+  drawCenteredText(sk, layout, "Small", "Up/Down selects • Enter confirms • 1-6 preview cast",
                    heroCenter, layout.bottom - layout.px(28), rgbx(122, 134, 152, 255))
 
 proc renderPauseModal(ui: UiRenderer, sk: Silky, window: Window,

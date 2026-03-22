@@ -48,3 +48,16 @@ proc saveWindowPreset*(preset: int) =
   var data = loadSave()
   data.windowPreset = preset
   writeSave(data)
+
+proc hasSaveProgress*(): bool =
+  ## Return true when the player has completed at least one level.
+  let data = loadSave()
+  data.levelStars.len > 0
+
+proc savedContinueLevel*(): int =
+  ## Return the level index to resume from (one past the furthest completed).
+  let data = loadSave()
+  result = 0
+  for level in data.levelStars.keys:
+    if level >= result:
+      result = level + 1
