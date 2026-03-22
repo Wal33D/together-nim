@@ -132,12 +132,12 @@ proc themeForScene(scene: BackdropScene): BackdropTheme =
     )
 
 proc levelBackdropScene*(levelId: int): BackdropScene =
-  case levelId
-  of 1..4: dawnMeadow
-  of 5..7: riverValley
-  of 8..10: stoneRuins
-  of 25..30: aetherPlane
-  else: nightSky
+  case actForLevel(levelId)
+  of 1: dawnMeadow
+  of 2: riverValley
+  of 3: stoneRuins
+  of 4: nightSky
+  else: aetherPlane   # Act 5 — Transcendence
 
 proc backdropThemeForLevel*(levelId: int): BackdropTheme =
   themeForScene(levelBackdropScene(levelId))

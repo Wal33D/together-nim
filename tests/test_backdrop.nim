@@ -2,23 +2,27 @@ import unittest
 import "../src/systems/backdrop"
 
 suite "backdrop scenes":
-  test "early levels use dawn meadow":
+  test "act 1 levels use dawn meadow":
     check levelBackdropScene(1) == dawnMeadow
-    check backdropThemeForLevel(4).scene == dawnMeadow
+    check levelBackdropScene(6) == dawnMeadow
+    check backdropThemeForLevel(3).scene == dawnMeadow
 
-  test "mid campaign uses river valley":
-    check levelBackdropScene(5) == riverValley
-    check backdropThemeForLevel(7).scene == riverValley
+  test "act 2 levels use river valley":
+    check levelBackdropScene(7) == riverValley
+    check levelBackdropScene(12) == riverValley
+    check backdropThemeForLevel(9).scene == riverValley
 
-  test "late campaign uses stone ruins":
-    check levelBackdropScene(8) == stoneRuins
-    check backdropThemeForLevel(10).scene == stoneRuins
+  test "act 3 levels use stone ruins":
+    check levelBackdropScene(13) == stoneRuins
+    check levelBackdropScene(18) == stoneRuins
+    check backdropThemeForLevel(15).scene == stoneRuins
 
-  test "final act uses night sky":
-    check levelBackdropScene(11) == nightSky
-    check backdropThemeForLevel(12).scene == nightSky
+  test "act 4 levels use night sky":
+    check levelBackdropScene(19) == nightSky
+    check levelBackdropScene(24) == nightSky
+    check backdropThemeForLevel(21).scene == nightSky
 
-  test "act 5 uses aether plane":
+  test "act 5 levels use aether plane":
     check levelBackdropScene(25) == aetherPlane
     check levelBackdropScene(30) == aetherPlane
-    check backdropThemeForLevel(25).scene == aetherPlane
+    check backdropThemeForLevel(27).scene == aetherPlane
