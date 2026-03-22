@@ -173,11 +173,26 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
     let dw = ch.drawWidth().cint
     let dh = ch.drawHeight().cint
 
-    # Selection glow behind active character
-    if isActive:
-      renderer.setDrawBlendMode(BlendMode_Blend)
-      renderer.setDrawColor(chColor.r, chColor.g, chColor.b, 30)
-      drawFilledRect(renderer, dx - 6, dy - 6, dw + 12, dh + 12)
+    # Colored halo glow behind character (3-pass soft falloff with additive blending)
+    block:
+      let glowScale = if isActive: 2.7 else: 1.8
+      let glowAlpha = if isActive: 0.25 else: 0.15
+      let pulse = glowAlpha + 0.05 * sin(game.elapsedTime * PI * 2.0 / 3.0)
+      let charW = dw.float
+      let charH = dh.float
+      let charX = dx.float
+      let charY = dy.float
+      renderer.setDrawBlendMode(BlendMode_Add)
+      for pass in 0 .. 2:
+        let t = float(2 - pass) / 2.0  # 1.0, 0.5, 0.0
+        let scale = 1.0 + (glowScale - 1.0) * (0.4 + 0.6 * t)
+        let alpha = pulse * (0.3 + 0.35 * t)
+        let gw = charW * scale
+        let gh = charH * scale
+        let gx = charX - (gw - charW) / 2.0
+        let gy = charY - (gh - charH) / 2.0
+        renderer.setDrawColor(chColor.r, chColor.g, chColor.b, uint8(alpha * 255.0))
+        drawFilledRect(renderer, gx, gy, gw, gh)
       renderer.setDrawBlendMode(BlendMode_None)
 
     # Character body
