@@ -66,6 +66,16 @@ type
     baseFreqs*: array[3, float]
     name*: string
 
+# Frequency ratios relative to palette root for per-character oscillators.
+const CharFreqRatios*: array[6, float] = [
+  4.0,   # Pip: two octaves up — bright, curious
+  2.5,   # Luca: major tenth above root — dreamy
+  0.5,   # Bruno: one octave below — grounding
+  3.75,  # Cara: major seventh × 2 — nimble
+  2.25,  # Felix: major ninth — patient
+  3.36,  # Ivy: major sixth × 2 — graceful
+]
+
 const ActPalettes*: array[5, TonalPalette] = [
   TonalPalette(baseFreqs: [261.6, 329.6, 392.0], name: "C major"),      # Act 1
   TonalPalette(baseFreqs: [349.2, 440.0, 523.3], name: "F major"),      # Act 2
