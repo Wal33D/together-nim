@@ -452,6 +452,19 @@ proc update*(game: var Game, dt: float) =
           game.emitExitParticles(i)
           playSound(soundExitReached)
 
+      # Wall-slide sparks for Cara
+      for i in 0..<game.characters.len:
+        var c = game.characters[i]
+        # wallSliding requires: airborne, touching wall, holding input toward wall
+        c.wallSliding = c.wallTouching and not c.grounded and (
+          (c.wallTouchDir == -1 and game.rightHeld) or
+          (c.wallTouchDir == 1 and game.leftHeld))
+        if c.wallSliding:
+          let wallOnRight = c.wallTouchDir == -1
+          let sparkX = if wallOnRight: c.x + float(c.width) else: c.x
+          game.particles.emitWallSpark(sparkX, c.y, float(c.height), wallOnRight)
+        game.characters[i] = c
+
       # Buffered jump: if the active character landed this frame, spend the buffer immediately.
       if game.activeCharacterIndex < game.characters.len and
          game.characters[game.activeCharacterIndex].jumpBufferTimer > 0.0 and
