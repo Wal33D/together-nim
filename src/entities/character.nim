@@ -45,6 +45,8 @@ type
     ridingCharacterId*: int       # index of character being stood on; -1 = none
     proximityLean*: float          # horizontal lean offset toward nearest character (0..2px)
     proximityTarget*: int          # index of nearest character within 80px (-1 if none)
+    celebrateTimer*: float         # counts down from stagger delay, then triggers bounce
+    celebrating*: bool             # true while bounce sequence is active
 
 proc newCharacter*(id: string): Character =
   result.x = 0.0
@@ -76,6 +78,8 @@ proc newCharacter*(id: string): Character =
   result.ridingCharacterId = -1
   result.proximityLean = 0.0
   result.proximityTarget = -1
+  result.celebrateTimer = 0.0
+  result.celebrating = false
   case id
   of "pip":
     result.width = 24; result.height = 24
@@ -130,6 +134,23 @@ proc updateAnimation*(c: var Character, dt: float) =
   # Squash/stretch recovery
   c.squashX += (1.0 - c.squashX) * 8.0 * dt
   c.squashY += (1.0 - c.squashY) * 8.0 * dt
+
+  # Celebration bounce
+  if c.celebrateTimer > 0.0 and not c.celebrating:
+    c.celebrateTimer -= dt
+    if c.celebrateTimer <= 0.0:
+      c.celebrating = true
+      c.squashY = 0.8
+      c.celebrateTimer = 0.08
+  elif c.celebrating and c.celebrateTimer > 0.0:
+    c.celebrateTimer -= dt
+    c.squashY = 0.8
+    if c.celebrateTimer <= 0.0:
+      c.squashY = 1.15
+  elif c.celebrating:
+    if abs(c.squashY - 1.0) < 0.02:
+      c.celebrating = false
+      c.squashY = 1.0
 
   # Landing timer decay
   if c.landingTimer > 0:

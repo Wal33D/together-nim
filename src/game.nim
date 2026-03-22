@@ -654,6 +654,8 @@ proc update*(game: var Game, dt: float) =
             allAtExit = false
             break
         if allAtExit and game.state == playing and not game.finaleActive:
+          for i in 0 ..< game.characters.len:
+            game.characters[i].celebrateTimer = float(i) * 0.1 + 0.001
           game.emitCompletionParticles()
           game.accentLevelComplete()
           let flashWhite: Color = (r: 255'u8, g: 255'u8, b: 255'u8)
@@ -782,6 +784,8 @@ proc update*(game: var Game, dt: float) =
 
   of levelWin:
     game.levelWinTimer += scaledDt
+    for i in 0 ..< game.characters.len:
+      game.characters[i].updateAnimation(scaledDt)
     if game.currentLevel >= 0 and game.currentLevel < allLevels.len and
        game.activeCharacterIndex < game.characters.len:
       let ch = game.characters[game.activeCharacterIndex]

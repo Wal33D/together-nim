@@ -395,7 +395,10 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
       let mouthG = uint8(darkened.g * 255.0)
       let mouthB = uint8(darkened.b * 255.0)
       renderer.setDrawColor(mouthR, mouthG, mouthB, 255)
-      drawFilledRect(renderer, mouthX, mouthY, mouthW, 2)
+      if ch.celebrating:
+        drawFilledRect(renderer, mouthX, mouthY - 1, mouthW, 3)
+      else:
+        drawFilledRect(renderer, mouthX, mouthY, mouthW, 2)
 
     # Dim overlay on previously active character during switch
     if i == game.prevActiveCharacterIndex and game.charDimTimer > 0.0:
