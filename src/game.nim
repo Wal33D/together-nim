@@ -807,9 +807,20 @@ proc update*(game: var Game, dt: float) =
         game.characters[i].proximityTarget = closestIdx
         let targetLean = 2.0 * (1.0 - closestDist / ProximityNear)
         game.characters[i].proximityLean += (targetLean - game.characters[i].proximityLean) * min(1.0, 3.0 * scaledDt)
+        # Pupil offset toward proximity target
+        let target = game.characters[closestIdx]
+        let targetCx = target.x + float(target.width) * 0.5
+        let selfCx = game.characters[i].x + float(game.characters[i].width) * 0.5
+        let targetPupil = if targetCx > selfCx: 1.0 else: -1.0
+        game.characters[i].pupilOffset += (targetPupil - game.characters[i].pupilOffset) * min(1.0, 10.0 * scaledDt)
       else:
         game.characters[i].proximityTarget = -1
         game.characters[i].proximityLean += (0.0 - game.characters[i].proximityLean) * min(1.0, 3.0 * scaledDt)
+        # Smooth revert pupil to facing direction over ~0.3s
+        let facingPupil = if game.characters[i].lookDir != 0: float(game.characters[i].lookDir)
+                          elif game.characters[i].facingRight: 1.0
+                          else: -1.0
+        game.characters[i].pupilOffset += (facingPupil - game.characters[i].pupilOffset) * min(1.0, 3.3 * scaledDt)
 
       # Anticipation build/decay
       if bestApproach > 0.0:

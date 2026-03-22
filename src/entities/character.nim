@@ -50,6 +50,7 @@ type
     glowScale*: float              # dynamic glow scale from proximity (default 1.8)
     glowAlpha*: float              # dynamic glow alpha from proximity (default 0.15)
     glowGoldMix*: float            # gold tint blend for full-group proximity (0..0.15)
+    pupilOffset*: float             # smooth pupil direction (-1..+1); thresholded to pixel offset
 
 proc newCharacter*(id: string): Character =
   result.x = 0.0
@@ -86,6 +87,7 @@ proc newCharacter*(id: string): Character =
   result.glowScale = 1.8
   result.glowAlpha = 0.15
   result.glowGoldMix = 0.0
+  result.pupilOffset = 0.0
   case id
   of "pip":
     result.width = 24; result.height = 24
