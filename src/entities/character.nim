@@ -26,6 +26,11 @@ type
     wallTouching*: bool
     wallTouchDir*: int           # -1 = wall on left, +1 = wall on right
     wallSliding*: bool
+    # Death/respawn animation
+    dissolving*: bool
+    dissolveTimer*: float
+    respawning*: bool
+    respawnTimer*: float
     # Animation
     squashX*, squashY*: float     # 1.0 = normal, <1 = squashed, >1 = stretched
     idleTimer*: float             # for idle sway

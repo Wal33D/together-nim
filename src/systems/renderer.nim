@@ -61,7 +61,8 @@ proc renderParticleSystem(renderer: RendererPtr, system: ParticleSystem,
 
   renderer.setDrawBlendMode(BlendMode_Blend)
   for p in system.particles:
-    let lifeRatio = if p.maxLife > 0.0: max(0.0, min(1.0, p.life / p.maxLife)) else: 0.0
+    let fadeWindow = if p.fadeTime > 0.0: p.fadeTime else: p.maxLife
+    let lifeRatio = if fadeWindow > 0.0: (if p.life < fadeWindow: max(0.0, min(1.0, p.life / fadeWindow)) else: 1.0) else: 0.0
     let alpha = uint8(max(0.0, min(255.0, lifeRatio * 220.0)))
     let sz = max(1, p.size.cint).int
     let x = p.x.cint - camX
@@ -165,6 +166,9 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
 
   # Characters
   for i, ch in game.characters:
+    # Hide sprite during dissolve and respawn phases
+    if ch.dissolving or ch.respawning:
+      continue
     let isActive = i == game.activeCharacterIndex
     let chColor = CHAR_COLORS[ch.colorIndex mod 6]
 

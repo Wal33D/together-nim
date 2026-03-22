@@ -107,6 +107,11 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
   for i in 0..<characters.len:
     var c = characters[i]
 
+    # Skip physics for dissolving/respawning characters
+    if c.dissolving or c.respawning:
+      characters[i] = c
+      continue
+
     # Gravity — ability-specific
     let grav = case c.ability
       of floatAbility: FLOAT_GRAVITY
@@ -181,17 +186,18 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
       c.triggerLanding()
       result.landedCharacters.add(c.id)
 
-    # Hazard detection
-    block hazardCheck:
-      for hazard in level.hazards:
-        let hRect = Rect(x: hazard.x, y: hazard.y, w: hazard.width, h: hazard.height)
-        if intersects(toRect(c), hRect):
-          result.deadCharacters.add(c.id)
-          break hazardCheck
+    # Hazard detection — skip during dissolve/respawn (invulnerability)
+    if not c.dissolving and not c.respawning:
+      block hazardCheck:
+        for hazard in level.hazards:
+          let hRect = Rect(x: hazard.x, y: hazard.y, w: hazard.width, h: hazard.height)
+          if intersects(toRect(c), hRect):
+            result.deadCharacters.add(c.id)
+            break hazardCheck
 
-    # Fell off screen
-    if c.y > float(DEFAULT_HEIGHT) + 100.0:
-      result.deadCharacters.add(c.id)
+      # Fell off screen
+      if c.y > float(DEFAULT_HEIGHT) + 100.0:
+        result.deadCharacters.add(c.id)
 
     # Exit detection
     for exit in level.exits:
