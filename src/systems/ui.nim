@@ -50,6 +50,27 @@ var
   pauseTweenPool: TweenPool = initTweenPool()
   wasPaused: bool = false
   pauseExiting: bool = false
+  # HUD contextual elements.
+  hudTweenPool: TweenPool = initTweenPool()
+  hudCharName: string = ""
+  hudCharNameAlpha: float = 0.0
+  hudCharNameX: float = -200.0
+  hudCharNameTimer: float = 0.0
+  hudCharColorIndex: int = 0
+  hudCharXTween: int = -1
+  hudCharAlphaTween: int = -1
+  narrationText: string = ""
+  narrationDisplayLen: int = 0
+  narrationAlpha: float = 0.0
+  narrationTimer: float = 0.0
+  narrationAlphaTween: int = -1
+  levelLabelAlpha: float = 0.0
+  levelLabelTimer: float = 0.0
+  levelLabelText: string = ""
+  levelLabelAlphaTween: int = -1
+  prevActiveCharIdx: int = -1
+  prevLevel: int = -1
+  prevNarrationText: string = ""
 
 proc triggerMenuEntrance() =
   ## Reset animation state and start the menu entrance sequence.
@@ -109,6 +130,74 @@ proc triggerPauseExit() =
   discard startTween(pauseTweenPool, pauseModalY, -300.0, 0.15, easeIn,
     proc(v: float) = pauseModalY = v,
     onComplete = proc() = pauseExiting = false)
+
+proc triggerCharInfoStrip(name: string, colorIdx: int) =
+  ## Trigger the character info strip slide-in animation.
+  hudCharName = name
+  hudCharColorIndex = colorIdx
+  hudCharNameTimer = 2.0
+  if hudCharXTween >= 0: cancelTween(hudTweenPool, hudCharXTween)
+  if hudCharAlphaTween >= 0: cancelTween(hudTweenPool, hudCharAlphaTween)
+  hudCharXTween = startTween(hudTweenPool, -200.0, 20.0, 0.2, easeOutCubic,
+    proc(v: float) = hudCharNameX = v)
+  hudCharAlphaTween = startTween(hudTweenPool, 0.0, 1.0, 0.15, easeOutCubic,
+    proc(v: float) = hudCharNameAlpha = v)
+
+proc triggerNarrationRibbon(text: string) =
+  ## Trigger the narration ribbon typewriter animation.
+  narrationText = text
+  narrationDisplayLen = 0
+  narrationAlpha = 1.0
+  narrationTimer = -1.0
+  if narrationAlphaTween >= 0:
+    cancelTween(hudTweenPool, narrationAlphaTween)
+    narrationAlphaTween = -1
+
+proc triggerLevelLabel(text: string) =
+  ## Trigger the level indicator fade-in animation.
+  levelLabelText = text
+  levelLabelTimer = 3.0
+  if levelLabelAlphaTween >= 0: cancelTween(hudTweenPool, levelLabelAlphaTween)
+  levelLabelAlphaTween = startTween(hudTweenPool, 0.0, 1.0, 0.3, easeOutCubic,
+    proc(v: float) = levelLabelAlpha = v)
+
+proc updateHud(dt: float) =
+  ## Advance HUD tween pool and manage hold timers.
+  updateTweens(hudTweenPool, dt)
+
+  # Character info strip hold and exit.
+  if hudCharNameTimer > 0.0:
+    hudCharNameTimer -= dt
+    if hudCharNameTimer <= 0.0:
+      if hudCharXTween >= 0: cancelTween(hudTweenPool, hudCharXTween)
+      if hudCharAlphaTween >= 0: cancelTween(hudTweenPool, hudCharAlphaTween)
+      hudCharXTween = startTween(hudTweenPool, hudCharNameX, -200.0, 0.2,
+        easeOutCubic, proc(v: float) = hudCharNameX = v)
+      hudCharAlphaTween = startTween(hudTweenPool, hudCharNameAlpha, 0.0, 0.2,
+        easeOutCubic, proc(v: float) = hudCharNameAlpha = v)
+
+  # Narration typewriter and fade.
+  if narrationText.len > 0 and narrationAlpha > 0.001:
+    if narrationTimer < 0.0:
+      narrationDisplayLen = min(narrationDisplayLen + int(40.0 * dt + 0.5),
+        narrationText.len)
+      if narrationDisplayLen >= narrationText.len:
+        narrationTimer = max(2.0, narrationText.len.float / 10.0)
+    elif narrationTimer > 0.0:
+      narrationTimer -= dt
+      if narrationTimer <= 0.0:
+        narrationTimer = 0.0
+        if narrationAlphaTween >= 0: cancelTween(hudTweenPool, narrationAlphaTween)
+        narrationAlphaTween = startTween(hudTweenPool, narrationAlpha, 0.0, 0.3,
+          easeOutCubic, proc(v: float) = narrationAlpha = v)
+
+  # Level label hold and exit.
+  if levelLabelTimer > 0.0:
+    levelLabelTimer -= dt
+    if levelLabelTimer <= 0.0:
+      if levelLabelAlphaTween >= 0: cancelTween(hudTweenPool, levelLabelAlphaTween)
+      levelLabelAlphaTween = startTween(hudTweenPool, levelLabelAlpha, 0.0, 0.5,
+        easeOutCubic, proc(v: float) = levelLabelAlpha = v)
 
 proc newUiRenderer*(): UiRenderer =
   let atlas = ensureUiAtlas()
@@ -372,23 +461,62 @@ proc renderStatusPanel(sk: Silky, layout: UiLayout, game: Game) =
     sk.drawRect(meterPos, meterSize, rgbx(24, 28, 36, 220))
     sk.drawRect(meterPos, vec2(meterSize.x * progress, meterSize.y), accent)
 
+proc renderCharInfoStrip(sk: Silky, layout: UiLayout) =
+  ## Draw the transient character name and color swatch strip.
+  if hudCharNameAlpha <= 0.001:
+    return
+  let
+    alpha = uint8(clamp(hudCharNameAlpha * 255.0, 0.0, 255.0))
+    base = CHAR_COLORS[hudCharColorIndex mod CHAR_COLORS.len]
+    accent = rgbx(base.r, base.g, base.b, alpha)
+    x = layout.origin.x + layout.px(hudCharNameX.float32)
+    y = layout.origin.y + layout.px(30)
+    swatchPos = snap(vec2(x, y))
+    swatchSize = layout.sz(12, 12)
+    textPos = snap(vec2(x + swatchSize.x + layout.px(8), y - layout.px(2)))
+  sk.drawRect(swatchPos, swatchSize, accent)
+  discard sk.drawUiText(layout, "Body", hudCharName, textPos,
+                        rgbx(244, 247, 250, alpha))
+
+proc renderNarrationRibbon(sk: Silky, layout: UiLayout, game: Game) =
+  ## Draw the narration ribbon with typewriter reveal.
+  if narrationAlpha <= 0.001 or narrationText.len == 0 or narrationDisplayLen <= 0:
+    return
+  let
+    displayText = narrationText[0..<min(narrationDisplayLen, narrationText.len)]
+    alpha = uint8(clamp(narrationAlpha * 255.0, 0.0, 255.0))
+    maxWidth = min(layout.px(540), layout.right - layout.left - layout.px(80))
+    lineCount = max(1, (displayText.len + 38) div 39)
+    boxW = maxWidth
+    boxH = layout.px(24 + lineCount.float32 * 18.0)
+    bottomInset = if game.characters.len > 1: 122.0 else: 68.0
+    boxPos = vec2(layout.centerX - boxW * 0.5,
+      layout.bottom - boxH - layout.px(bottomInset))
+    panelFill = rgbx(10, 12, 18,
+      uint8(clamp(188.0 * narrationAlpha, 0.0, 255.0)))
+    panelEdge = rgbx(74, 84, 102,
+      uint8(clamp(190.0 * narrationAlpha, 0.0, 255.0)))
+  sk.drawSoftPanel(boxPos, vec2(boxW, boxH), panelFill, panelEdge)
+  discard sk.drawUiText(layout, "Body", displayText,
+                        boxPos + layout.d(18, 12), rgbx(236, 239, 244, alpha),
+                        maxWidth = boxW - layout.px(36),
+                        maxHeight = boxH - layout.px(24), wordWrap = true)
+
+proc renderLevelLabel(sk: Silky, layout: UiLayout) =
+  ## Draw the transient level indicator at top-center.
+  if levelLabelAlpha <= 0.001 or levelLabelText.len == 0:
+    return
+  let alpha = uint8(clamp(levelLabelAlpha * 255.0, 0.0, 255.0))
+  drawCenteredText(sk, layout, "Display", levelLabelText, layout.centerX,
+                   layout.origin.y + layout.px(40),
+                   rgbx(248, 249, 251, alpha))
+
 proc renderGameplayHud(sk: Silky, layout: UiLayout, game: Game) =
   renderStatusPanel(sk, layout, game)
   renderCharacterStrip(sk, layout, game)
-
-  if game.narrationActive or game.narrationRevealed > 0:
-    let text = game.narrationText[0..<min(game.narrationRevealed, game.narrationText.len)]
-    if text.len > 0:
-      let
-        maxWidth = min(layout.px(540), layout.right - layout.left - layout.px(80))
-        lineCount = max(1, (text.len + 38) div 39)
-        boxW = maxWidth
-        boxH = layout.px(24 + lineCount.float32 * 18.0)
-        bottomInset = if game.characters.len > 1: 122.0 else: 68.0
-        boxPos = vec2(layout.centerX - boxW * 0.5, layout.bottom - boxH - layout.px(bottomInset))
-      sk.drawSoftPanel(boxPos, vec2(boxW, boxH), rgbx(10, 12, 18, 188), rgbx(74, 84, 102, 190))
-      discard sk.drawUiText(layout, "Body", text, boxPos + layout.d(18, 12), rgbx(236, 239, 244, 255),
-                            maxWidth = boxW - layout.px(36), maxHeight = boxH - layout.px(24), wordWrap = true)
+  renderNarrationRibbon(sk, layout, game)
+  renderCharInfoStrip(sk, layout)
+  renderLevelLabel(sk, layout)
 
 proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
                     x, y: float32, idx: int, name, gift: string,
@@ -679,6 +807,26 @@ proc renderOverlay*(ui: UiRenderer, window: Window, game: var Game,
 
   if nowPaused or pauseExiting:
     updateTweens(pauseTweenPool, game.deltaTime)
+
+  # HUD event detection.
+  let currentCharIdx = game.activeCharacterIndex
+  if currentCharIdx != prevActiveCharIdx and prevActiveCharIdx >= 0 and
+     currentCharIdx >= 0 and currentCharIdx < game.characters.len:
+    let ch = game.characters[currentCharIdx]
+    triggerCharInfoStrip(ch.characterName(), ch.colorIndex)
+  prevActiveCharIdx = currentCharIdx
+
+  if game.currentLevel != prevLevel and
+     game.currentLevel >= 0 and game.currentLevel < allLevels.len:
+    let level = game.currentLevelState
+    triggerLevelLabel(&"Level {level.id} — {level.name}")
+  prevLevel = game.currentLevel
+
+  if game.narrationText != prevNarrationText and game.narrationText.len > 0:
+    triggerNarrationRibbon(game.narrationText)
+  prevNarrationText = game.narrationText
+
+  updateHud(game.deltaTime)
 
   case game.state
   of menu:
