@@ -15,6 +15,10 @@ Current state: a 12-level campaign with Felix and Ivy in the playable arc, ambie
 - Campaign: 12 playable levels
 - Recent improvements: Windy/Silky UI migration, jump buffering and coyote time polish, procedural ambient music, atmospheric backdrops, gameplay particles, fullscreen toggle with saved preference
 
+## Roadmap
+
+The working version-by-version plan from `v0.4.0` through `v0.9.0` lives in [docs/ROADMAP.md](docs/ROADMAP.md).
+
 ## Screenshots
 
 ![Title screen](assets/screenshots/menu.png)

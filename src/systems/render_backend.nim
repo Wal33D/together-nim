@@ -15,8 +15,11 @@ type
     currentColor: chroma.Color
     frameWidth*: int
     frameHeight*: int
+    canvasScale: float32
+    canvasOrigin: Vec2
     blendMode*: BlendMode
     layerActive: bool
+    canvasTransformActive: bool
 
 proc toChromaColor(r, g, b: uint8, a: uint8 = 255'u8): chroma.Color =
   chroma.color(
@@ -32,8 +35,11 @@ proc newRenderer*(): RendererPtr =
     currentColor: toChromaColor(255, 255, 255),
     frameWidth: DEFAULT_WIDTH,
     frameHeight: DEFAULT_HEIGHT,
+    canvasScale: 1.0,
+    canvasOrigin: vec2(0, 0),
     blendMode: BlendMode_None,
     layerActive: false,
+    canvasTransformActive: false,
   )
 
 proc closeBlendLayer(renderer: RendererPtr) =
@@ -48,24 +54,40 @@ proc closeBlendLayer(renderer: RendererPtr) =
   renderer.layerActive = false
 
 proc beginFrame*(renderer: RendererPtr, drawableWidth, drawableHeight: int) =
-  renderer.frameWidth = DEFAULT_WIDTH
-  renderer.frameHeight = DEFAULT_HEIGHT
+  renderer.frameWidth = drawableWidth
+  renderer.frameHeight = drawableHeight
+  renderer.canvasScale = min(
+    drawableWidth.float32 / DEFAULT_WIDTH.float32,
+    drawableHeight.float32 / DEFAULT_HEIGHT.float32
+  )
+  renderer.canvasOrigin = vec2(
+    (drawableWidth.float32 - DEFAULT_WIDTH.float32 * renderer.canvasScale) * 0.5,
+    (drawableHeight.float32 - DEFAULT_HEIGHT.float32 * renderer.canvasScale) * 0.5
+  )
   renderer.blendMode = BlendMode_None
   renderer.layerActive = false
+  renderer.canvasTransformActive = false
   # Silky and other raw OpenGL callers mutate VAO/buffer/shader state.
   # Re-bind Boxy's state before starting a new frame.
   renderer.boxy.exitRawOpenGLMode()
   renderer.boxy.beginFrame(
     ivec2(drawableWidth.int32, drawableHeight.int32),
     ortho(
-      0.0'f32, DEFAULT_WIDTH.float32,
-      DEFAULT_HEIGHT.float32, 0.0'f32,
+      0.0'f32, drawableWidth.float32,
+      drawableHeight.float32, 0.0'f32,
       -1000.0'f32, 1000.0'f32
     )
   )
+  renderer.boxy.saveTransform()
+  renderer.boxy.translate(renderer.canvasOrigin)
+  renderer.boxy.scale(vec2(renderer.canvasScale, renderer.canvasScale))
+  renderer.canvasTransformActive = true
 
 proc endFrame*(renderer: RendererPtr) =
   renderer.closeBlendLayer()
+  if renderer.canvasTransformActive:
+    renderer.boxy.restoreTransform()
+    renderer.canvasTransformActive = false
   renderer.boxy.endFrame()
 
 proc beginOverlay*(renderer: RendererPtr) =
@@ -90,10 +112,16 @@ proc setDrawBlendMode*(renderer: RendererPtr, mode: BlendMode) =
     renderer.layerActive = true
 
 proc clear*(renderer: RendererPtr) =
+  if renderer.canvasTransformActive:
+    renderer.boxy.restoreTransform()
   renderer.boxy.drawRect(
     bumpy.rect(0.0, 0.0, renderer.frameWidth.float32, renderer.frameHeight.float32),
     renderer.currentColor
   )
+  if renderer.canvasTransformActive:
+    renderer.boxy.saveTransform()
+    renderer.boxy.translate(renderer.canvasOrigin)
+    renderer.boxy.scale(vec2(renderer.canvasScale, renderer.canvasScale))
 
 proc drawFilledRect*(renderer: RendererPtr, x, y, w, h: float) =
   if w <= 0.0 or h <= 0.0:

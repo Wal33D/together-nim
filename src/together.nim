@@ -5,6 +5,7 @@ import sdl2
 import windy
 import opengl
 import times
+import math
 import build_info
 import game
 import constants
@@ -15,7 +16,43 @@ import systems/gamepad
 import systems/save
 import systems/ui
 
-proc handleKeyboardInput(window: Window, game: var Game) =
+type
+  WindowModeState = object
+    pseudoFullscreen: bool
+    hasWindowedBounds: bool
+    windowedPos: IVec2
+    windowedSize: IVec2
+    windowedStyle: WindowStyle
+
+proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer) =
+  case game.state
+  of menu:
+    if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA]:
+      ui.cycleMenuSpotlight(-1)
+      playSound(soundCharSwitch)
+    if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD]:
+      ui.cycleMenuSpotlight(1)
+      playSound(soundCharSwitch)
+    if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
+      ui.activateFocusedAction(game)
+    return
+  of paused:
+    if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA] or
+       window.buttonPressed[KeyUp] or window.buttonPressed[KeyW]:
+      ui.cyclePauseSelection(-1)
+      playSound(soundCharSwitch)
+    if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD] or
+       window.buttonPressed[KeyDown] or window.buttonPressed[KeyS]:
+      ui.cyclePauseSelection(1)
+      playSound(soundCharSwitch)
+    if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
+      ui.activateFocusedAction(game)
+    if window.buttonPressed[KeyEscape]:
+      game.handleKey(SCANCODE_ESCAPE)
+    return
+  else:
+    discard
+
   game.leftHeld = window.buttonDown[KeyLeft] or window.buttonDown[KeyA]
   game.rightHeld = window.buttonDown[KeyRight] or window.buttonDown[KeyD]
 
@@ -44,24 +81,82 @@ proc handleKeyboardInput(window: Window, game: var Game) =
   if window.buttonPressed[KeyR]:
     game.handleKey(SCANCODE_R)
 
+proc primaryScreenSize(window: Window): IVec2 =
+  let screens = getScreens()
+  if screens.len == 0:
+    return window.size
+
+  var selected = screens[0]
+  for screen in screens:
+    if screen.primary:
+      selected = screen
+      break
+
+  let scale = max(window.contentScale, 1.0'f32)
+  let logicalSize = selected.size
+  ivec2(
+    round(logicalSize.x.float32 * scale).int32,
+    round(logicalSize.y.float32 * scale).int32
+  )
+
+proc defaultWindowSize(window: Window): IVec2 =
+  let scale = max(window.contentScale, 1.0'f32)
+  ivec2(
+    round(DEFAULT_WINDOW_WIDTH.float32 * scale).int32,
+    round(DEFAULT_WINDOW_HEIGHT.float32 * scale).int32
+  )
+
+proc setFullscreen(window: Window, state: var WindowModeState, enabled: bool) =
+  when defined(macosx):
+    if state.pseudoFullscreen == enabled:
+      return
+
+    if enabled:
+      state.windowedPos = window.pos
+      state.windowedSize = window.size
+      state.windowedStyle = window.style
+      state.hasWindowedBounds = true
+
+      window.style = Undecorated
+      window.pos = ivec2(0, 0)
+      window.size = window.primaryScreenSize()
+    else:
+      if state.hasWindowedBounds:
+        window.style = state.windowedStyle
+        window.size = state.windowedSize
+        window.pos = state.windowedPos
+      else:
+        window.style = DecoratedResizable
+        window.size = window.defaultWindowSize()
+
+      state.hasWindowedBounds = false
+
+    state.pseudoFullscreen = enabled
+  else:
+    window.fullscreen = enabled
+
 proc main() =
   if sdl2.init(INIT_AUDIO or INIT_GAMECONTROLLER) != SdlSuccess:
     echo "SDL2 init failed: ", sdl2.getError()
     quit(1)
 
   var fullscreenEnabled = loadSave().fullscreen
+  var windowMode = WindowModeState()
 
   let window = newWindow(
     "Together v" & GameVersion,
-    ivec2(DEFAULT_WIDTH, DEFAULT_HEIGHT),
+    ivec2(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT),
     vsync = true,
     openglVersion = OpenGL4Dot1
   )
   makeContextCurrent(window)
   loadExtensions()
 
+  if not fullscreenEnabled:
+    window.size = window.defaultWindowSize()
+
   if fullscreenEnabled:
-    window.fullscreen = true
+    window.setFullscreen(windowMode, true)
 
   initAudio()
   openFirstController()
@@ -82,10 +177,10 @@ proc main() =
 
     if window.buttonPressed[KeyF11]:
       fullscreenEnabled = not fullscreenEnabled
-      window.fullscreen = fullscreenEnabled
+      window.setFullscreen(windowMode, fullscreenEnabled)
       saveFullscreen(fullscreenEnabled)
 
-    handleKeyboardInput(window, g)
+    handleKeyboardInput(window, g, ui)
     pollControllerInput(g)
 
     while accumulator >= FIXED_TIMESTEP:
@@ -93,6 +188,9 @@ proc main() =
       accumulator -= FIXED_TIMESTEP
 
     let frameSize = window.size
+    if frameSize.x <= 0 or frameSize.y <= 0:
+      continue
+
     renderer.beginFrame(frameSize.x.int, frameSize.y.int)
     renderGame(renderer, g)
     renderer.endFrame()

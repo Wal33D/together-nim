@@ -16,6 +16,8 @@ const TIME_SCALE* = 0.83           # Contemplative feel
 # Window
 const DEFAULT_WIDTH* = 800
 const DEFAULT_HEIGHT* = 500
+const DEFAULT_WINDOW_WIDTH* = 1120
+const DEFAULT_WINDOW_HEIGHT* = 700
 const SCANCODE_F11* = 68.cint
 
 # Save file
