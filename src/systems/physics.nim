@@ -257,3 +257,48 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
                 level.doors[d].isOpen = true
 
     characters[i] = c
+
+  # Character-character collision pass
+  for i in 0..<characters.len:
+    for j in (i + 1)..<characters.len:
+      if characters[i].isDying() or characters[i].isRespawning():
+        continue
+      if characters[j].isDying() or characters[j].isRespawning():
+        continue
+
+      let a = toRect(characters[i])
+      let b = toRect(characters[j])
+      if not intersects(a, b):
+        continue
+
+      let overlapX = min(a.x + a.w - b.x, b.x + b.w - a.x)
+      let overlapY = min(a.y + a.h - b.y, b.y + b.h - a.y)
+
+      if overlapY <= overlapX + 4.0:
+        # Vertical resolution
+        let half = overlapY / 2.0
+        if a.y < b.y:
+          # A is above B: push A up, B down
+          characters[i].y -= half
+          characters[j].y += half
+          characters[i].grounded = true
+          characters[i].vy = 0.0
+          characters[i].jumpCount = 0
+          characters[i].coyoteTimer = 0.0
+        else:
+          # B is above A: push B up, A down
+          characters[j].y -= half
+          characters[i].y += half
+          characters[j].grounded = true
+          characters[j].vy = 0.0
+          characters[j].jumpCount = 0
+          characters[j].coyoteTimer = 0.0
+      else:
+        # Horizontal resolution
+        let half = overlapX / 2.0
+        if a.x < b.x:
+          characters[i].x -= half
+          characters[j].x += half
+        else:
+          characters[i].x += half
+          characters[j].x -= half

@@ -369,3 +369,65 @@ suite "dying character physics":
     var level = Level(platforms: @[], hazards: @[hazard], exits: @[], buttons: @[], doors: @[])
     let res = updatePhysics(chars, level, FIXED_TIMESTEP)
     check "pip" notin res.deadCharacters
+
+suite "character-character collision":
+  test "overlapping characters are pushed apart horizontally":
+    var chars = @[newCharacter("pip"), newCharacter("luca")]
+    # Place them overlapping horizontally (tall overlap, narrow horizontal overlap)
+    chars[0].x = 100.0
+    chars[0].y = 100.0
+    chars[1].x = 110.0  # 14px overlap (pip is 24 wide)
+    chars[1].y = 100.0
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    # They should no longer intersect
+    let a = toRect(chars[0])
+    let b = toRect(chars[1])
+    check not intersects(a, b)
+    # Pip should be to the left of Luca
+    check chars[0].x + float(chars[0].width) <= chars[1].x + 0.01
+
+  test "character lands on top of another character":
+    var chars = @[newCharacter("pip"), newCharacter("luca")]
+    # Place Luca on a platform, Pip falling onto Luca
+    chars[1].x = 100.0
+    chars[1].y = 376.0  # luca (28px tall) sitting at y=376
+    chars[1].grounded = true
+    chars[1].vy = 0.0
+    chars[0].x = 105.0
+    chars[0].y = 376.0 - float(chars[0].height) + 2.0  # slightly overlapping from above
+    chars[0].vy = 200.0  # falling
+    let platform = Platform(x: 0.0, y: 404.0, width: 500.0, height: 20.0)
+    var level = Level(platforms: @[platform], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    # Pip should be grounded on top of Luca
+    check chars[0].grounded == true
+    # They should no longer overlap
+    let a2 = toRect(chars[0])
+    let b2 = toRect(chars[1])
+    check not intersects(a2, b2)
+
+  test "dying characters are skipped in collision":
+    var chars = @[newCharacter("pip"), newCharacter("luca")]
+    chars[0].x = 100.0
+    chars[0].y = 100.0
+    chars[0].deathTimer = 0.5  # dying
+    chars[1].x = 110.0
+    chars[1].y = 100.0
+    let origX0 = chars[0].x
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    # Dying character should not have been pushed (positions unchanged by collision)
+    check chars[0].x == origX0
+
+  test "respawning characters are skipped in collision":
+    var chars = @[newCharacter("pip"), newCharacter("luca")]
+    chars[0].x = 100.0
+    chars[0].y = 100.0
+    chars[0].respawnTimer = 0.3  # respawning
+    chars[1].x = 110.0
+    chars[1].y = 100.0
+    let origX0 = chars[0].x
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    check chars[0].x == origX0
