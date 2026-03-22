@@ -155,8 +155,14 @@ proc emitLandingParticles(game: var Game, idx: int) =
 
 proc emitDeathParticles(game: var Game, idx: int) =
   let c = game.characters[idx]
-  game.particles.emitDeath(c.characterCenterX(), c.characterCenterY(),
-                           CHAR_COLORS[c.colorIndex mod 6])
+  game.particles.emitDeathDissolve(c.characterCenterX(), c.characterCenterY(),
+                                   CHAR_COLORS[c.colorIndex mod 6])
+
+proc emitRespawnParticles(game: var Game, idx: int) =
+  let c = game.characters[idx]
+  game.particles.emitRespawnReform(c.spawnX + float(c.width) * 0.5,
+                                   c.spawnY + float(c.height) * 0.5,
+                                   CHAR_COLORS[c.colorIndex mod 6])
 
 proc emitExitParticles(game: var Game, idx: int) =
   let c = game.characters[idx]
@@ -427,25 +433,15 @@ proc update*(game: var Game, dt: float) =
       let result = updatePhysics(game.characters, game.currentLevelState, scaledDt)
       let level = game.currentLevelState
 
-      # Handle deaths — respawn at spawn point
+      # Handle deaths — start dissolve phase
       for deadId in result.deadCharacters:
         for i in 0..<game.characters.len:
-          if game.characters[i].id == deadId:
-            game.emitDeathParticles(i)
-            transitionColor = (r: 255'u8, g: 255'u8, b: 255'u8)
-            discard startTween(transitionPool, 0.0, 1.0, 0.05, linear,
-                proc(v: float) = transitionAlpha = v,
-                proc() =
-                  discard startTween(transitionPool, 1.0, 0.0, 0.05, linear,
-                      proc(v: float) = transitionAlpha = v))
-            game.characters[i].x = game.characters[i].spawnX
-            game.characters[i].y = game.characters[i].spawnY
+          if game.characters[i].id == deadId and not game.characters[i].dissolving and not game.characters[i].respawning:
+            game.characters[i].dissolving = true
+            game.characters[i].dissolveTimer = 0.4
             game.characters[i].vx = 0
             game.characters[i].vy = 0
-            game.characters[i].dead = false
-            if i == game.activeCharacterIndex:
-              game.camera.hold(0.10)
-              game.queueCameraSnapToCharacter(i)
+            game.emitDeathParticles(i)
             game.accentDeath(i)
             playSound(soundDeath)
 
@@ -545,6 +541,28 @@ proc update*(game: var Game, dt: float) =
         updateCamera(game.camera, ch.x, ch.y, float(ch.width), float(ch.height),
                      ch.vx, ch.vy, ch.facingRight, level.levelWidth,
                      level.levelHeight, scaledDt)
+
+    # Tick dissolve/respawn timers
+    for i in 0..<game.characters.len:
+      if game.characters[i].dissolving:
+        game.characters[i].dissolveTimer -= scaledDt
+        if game.characters[i].dissolveTimer <= 0.0:
+          game.characters[i].dissolving = false
+          game.characters[i].dead = false
+          game.characters[i].x = game.characters[i].spawnX
+          game.characters[i].y = game.characters[i].spawnY
+          game.characters[i].vx = 0
+          game.characters[i].vy = 0
+          game.characters[i].respawning = true
+          game.characters[i].respawnTimer = 0.3
+          game.emitRespawnParticles(i)
+          if i == game.activeCharacterIndex:
+            game.camera.hold(0.10)
+            game.queueCameraSnapToCharacter(i)
+      elif game.characters[i].respawning:
+        game.characters[i].respawnTimer -= scaledDt
+        if game.characters[i].respawnTimer <= 0.0:
+          game.characters[i].respawning = false
 
     # Update animations for all characters
     for i in 0..<game.characters.len:

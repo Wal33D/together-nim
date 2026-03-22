@@ -14,6 +14,9 @@ type
     size*: float        ## pixel size
     gravityScale*: float ## multiplier on gravity (0.0 = no gravity)
     fadeTime*: float     ## seconds before death to start fading (0.0 = fade over full lifetime)
+    homing*: bool        ## if true, velocity converges toward (targetX, targetY)
+    targetX*: float
+    targetY*: float
 
   ParticleSystem* = object
     particles*: seq[Particle]
@@ -184,6 +187,53 @@ proc emitExitBeckoning*(system: var ParticleSystem, exitX, exitY, exitW, exitH: 
     fadeTime: 0.5
   ))
 
+proc emitDeathDissolve*(system: var ParticleSystem, x, y: float, color: Color) =
+  ## Outward burst of 15-20 particles with gravity for death dissolve.
+  let count = 15 + rand(5)
+  for i in 0..<count:
+    if system.particles.len >= MAX_PARTICLES:
+      break
+    let angle = rand(2.0 * PI)
+    let speed = randRange(100.0, 250.0)
+    let size = randRange(4.0, 8.0)
+    const DissolveLife = 0.4
+    pushParticle(system, Particle(
+      x: x,
+      y: y,
+      vx: cos(angle) * speed,
+      vy: sin(angle) * speed,
+      life: DissolveLife,
+      maxLife: DissolveLife,
+      color: color,
+      size: size,
+      gravityScale: 1.0
+    ))
+
+proc emitRespawnReform*(system: var ParticleSystem, spawnX, spawnY: float, color: Color) =
+  ## Converging particles from a 150px radius toward the spawn point.
+  let count = 15 + rand(5)
+  for i in 0..<count:
+    if system.particles.len >= MAX_PARTICLES:
+      break
+    let angle = rand(2.0 * PI)
+    let dist = randRange(50.0, 150.0)
+    let size = randRange(4.0, 8.0)
+    const ReformLife = 0.3
+    pushParticle(system, Particle(
+      x: spawnX + cos(angle) * dist,
+      y: spawnY + sin(angle) * dist,
+      vx: 0.0,
+      vy: 0.0,
+      life: ReformLife,
+      maxLife: ReformLife,
+      color: color,
+      size: size,
+      gravityScale: 0.0,
+      homing: true,
+      targetX: spawnX,
+      targetY: spawnY
+    ))
+
 proc update*(system: var ParticleSystem, dt: float) =
   ## Advance all particles and remove dead ones.
   var i = 0
@@ -193,6 +243,12 @@ proc update*(system: var ParticleSystem, dt: float) =
     if p.life <= 0.0:
       system.particles.del(i)
     else:
+      if p.homing:
+        let elapsed = p.maxLife - p.life
+        let t = min(1.0, elapsed / p.maxLife)
+        let strength = 3.0 * t * t
+        p.vx = (p.targetX - p.x) * strength
+        p.vy = (p.targetY - p.y) * strength
       p.x += p.vx * dt
       p.y += p.vy * dt
       p.vy += 280.0 * p.gravityScale * dt  # gentle downward gravity

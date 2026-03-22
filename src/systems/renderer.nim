@@ -166,6 +166,9 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
 
   # Characters
   for i, ch in game.characters:
+    # Hide sprite during dissolve and respawn phases
+    if ch.dissolving or ch.respawning:
+      continue
     let isActive = i == game.activeCharacterIndex
     let chColor = CHAR_COLORS[ch.colorIndex mod 6]
 
