@@ -132,12 +132,12 @@ proc themeForScene(scene: BackdropScene): BackdropTheme =
     )
 
 proc levelBackdropScene*(levelId: int): BackdropScene =
-  case levelId
-  of 1..4: dawnMeadow
-  of 5..7: riverValley
-  of 8..10: stoneRuins
-  of 25..30: aetherPlane
-  else: nightSky
+  case actForLevel(levelId)
+  of 1: dawnMeadow
+  of 2: riverValley
+  of 3: stoneRuins
+  of 4: nightSky
+  else: aetherPlane   # Act 5 — Transcendence
 
 proc backdropThemeForLevel*(levelId: int): BackdropTheme =
   themeForScene(levelBackdropScene(levelId))
@@ -315,6 +315,7 @@ proc renderMidGroundSilhouettes(renderer: RendererPtr, actColor: chroma.Color, a
     let x = ((baseX - scrollShift) mod DEFAULT_WIDTH + DEFAULT_WIDTH) mod DEFAULT_WIDTH
     let y = DEFAULT_HEIGHT - h
     drawFilledRect(renderer, cint(x), cint(y), cint(w), cint(h))
+    drawFilledRect(renderer, cint(x - DEFAULT_WIDTH), cint(y), cint(w), cint(h))
 
   renderer.setDrawBlendMode(BlendMode_None)
 
@@ -340,6 +341,7 @@ proc renderNearGroundDetail(renderer: RendererPtr, actColor: chroma.Color, act: 
     let x = ((baseX - scrollShift) mod DEFAULT_WIDTH + DEFAULT_WIDTH) mod DEFAULT_WIDTH
     let y = groundTop + yOff
     drawFilledRect(renderer, cint(x), cint(y), cint(w), cint(h))
+    drawFilledRect(renderer, cint(x - DEFAULT_WIDTH), cint(y), cint(w), cint(h))
 
   renderer.setDrawBlendMode(BlendMode_None)
 
