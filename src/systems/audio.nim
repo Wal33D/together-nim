@@ -1,6 +1,6 @@
-## Audio system — procedural sine wave sound effects using SDL2 raw audio callbacks
+## Audio system — procedural sine wave sound effects using macOS AudioQueue
 ##
-## Compile with -d:withAudio to enable SDL2 audio (used by together.nim).
+## Compile with -d:withAudio to enable CoreAudio output (used by together.nim).
 ## Without that flag all procs are harmless no-ops, safe for unit tests.
 
 type
@@ -17,7 +17,7 @@ proc musicBedPattern*(): seq[MusicStep] =
   ## A short, looping ambient bed with a slow pulse and a higher companion line.
   ##
   ## The runtime mixes this into a continuous loop; tests can inspect the pattern
-  ## without needing SDL audio.
+  ## without needing audio.
   @[
     MusicStep(freqStart: 110.0, freqEnd: 110.0, durationMs: 1200, amplitude: 0.065),
     MusicStep(freqStart: 164.8, freqEnd: 220.0, durationMs: 600, amplitude: 0.035),
@@ -30,15 +30,97 @@ proc musicBedPattern*(): seq[MusicStep] =
   ]
 
 when defined(withAudio):
-  import sdl2
-  import sdl2/audio
-  import math
+  import std/math
+
+  {.passL: "-framework AudioToolbox".}
+
+  # -- AudioToolbox FFI bindings ------------------------------------------------
+
+  type
+    OpaqueAudioQueue {.importc: "struct OpaqueAudioQueue",
+        header: "<AudioToolbox/AudioToolbox.h>", incompleteStruct.} = object
+    AudioQueueRef = ptr OpaqueAudioQueue
+
+    AudioQueueBufferObj {.importc: "AudioQueueBuffer",
+        header: "<AudioToolbox/AudioToolbox.h>".} = object
+      mAudioDataBytesCapacity: uint32
+      mAudioData: pointer
+      mAudioDataByteSize: uint32
+
+    AudioQueueBufferRef = ptr AudioQueueBufferObj
+
+    AudioStreamBasicDescription {.importc,
+        header: "<AudioToolbox/AudioToolbox.h>".} = object
+      mSampleRate: float64
+      mFormatID: uint32
+      mFormatFlags: uint32
+      mBytesPerPacket: uint32
+      mFramesPerPacket: uint32
+      mBytesPerFrame: uint32
+      mChannelsPerFrame: uint32
+      mBitsPerChannel: uint32
+      mReserved: uint32
+
+    AudioQueueOutputCallback = proc(inUserData: pointer, inAQ: AudioQueueRef,
+        inBuffer: AudioQueueBufferRef) {.cdecl.}
+
+  const
+    kAudioFormatLinearPCM = 0x6C70636D'u32
+    kLinearPCMFormatFlagIsSignedInteger = 0x4'u32
+    kLinearPCMFormatFlagIsPacked = 0x8'u32
+
+  proc AudioQueueNewOutput(inFormat: ptr AudioStreamBasicDescription,
+      inCallbackProc: AudioQueueOutputCallback, inUserData: pointer,
+      inCallbackRunLoop, inCallbackRunLoopMode: pointer,
+      inFlags: uint32, outAQ: ptr AudioQueueRef): int32 {.importc,
+      header: "<AudioToolbox/AudioToolbox.h>".}
+
+  proc AudioQueueAllocateBuffer(inAQ: AudioQueueRef,
+      inBufferByteSize: uint32,
+      outBuffer: ptr AudioQueueBufferRef): int32 {.importc,
+      header: "<AudioToolbox/AudioToolbox.h>".}
+
+  proc AudioQueueEnqueueBuffer(inAQ: AudioQueueRef,
+      inBuffer: AudioQueueBufferRef, inNumPacketDescs: uint32,
+      inPacketDescs: pointer): int32 {.importc,
+      header: "<AudioToolbox/AudioToolbox.h>".}
+
+  proc AudioQueueStart(inAQ: AudioQueueRef,
+      inStartTime: pointer): int32 {.importc,
+      header: "<AudioToolbox/AudioToolbox.h>".}
+
+  proc AudioQueueStop(inAQ: AudioQueueRef,
+      inImmediate: uint8): int32 {.importc,
+      header: "<AudioToolbox/AudioToolbox.h>".}
+
+  proc AudioQueueDispose(inAQ: AudioQueueRef,
+      inImmediate: uint8): int32 {.importc,
+      header: "<AudioToolbox/AudioToolbox.h>".}
+
+  # -- POSIX mutex for audio thread synchronisation -----------------------------
+
+  type
+    PthreadMutex {.importc: "pthread_mutex_t",
+        header: "<pthread.h>".} = object
+
+  proc pthread_mutex_init(m: ptr PthreadMutex,
+      attr: pointer): cint {.importc, header: "<pthread.h>".}
+  proc pthread_mutex_lock(m: ptr PthreadMutex
+      ): cint {.importc, header: "<pthread.h>".}
+  proc pthread_mutex_unlock(m: ptr PthreadMutex
+      ): cint {.importc, header: "<pthread.h>".}
+  proc pthread_mutex_destroy(m: ptr PthreadMutex
+      ): cint {.importc, header: "<pthread.h>".}
+
+  # -- Constants ----------------------------------------------------------------
 
   const
     SAMPLE_RATE    = 44100
     BUFFER_SAMPLES = 512
     MAX_INSTANCES  = 16
     FADE_SAMPLES   = (SAMPLE_RATE * 5) div 1000  # 5ms fade to avoid pops
+    NumBuffers     = 3
+    BufferByteSize = BUFFER_SAMPLES * 2  # 16-bit mono
 
   type
     NoteEnvelope = enum
@@ -76,6 +158,8 @@ when defined(withAudio):
     gInstances: array[MAX_INSTANCES, SoundInstance]
     gMusicTracks: array[2, MusicTrack]
     gAudioOpen = false
+    gQueue: AudioQueueRef
+    gAudioMutex: PthreadMutex
 
   proc durationSamples(step: MusicStep): int =
     max(1, (step.durationMs * SAMPLE_RATE) div 1000)
@@ -143,12 +227,16 @@ when defined(withAudio):
           if track.stepIndex < track.pattern.len:
             track.phase *= 0.9
 
-  proc audioCallback(userdata: pointer; stream: ptr uint8; len: cint) {.cdecl.} =
-    let numSamples = int(len) div 2
-    let buf = cast[ptr UncheckedArray[int16]](stream)
+  proc aqCallback(inUserData: pointer, inAQ: AudioQueueRef,
+      inBuffer: AudioQueueBufferRef) {.cdecl.} =
+    ## AudioQueue output callback — fills the buffer and re-enqueues it.
+    let numSamples = int(inBuffer.mAudioDataBytesCapacity) div 2
+    let buf = cast[ptr UncheckedArray[int16]](inBuffer.mAudioData)
 
     for i in 0..<numSamples:
       buf[i] = 0
+
+    discard pthread_mutex_lock(addr gAudioMutex)
 
     mixMusicTracks(buf, numSamples)
 
@@ -192,24 +280,55 @@ when defined(withAudio):
           if inst.noteIndex >= inst.noteCount:
             inst.active = false
 
+    discard pthread_mutex_unlock(addr gAudioMutex)
+
+    inBuffer.mAudioDataByteSize = inBuffer.mAudioDataBytesCapacity
+    discard AudioQueueEnqueueBuffer(inAQ, inBuffer, 0, nil)
+
   proc initAudio*() =
-    var spec: AudioSpec
-    spec.freq      = SAMPLE_RATE.cint
-    spec.format    = AUDIO_S16
-    spec.channels  = 1'u8
-    spec.samples   = BUFFER_SAMPLES.uint16
-    spec.callback  = audioCallback
-    spec.userdata  = nil
-    if openAudio(addr spec, nil) < 0:
-      echo "Audio init failed: ", sdl2.getError()
-      return
-    gAudioOpen = true
+    discard pthread_mutex_init(addr gAudioMutex, nil)
     initMusicBed()
-    pauseAudio(0)
+
+    var fmt: AudioStreamBasicDescription
+    fmt.mSampleRate = float64(SAMPLE_RATE)
+    fmt.mFormatID = kAudioFormatLinearPCM
+    fmt.mFormatFlags = kLinearPCMFormatFlagIsSignedInteger or
+        kLinearPCMFormatFlagIsPacked
+    fmt.mBytesPerPacket = 2
+    fmt.mFramesPerPacket = 1
+    fmt.mBytesPerFrame = 2
+    fmt.mChannelsPerFrame = 1
+    fmt.mBitsPerChannel = 16
+    fmt.mReserved = 0
+
+    var status = AudioQueueNewOutput(addr fmt, aqCallback, nil, nil, nil, 0,
+        addr gQueue)
+    if status != 0:
+      echo "Audio init failed: OSStatus " & $status
+      return
+
+    # Allocate and prime triple buffers.
+    for i in 0..<NumBuffers:
+      var buffer: AudioQueueBufferRef
+      status = AudioQueueAllocateBuffer(gQueue, BufferByteSize.uint32,
+          addr buffer)
+      if status != 0:
+        echo "Audio buffer alloc failed: OSStatus " & $status
+        return
+      aqCallback(nil, gQueue, buffer)
+
+    status = AudioQueueStart(gQueue, nil)
+    if status != 0:
+      echo "Audio start failed: OSStatus " & $status
+      return
+
+    gAudioOpen = true
 
   proc shutdownAudio*() =
     if gAudioOpen:
-      closeAudio()
+      discard AudioQueueStop(gQueue, 1)
+      discard AudioQueueDispose(gQueue, 1)
+      discard pthread_mutex_destroy(addr gAudioMutex)
       gAudioOpen = false
 
   proc playSound*(kind: SoundKind) =
@@ -260,14 +379,14 @@ when defined(withAudio):
     inst.active = true
 
     # Lock audio thread while modifying shared state
-    lockAudio()
+    discard pthread_mutex_lock(addr gAudioMutex)
     block findSlot:
       for slot in gInstances.mitems:
         if not slot.active:
           slot = inst
           break findSlot
       gInstances[0] = inst  # steal oldest slot when full
-    unlockAudio()
+    discard pthread_mutex_unlock(addr gAudioMutex)
 
 else:
   # Stub implementations when audio is disabled (unit tests)
