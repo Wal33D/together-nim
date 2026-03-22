@@ -1,7 +1,6 @@
 ## Together - A narrative puzzle-platformer
-## Platform layer: Windy + Boxy + Silky, with SDL2 for audio/controllers.
+## Platform layer: Windy + Boxy + Silky.
 
-import sdl2
 import windy
 import opengl
 import times
@@ -138,10 +137,6 @@ proc setFullscreen(window: Window, state: var WindowModeState, enabled: bool) =
     window.fullscreen = enabled
 
 proc main() =
-  if sdl2.init(INIT_AUDIO or INIT_GAMECONTROLLER) != SdlSuccess:
-    echo "SDL2 init failed: ", sdl2.getError()
-    quit(1)
-
   var fullscreenEnabled = loadSave().fullscreen
   var windowMode = WindowModeState()
 
@@ -204,7 +199,6 @@ proc main() =
   closeController()
   shutdownAudio()
   window.close()
-  sdl2.quit()
 
 when isMainModule:
   main()
