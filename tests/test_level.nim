@@ -94,3 +94,80 @@ suite "levels":
       if p.height > p.width:
         tallPlatforms += 1
     check tallPlatforms >= 2
+
+  test "level 16 Apart has all 6 characters":
+    check level16.characters.len == 6
+    check level16.name == "Apart"
+
+  test "level 16 has separation narration":
+    check level16.narration == "For the first time, they couldn't see each other."
+
+  test "level 16 has central wall":
+    var tallWalls = 0
+    for p in level16.platforms:
+      if p.height > p.width and p.height >= 400.0:
+        tallWalls += 1
+    check tallWalls >= 1
+
+  test "level 16 has 6 exits":
+    check level16.exits.len == 6
+
+  test "level 17 Trust Fall has pip and bruno":
+    check level17.characters == @["pip", "bruno"]
+    check level17.name == "Trust Fall"
+
+  test "level 17 has trust narration":
+    check level17.narration == "Trust was not a feeling. Trust was a choice."
+
+  test "level 17 has button and door":
+    check level17.buttons.len == 1
+    check level17.doors.len == 1
+
+  test "level 17 has dividing wall":
+    var walls = 0
+    for p in level17.platforms:
+      if p.height > p.width:
+        walls += 1
+    check walls >= 1
+
+  test "level 18 Bridges has luca cara felix":
+    check level18.characters == @["luca", "cara", "felix"]
+    check level18.name == "Bridges"
+
+  test "level 18 has bridges narration":
+    check level18.narration == "They were bridges for each other. They always had been."
+
+  test "level 18 has chain of 3 doors":
+    check level18.buttons.len == 3
+    check level18.doors.len == 3
+
+  test "level 18 has 3 exits":
+    check level18.exits.len == 3
+
+  test "level 19 Missing has all 6 characters":
+    check level19.characters.len == 6
+    check level19.name == "Missing"
+
+  test "level 19 has reunion narration":
+    check level19.narration.contains("Where were you")
+
+  test "level 19 has 6 exits":
+    check level19.exits.len == 6
+
+  test "level 20 Home has all 6 characters":
+    check level20.characters.len == 6
+    check level20.name == "Home"
+
+  test "level 20 has home narration":
+    check level20.narration == "Home was not a place. Home was who you were with."
+
+  test "level 20 has multiple buttons and doors":
+    check level20.buttons.len >= 3
+    check level20.doors.len >= 3
+
+  test "level 20 has heavy button for bruno":
+    var hasHeavy = false
+    for b in level20.buttons:
+      if b.requiresHeavy:
+        hasHeavy = true
+    check hasHeavy
