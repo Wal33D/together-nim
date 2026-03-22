@@ -10,6 +10,7 @@ import "../constants"
 import "../build_info"
 import "../game"
 import "../entities/character"
+import "animation"
 import "audio"
 import "levels"
 import "ui_assets"
@@ -30,6 +31,36 @@ type
     context*: UiContext
     menuSpotlight*: int
     pauseSelection*: int
+
+var
+  menuTitleAlpha: float = 0.0
+  menuCardOffsets: array[6, float]
+  menuButtonScale: float = 0.0
+  menuEntrancePlaying: bool = false
+  menuTweenPool: TweenPool = initTweenPool()
+
+proc triggerMenuEntrance() =
+  ## Reset animation state and start the menu entrance sequence.
+  menuTitleAlpha = 0.0
+  for i in 0..<6:
+    menuCardOffsets[i] = 200.0
+  menuButtonScale = 0.0
+  menuEntrancePlaying = true
+  menuTweenPool = initTweenPool()
+
+  discard startTween(menuTweenPool, 0.0, 1.0, 0.4, easeOutCubic,
+    proc(v: float) = menuTitleAlpha = v)
+
+  for i in 0..<6:
+    let idx = i
+    discard startTween(menuTweenPool, 200.0, 0.0, 0.5, easeOutCubic,
+      proc(v: float) = menuCardOffsets[idx] = v,
+      delay = float(idx) * 0.08)
+
+  let buttonDelay = 5.0 * 0.08 + 0.5 + 0.2
+  discard startTween(menuTweenPool, 0.0, 1.0, 0.3, easeOutElastic,
+    proc(v: float) = menuButtonScale = v,
+    delay = buttonDelay)
 
 proc newUiRenderer*(): UiRenderer =
   let atlas = ensureUiAtlas()
@@ -377,7 +408,8 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
     heroLineWidth = heroSize.x - layout.px(92)
 
   sk.drawSoftPanel(heroPos, heroSize, rgbx(10, 12, 18, 184), muted(heroAccent, 185))
-  drawCenteredText(sk, layout, "Display", "TOGETHER", heroCenter, heroPos.y + layout.px(30), rgbx(246, 248, 251, 255))
+  let titleAlpha = clamp(menuTitleAlpha * 255.0, 0.0, 255.0).uint8
+  drawCenteredText(sk, layout, "Display", "TOGETHER", heroCenter, heroPos.y + layout.px(30), rgbx(246, 248, 251, titleAlpha))
   drawCenteredText(sk, layout, "Small", tagline,
                    heroCenter, heroPos.y + layout.px(84), rgbx(160, 171, 192, 255))
   sk.drawRect(vec2(heroCenter - layout.px(16), heroPos.y + layout.px(112)), layout.sz(32, 32), heroAccent)
@@ -389,7 +421,14 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
                         rgbx(220, 226, 236, 255),
                         maxWidth = heroLineWidth, maxHeight = layout.px(36), wordWrap = true)
 
-  if button(ui, sk, window, layout, buttonPos, buttonSize,
+  let
+    scaledBtnW = buttonSize.x * menuButtonScale.float32
+    scaledBtnH = buttonSize.y * menuButtonScale.float32
+    scaledBtnPos = vec2(
+      buttonPos.x + (buttonSize.x - scaledBtnW) * 0.5,
+      buttonPos.y + (buttonSize.y - scaledBtnH) * 0.5)
+    scaledBtnSize = vec2(scaledBtnW, scaledBtnH)
+  if button(ui, sk, window, layout, scaledBtnPos, scaledBtnSize,
             "Begin Journey", "Press Enter or click to start.",
             "begin_journey", rgbx(108, 168, 232, 255), selected = true):
     game.startGame()
@@ -398,7 +437,8 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
   sk.drawSoftPanel(ribbonPos, ribbonSize, rgbx(10, 12, 18, 110), rgbx(52, 62, 82, 120))
   for i in 0 ..< castNames.len:
     let tileX = DEFAULT_WIDTH.float32 * 0.5 - 324 + 12 + i.float32 * 104.0
-    renderCastCard(ui, sk, window, layout, tileX, DEFAULT_HEIGHT.float32 - 72 + 6, i,
+    let tileY = DEFAULT_HEIGHT.float32 - 72 + 6 + menuCardOffsets[i].float32
+    renderCastCard(ui, sk, window, layout, tileX, tileY, i,
                    castNames[i], castGifts[i])
   drawCenteredText(sk, layout, "Small", "1-6 or arrow keys preview the cast • Enter begins",
                    heroCenter, layout.bottom - layout.px(28), rgbx(122, 134, 152, 255))
@@ -495,6 +535,14 @@ proc renderOverlay*(ui: UiRenderer, window: Window, game: var Game,
   ui.context = UiContext()
   sk.beginUi(window, frameSize)
 
+  let inMenu = game.state == menu
+  if inMenu and not menuEntrancePlaying:
+    triggerMenuEntrance()
+  if not inMenu:
+    menuEntrancePlaying = false
+  if inMenu:
+    updateTweens(menuTweenPool, game.deltaTime)
+
   case game.state
   of menu:
     sk.drawRect(vec2(0, 0), vec2(frameSize.x.float32, frameSize.y.float32),
@@ -515,6 +563,8 @@ proc renderOverlay*(ui: UiRenderer, window: Window, game: var Game,
     sk.drawRect(vec2(0, 0), vec2(frameSize.x.float32, frameSize.y.float32),
                 rgbx(0, 0, 0, 34))
     ui.renderCredits(sk, window, layout, game)
+  of actTitle:
+    discard
 
   sk.renderBuildStamp(layout)
   sk.endUi()
