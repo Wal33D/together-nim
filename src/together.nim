@@ -50,6 +50,8 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer) =
     if window.buttonPressed[KeyEscape]:
       game.handleKey(SCANCODE_ESCAPE)
     return
+  of actTitle:
+    return
   else:
     discard
 
