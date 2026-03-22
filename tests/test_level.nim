@@ -18,8 +18,8 @@ suite "levels":
   test "level 5 has two exits":
     check level5.exits.len == 2
 
-  test "all levels array has 20 levels":
-    check allLevels.len == 20
+  test "all levels array has 30 levels":
+    check allLevels.len == 30
 
   test "level 6 introduces bruno":
     check level6.characters == @["pip", "luca", "bruno"]
@@ -171,3 +171,94 @@ suite "levels":
       if b.requiresHeavy:
         hasHeavy = true
     check hasHeavy
+
+  test "level 21 Memory has all 6 characters":
+    check level21.characters.len == 6
+    check level21.name == "Memory"
+
+  test "level 21 has memory narration":
+    check level21.narration == "They remembered being alone. It felt like a dream now."
+
+  test "level 21 callbacks to level 1 layout":
+    # First 3 platforms match level 1 positions
+    check level21.platforms[0].x == level1.platforms[0].x
+    check level21.platforms[0].y == level1.platforms[0].y
+    check level21.platforms[1].x == level1.platforms[1].x
+    check level21.platforms[1].y == level1.platforms[1].y
+
+  test "level 21 has 6 exits":
+    check level21.exits.len == 6
+
+  test "level 22 Strength has all 6 characters":
+    check level22.characters.len == 6
+    check level22.name == "Strength"
+
+  test "level 22 has strength narration":
+    check level22.narration.contains("Bruno")
+
+  test "level 22 has multiple button chains":
+    check level22.buttons.len >= 4
+    check level22.doors.len >= 4
+
+  test "level 22 has heavy button":
+    var hasHeavy = false
+    for b in level22.buttons:
+      if b.requiresHeavy:
+        hasHeavy = true
+    check hasHeavy
+
+  test "level 22 has 6 exits":
+    check level22.exits.len == 6
+
+  test "level 23 Grace has all 6 characters":
+    check level23.characters.len == 6
+    check level23.name == "Grace"
+
+  test "level 23 has grace narration":
+    check level23.narration.contains("Ivy")
+
+  test "level 23 has many hazards":
+    check level23.hazards.len >= 7
+
+  test "level 23 has wall-jump pillars for cara":
+    var tallPlatforms = 0
+    for p in level23.platforms:
+      if p.height > p.width:
+        tallPlatforms += 1
+    check tallPlatforms >= 2
+
+  test "level 23 has 6 exits":
+    check level23.exits.len == 6
+
+  test "level 24 Patience has all 6 characters":
+    check level24.characters.len == 6
+    check level24.name == "Patience"
+
+  test "level 24 has patience narration":
+    check level24.narration.contains("Felix")
+
+  test "level 24 is a long level":
+    check level24.levelWidth >= 2000.0
+
+  test "level 24 has many hazards for timing":
+    check level24.hazards.len >= 6
+
+  test "level 24 has 6 exits":
+    check level24.exits.len == 6
+
+  test "level 25 Almost has all 6 characters":
+    check level25.characters.len == 6
+    check level25.name == "Almost"
+
+  test "level 25 has almost narration":
+    check level25.narration == "Almost there. Almost home. Almost together."
+
+  test "level 25 has most buttons and doors":
+    check level25.buttons.len >= 5
+    check level25.doors.len >= 5
+
+  test "level 25 has many hazards":
+    check level25.hazards.len >= 10
+
+  test "level 25 has 6 exits":
+    check level25.exits.len == 6
