@@ -135,8 +135,8 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
   for i in 0..<characters.len:
     var c = characters[i]
 
-    # Skip physics for dissolving/respawning characters
-    if c.dissolving or c.respawning:
+    # Skip physics for dying/respawning characters
+    if c.isDying() or c.isRespawning():
       characters[i] = c
       continue
 
@@ -224,8 +224,8 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
       c.triggerLanding()
       result.landedCharacters.add(c.id)
 
-    # Hazard detection — skip during dissolve/respawn (invulnerability)
-    if not c.dissolving and not c.respawning:
+    # Hazard detection — skip during death/respawn (invulnerability)
+    if not c.isDying() and not c.isRespawning():
       block hazardCheck:
         for hazard in level.hazards:
           let hRect = Rect(x: hazard.x, y: hazard.y, w: hazard.width, h: hazard.height)

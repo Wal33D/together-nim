@@ -134,9 +134,9 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
   renderBackdrop(renderer, level, game.camera.x, game.elapsedTime)
   renderAtmosphereOverlay(renderer, game.atmosphere)
 
-  # Camera offset — subtract from all world-space coordinates
-  let camX = game.camera.x.cint
-  let camY = game.camera.y.cint
+  # Camera offset — subtract from all world-space coordinates (with shake)
+  let camX = (game.camera.x + game.camera.shakeOffsetX).cint
+  let camY = (game.camera.y + game.camera.shakeOffsetY).cint
 
   # Platforms
   renderer.setDrawColor(90, 90, 110, 255)
@@ -222,9 +222,10 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
 
   # Characters
   for i, ch in game.characters:
-    # Hide sprite during dissolve and respawn phases
-    if ch.dissolving or ch.respawning:
-      continue
+    # During death: flash red 3 times then hide; during respawn: fade in
+    if ch.isDying():
+      if not ch.deathVisible():
+        continue
     let isActive = i == game.activeCharacterIndex
     let chColor = CHAR_COLORS[ch.colorIndex mod 6]
 
@@ -233,31 +234,50 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
     let dw = ch.drawWidth().cint
     let dh = ch.drawHeight().cint
 
-    # Colored halo glow behind character (3-pass soft falloff with additive blending)
-    block:
-      let glowScale = if isActive: 2.7 else: 1.8
-      let glowAlpha = if isActive: 0.25 else: 0.15
-      let pulse = glowAlpha + 0.05 * sin(game.elapsedTime * PI * 2.0 / 3.0)
-      let charW = dw.float
-      let charH = dh.float
-      let charX = dx.float
-      let charY = dy.float
-      renderer.setDrawBlendMode(BlendMode_Add)
-      for pass in 0 .. 2:
-        let t = float(2 - pass) / 2.0  # 1.0, 0.5, 0.0
-        let scale = 1.0 + (glowScale - 1.0) * (0.4 + 0.6 * t)
-        let alpha = pulse * (0.3 + 0.35 * t)
-        let gw = charW * scale
-        let gh = charH * scale
-        let gx = charX - (gw - charW) / 2.0
-        let gy = charY - (gh - charH) / 2.0
-        renderer.setDrawColor(chColor.r, chColor.g, chColor.b, uint8(alpha * 255.0))
-        drawFilledRect(renderer, gx, gy, gw, gh)
-      renderer.setDrawBlendMode(BlendMode_None)
+    # Respawn fade-in alpha
+    let baseAlpha = ch.respawnAlpha()
 
-    # Character body
-    renderer.setDrawColor(chColor.r, chColor.g, chColor.b, 255)
-    drawFilledRect(renderer, dx, dy, dw, dh)
+    # Colored halo glow behind character (3-pass soft falloff with additive blending)
+    if not ch.isDying():
+      block:
+        let glowScale = if isActive: 2.7 else: 1.8
+        let glowAlpha = if isActive: 0.25 else: 0.15
+        let pulse = glowAlpha + 0.05 * sin(game.elapsedTime * PI * 2.0 / 3.0)
+        let charW = dw.float
+        let charH = dh.float
+        let charX = dx.float
+        let charY = dy.float
+        renderer.setDrawBlendMode(BlendMode_Add)
+        for pass in 0 .. 2:
+          let t = float(2 - pass) / 2.0  # 1.0, 0.5, 0.0
+          let scale = 1.0 + (glowScale - 1.0) * (0.4 + 0.6 * t)
+          let alpha = pulse * (0.3 + 0.35 * t) * float(baseAlpha) / 255.0
+          let gw = charW * scale
+          let gh = charH * scale
+          let gx = charX - (gw - charW) / 2.0
+          let gy = charY - (gh - charH) / 2.0
+          renderer.setDrawColor(chColor.r, chColor.g, chColor.b, uint8(alpha * 255.0))
+          drawFilledRect(renderer, gx, gy, gw, gh)
+        renderer.setDrawBlendMode(BlendMode_None)
+
+    # Character body — flash red during death, normal color otherwise
+    if ch.isDying():
+      renderer.setDrawBlendMode(BlendMode_Blend)
+      renderer.setDrawColor(255, 40, 40, 220)
+      drawFilledRect(renderer, dx, dy, dw, dh)
+      renderer.setDrawBlendMode(BlendMode_None)
+    elif ch.isRespawning():
+      renderer.setDrawBlendMode(BlendMode_Blend)
+      renderer.setDrawColor(chColor.r, chColor.g, chColor.b, baseAlpha)
+      drawFilledRect(renderer, dx, dy, dw, dh)
+      renderer.setDrawBlendMode(BlendMode_None)
+    else:
+      renderer.setDrawColor(chColor.r, chColor.g, chColor.b, 255)
+      drawFilledRect(renderer, dx, dy, dw, dh)
+
+    # Skip decorations during death/respawn animation
+    if ch.isDying() or ch.isRespawning():
+      continue
 
     # Dim overlay on previously active character during switch
     if i == game.prevActiveCharacterIndex and game.charDimTimer > 0.0:

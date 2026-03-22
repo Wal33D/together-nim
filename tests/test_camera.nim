@@ -130,3 +130,30 @@ suite "camera":
     var cam = newCamera()
     updateCamera(cam, 400.0, 250.0, 24.0, 24.0, 1200.0, 500.0)
     check cam.y == 0.0
+
+  test "triggerShake sets timer and intensity":
+    var cam = newCamera()
+    cam.triggerShake(4.0, 0.3)
+    check cam.shakeTimer == 0.3
+    check cam.shakeIntensity == 4.0
+
+  test "updateShake produces nonzero offsets while active":
+    var cam = newCamera()
+    cam.triggerShake(4.0, 0.3)
+    cam.updateShake(0.016)
+    check cam.shakeTimer > 0.0
+    check cam.shakeOffsetX != 0.0 or cam.shakeOffsetY != 0.0
+
+  test "updateShake clears offsets when timer expires":
+    var cam = newCamera()
+    cam.triggerShake(4.0, 0.3)
+    cam.updateShake(0.5)  # advance past the 300ms duration
+    check cam.shakeTimer == 0.0
+    check cam.shakeOffsetX == 0.0
+    check cam.shakeOffsetY == 0.0
+
+  test "shake offsets are zero when no shake active":
+    var cam = newCamera()
+    cam.updateShake(0.016)
+    check cam.shakeOffsetX == 0.0
+    check cam.shakeOffsetY == 0.0

@@ -348,3 +348,24 @@ suite "moving platforms":
       discard updatePhysics(chars, level, 0.1)
     # Platform should have moved into the vertical segment.
     check level.movingPlatforms[0].y > 0.0
+
+suite "dying character physics":
+  test "dying character skips gravity":
+    var chars = @[newCharacter("pip")]
+    chars[0].x = 100.0
+    chars[0].y = 100.0
+    chars[0].deathTimer = 0.5
+    let startVy = chars[0].vy
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    check chars[0].vy == startVy  # vy unchanged, gravity not applied
+
+  test "dying character is invulnerable to hazards":
+    var chars = @[newCharacter("pip")]
+    chars[0].x = 50.0
+    chars[0].y = 50.0
+    chars[0].deathTimer = 0.3
+    let hazard = Hazard(x: 40.0, y: 40.0, width: 30.0, height: 30.0)
+    var level = Level(platforms: @[], hazards: @[hazard], exits: @[], buttons: @[], doors: @[])
+    let res = updatePhysics(chars, level, FIXED_TIMESTEP)
+    check "pip" notin res.deadCharacters

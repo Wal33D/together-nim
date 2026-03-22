@@ -238,7 +238,10 @@ proc pressJump*(game: var Game) =
     return
 
   if game.activeCharacterIndex < game.characters.len:
-    if attemptCharacterJump(game.characters[game.activeCharacterIndex]):
+    let ac = game.characters[game.activeCharacterIndex]
+    if ac.isDying() or ac.isRespawning():
+      discard
+    elif attemptCharacterJump(game.characters[game.activeCharacterIndex]):
       game.emitJumpParticles(game.activeCharacterIndex)
       game.accentJump()
       playSound(soundJump)
@@ -446,30 +449,35 @@ proc update*(game: var Game, dt: float) =
     game.menuTime += scaledDt
     game.menuAtmosphere.update(scaledDt)
   of playing:
-    # Apply movement to active character
+    # Apply movement to active character (blocked during death/respawn)
     if game.activeCharacterIndex < game.characters.len:
-      var dir = 0
-      if game.leftHeld: dir -= 1
-      if game.rightHeld: dir += 1
-      game.characters[game.activeCharacterIndex].inputDir = dir
-      if dir > 0: game.characters[game.activeCharacterIndex].facingRight = true
-      elif dir < 0: game.characters[game.activeCharacterIndex].facingRight = false
+      let ac = game.characters[game.activeCharacterIndex]
+      if ac.isDying() or ac.isRespawning():
+        game.characters[game.activeCharacterIndex].inputDir = 0
+      else:
+        var dir = 0
+        if game.leftHeld: dir -= 1
+        if game.rightHeld: dir += 1
+        game.characters[game.activeCharacterIndex].inputDir = dir
+        if dir > 0: game.characters[game.activeCharacterIndex].facingRight = true
+        elif dir < 0: game.characters[game.activeCharacterIndex].facingRight = false
 
     # Physics
     if game.currentLevel >= 0 and game.currentLevel < allLevels.len:
       let result = updatePhysics(game.characters, game.currentLevelState, scaledDt)
       let level = game.currentLevelState
 
-      # Handle deaths — start dissolve phase
+      # Handle deaths — start death animation phase (500ms)
       for deadId in result.deadCharacters:
         for i in 0..<game.characters.len:
-          if game.characters[i].id == deadId and not game.characters[i].dissolving and not game.characters[i].respawning:
-            game.characters[i].dissolving = true
-            game.characters[i].dissolveTimer = 0.4
+          if game.characters[i].id == deadId and not game.characters[i].isDying() and not game.characters[i].isRespawning():
+            game.characters[i].deathTimer = 0.5
+            game.characters[i].deathFlashCount = 0
             game.characters[i].vx = 0
             game.characters[i].vy = 0
             game.emitDeathParticles(i)
             game.accentDeath(i)
+            game.camera.triggerShake(4.0, 0.3)
             playSound(soundDeath)
 
       # Landing sound
@@ -570,27 +578,29 @@ proc update*(game: var Game, dt: float) =
                      ch.vx, ch.vy, ch.facingRight, level.levelWidth,
                      level.levelHeight, scaledDt)
 
-    # Tick dissolve/respawn timers
+    # Tick death/respawn timers
     for i in 0..<game.characters.len:
-      if game.characters[i].dissolving:
-        game.characters[i].dissolveTimer -= scaledDt
-        if game.characters[i].dissolveTimer <= 0.0:
-          game.characters[i].dissolving = false
+      if game.characters[i].isDying():
+        # Track flash count based on elapsed time (50ms on, 50ms off = 100ms per flash)
+        let elapsed = 0.5 - game.characters[i].deathTimer
+        game.characters[i].deathFlashCount = min(3, int(elapsed / 0.1))
+        game.characters[i].deathTimer -= scaledDt
+        if game.characters[i].deathTimer <= 0.0:
+          game.characters[i].deathTimer = 0.0
           game.characters[i].dead = false
           game.characters[i].x = game.characters[i].spawnX
           game.characters[i].y = game.characters[i].spawnY
           game.characters[i].vx = 0
           game.characters[i].vy = 0
-          game.characters[i].respawning = true
           game.characters[i].respawnTimer = 0.3
           game.emitRespawnParticles(i)
           if i == game.activeCharacterIndex:
             game.camera.hold(0.10)
             game.queueCameraSnapToCharacter(i)
-      elif game.characters[i].respawning:
+      elif game.characters[i].isRespawning():
         game.characters[i].respawnTimer -= scaledDt
         if game.characters[i].respawnTimer <= 0.0:
-          game.characters[i].respawning = false
+          game.characters[i].respawnTimer = 0.0
 
     # Update animations for all characters
     for i in 0..<game.characters.len:
@@ -642,4 +652,5 @@ proc update*(game: var Game, dt: float) =
     discard startTween(transitionPool, 1.0, 0.0, 0.4, easeOutCubic,
         proc(v: float) = transitionAlpha = v)
 
+  game.camera.updateShake(scaledDt)
   game.particles.update(scaledDt)

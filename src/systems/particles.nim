@@ -195,8 +195,8 @@ proc emitExitBeckoning*(system: var ParticleSystem, exitX, exitY, exitW, exitH: 
   ))
 
 proc emitDeathDissolve*(system: var ParticleSystem, x, y: float, color: Color) =
-  ## Outward burst of 15-20 particles with gravity for death dissolve.
-  let count = 15 + rand(5)
+  ## Outward burst of 8-10 particles in the character's color.
+  let count = 8 + rand(2)
   for i in 0..<count:
     if system.particles.len >= MAX_PARTICLES:
       break

@@ -187,22 +187,22 @@ suite "game state machine":
 
     g.update(FIXED_TIMESTEP)
 
-    # After one frame: dissolve phase starts, particles emitted
+    # After one frame: death phase starts, particles emitted
     check g.particles.particles.len > 0
-    check g.characters[0].dissolving == true
+    check g.characters[0].isDying() == true
 
-    # Advance through dissolve phase (0.4s) and into respawn
-    for _ in 0..30:
+    # Advance through death phase (0.5s) and into respawn
+    for _ in 0..40:
       g.update(FIXED_TIMESTEP)
 
-    # After dissolve completes, character moves to spawn and respawn phase begins
+    # After death timer expires, character moves to spawn and respawn phase begins
     check g.characters[0].x == g.characters[0].spawnX
     check g.characters[0].y == g.characters[0].spawnY
 
     # Advance through respawn phase (0.3s)
     for _ in 0..25:
       g.update(FIXED_TIMESTEP)
-    check g.characters[0].respawning == false
+    check g.characters[0].isRespawning() == false
 
   test "exit reach spawns particles":
     var g = newGame()

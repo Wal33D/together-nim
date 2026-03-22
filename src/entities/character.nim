@@ -27,10 +27,9 @@ type
     wallTouchDir*: int           # -1 = wall on left, +1 = wall on right
     wallSliding*: bool
     # Death/respawn animation
-    dissolving*: bool
-    dissolveTimer*: float
-    respawning*: bool
-    respawnTimer*: float
+    deathTimer*: float          # >0 means dying; counts down from 0.5s
+    respawnTimer*: float        # >0 means respawning; counts down from 0.3s
+    deathFlashCount*: int       # tracks red flash count (0..3)
     # Animation
     squashX*, squashY*: float     # 1.0 = normal, <1 = squashed, >1 = stretched
     idleTimer*: float             # for idle sway
@@ -156,3 +155,30 @@ proc idleSway*(c: Character): float =
     sin(c.idleTimer * 2.0) * 1.5
   else:
     0.0
+
+proc isDying*(c: Character): bool =
+  ## True when the character is in the death animation phase.
+  c.deathTimer > 0.0
+
+proc isRespawning*(c: Character): bool =
+  ## True when the character is fading in at spawn point.
+  c.respawnTimer > 0.0
+
+proc deathVisible*(c: Character): bool =
+  ## Whether the character sprite should be drawn during death flash.
+  ## 3 flashes at 50ms on, 50ms off = 300ms total flash phase.
+  if not c.isDying():
+    return true
+  let flashPhase = 0.5 - c.deathTimer  # elapsed time since death started
+  if flashPhase >= 0.3:
+    return false  # after 300ms of flashing, hide until respawn
+  let cyclePos = (flashPhase * 1000.0).int mod 100
+  cyclePos < 50  # first 50ms of each 100ms cycle = visible
+
+proc respawnAlpha*(c: Character): uint8 =
+  ## Alpha value (0..255) for the respawn fade-in effect.
+  if not c.isRespawning():
+    return 255'u8
+  let elapsed = 0.3 - c.respawnTimer
+  let t = max(0.0, min(1.0, elapsed / 0.3))
+  uint8(t * 255.0)

@@ -16,6 +16,9 @@ const MAX_RESPONSE_BOOST* = 0.22
 const MAX_IMPULSE_X* = 40.0
 const MAX_IMPULSE_Y* = 28.0
 
+const
+  ShakeDecay = 10.0  # How fast shake amplitude decays per second.
+
 type
   Camera* = object
     x*, y*: float        # current world coord of screen top-left
@@ -26,6 +29,10 @@ type
     holdTimer*: float
     pendingSnapX, pendingSnapY: float
     pendingSnapActive: bool
+    shakeTimer*: float       # remaining shake time
+    shakeIntensity*: float   # current amplitude in pixels
+    shakeOffsetX*: float     # per-frame render offset
+    shakeOffsetY*: float
 
 proc newCamera*(): Camera =
   Camera(
@@ -179,3 +186,26 @@ proc snapCamera*(cam: var Camera, charX, charY, charW, charH: float,
   cam.x = cam.targetX
   cam.y = cam.targetY
   cam.clampToBounds(levelWidth, levelHeight)
+
+proc triggerShake*(cam: var Camera, intensity: float, duration: float) =
+  ## Start a screen shake with given pixel amplitude and duration.
+  cam.shakeTimer = duration
+  cam.shakeIntensity = intensity
+
+proc updateShake*(cam: var Camera, dt: float) =
+  ## Advance the shake timer and compute per-frame random offsets.
+  if cam.shakeTimer <= 0.0:
+    cam.shakeOffsetX = 0.0
+    cam.shakeOffsetY = 0.0
+    return
+  cam.shakeTimer -= dt
+  if cam.shakeTimer <= 0.0:
+    cam.shakeTimer = 0.0
+    cam.shakeIntensity = 0.0
+    cam.shakeOffsetX = 0.0
+    cam.shakeOffsetY = 0.0
+    return
+  cam.shakeIntensity *= max(0.0, 1.0 - ShakeDecay * dt)
+  let amp = cam.shakeIntensity
+  cam.shakeOffsetX = sin(cam.shakeTimer * 97.0) * amp
+  cam.shakeOffsetY = cos(cam.shakeTimer * 131.0) * amp
