@@ -5,6 +5,7 @@ import windy
 import vmath
 import bumpy
 import pixie
+import chroma
 import silky
 import "../constants"
 import "../build_info"
@@ -35,6 +36,7 @@ type
 var
   menuTitleAlpha: float = 0.0
   menuCardOffsets: array[6, float]
+  menuCardHoverAlphas: array[6, float]
   menuButtonScale: float = 0.0
   menuEntrancePlaying: bool = false
   menuTweenPool: TweenPool = initTweenPool()
@@ -44,6 +46,7 @@ proc triggerMenuEntrance() =
   menuTitleAlpha = 0.0
   for i in 0..<6:
     menuCardOffsets[i] = 200.0
+    menuCardHoverAlphas[i] = 0.0
   menuButtonScale = 0.0
   menuEntrancePlaying = true
   menuTweenPool = initTweenPool()
@@ -343,28 +346,72 @@ proc renderGameplayHud(sk: Silky, layout: UiLayout, game: Game) =
                             maxWidth = boxW - layout.px(36), maxHeight = boxH - layout.px(24), wordWrap = true)
 
 proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
-                    x, y: float32, idx: int, name, gift: string) =
+                    x, y: float32, idx: int, name, gift: string,
+                    time, dt: float) =
   let
     base = CHAR_COLORS[idx mod CHAR_COLORS.len]
-    accent = rgbx(base.r, base.g, base.b, 255)
-    posBase = layout.p(x, y)
-    cardSize = layout.sz(96, 40)
-    cardRect = rect(posBase.x, posBase.y, cardSize.x, cardSize.y)
-    hovered = window.mousePos.vec2.overlaps(cardRect)
     selected = idx == ui.menuSpotlight
-    pos = posBase
-    size = cardSize
+
+    # Color brightness pulse via HSL.
+    chromaBase = chroma.color(
+      base.r.float32 / 255.0,
+      base.g.float32 / 255.0,
+      base.b.float32 / 255.0)
+    hslBase = chromaBase.hsl
+    pulsedL = clamp(
+      hslBase.l + sin(time + float(idx) * 0.33).float32 * 10.0,
+      0.0'f32, 100.0'f32)
+    pulsedColor = hsl(hslBase.h, hslBase.s, pulsedL).color
+    accent = rgbx(
+      clamp(pulsedColor.r * 255.0, 0.0, 255.0).uint8,
+      clamp(pulsedColor.g * 255.0, 0.0, 255.0).uint8,
+      clamp(pulsedColor.b * 255.0, 0.0, 255.0).uint8,
+      255'u8)
+
+    # Scale breathing — disabled for selected card.
+    breathe =
+      if selected: 1.0'f32
+      else: 1.0'f32 + 0.02'f32 * sin(
+        time.float32 * PI.float32 / 2.0'f32 + idx.float32 * 0.33'f32)
+
+    posBase = layout.p(x, y)
+    baseSize = layout.sz(96, 40)
+    scaledW = baseSize.x * breathe
+    scaledH = baseSize.y * breathe
+    pos = snap(vec2(
+      posBase.x + (baseSize.x - scaledW) * 0.5,
+      posBase.y + (baseSize.y - scaledH) * 0.5))
+    size = vec2(scaledW, scaledH)
+    cardRect = rect(pos.x, pos.y, size.x, size.y)
+    hovered = window.mousePos.vec2.overlaps(cardRect)
     fill = if hovered or selected: rgbx(18, 22, 30, 210) else: rgbx(12, 15, 22, 146)
     border =
-      if hovered:
-        bright(accent, 20)
-      elif selected:
-        muted(accent, 232)
-      else:
-        muted(accent, 120)
+      if hovered: bright(accent, 20)
+      elif selected: muted(accent, 232)
+      else: muted(accent, 120)
+
+  # Hover alpha ramp.
+  if hovered or selected:
+    menuCardHoverAlphas[idx] = min(menuCardHoverAlphas[idx] + dt / 0.15, 1.0)
+  else:
+    menuCardHoverAlphas[idx] = max(menuCardHoverAlphas[idx] - dt / 0.15, 0.0)
+
   if hovered:
     ui.menuSpotlight = idx
     ui.noteHot("cast_" & name)
+
+  # Glow ring.
+  let glowAlpha = menuCardHoverAlphas[idx]
+  if glowAlpha > 0.0:
+    let
+      glowA =
+        if selected: uint8(40.0 * glowAlpha)
+        else: uint8(30.0 * glowAlpha)
+      glowColor = rgbx(accent.r, accent.g, accent.b, glowA)
+      glowPos = vec2(pos.x - layout.px(4), pos.y - layout.px(4))
+      glowSize = vec2(size.x + layout.px(8), size.y + layout.px(8))
+    sk.drawRect(glowPos, glowSize, glowColor)
+
   discard gift
   sk.drawSoftPanel(pos, size, fill, border)
   sk.drawRect(pos + layout.d(12, 13), layout.sz(14, 14), accent)
@@ -439,7 +486,8 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
     let tileX = DEFAULT_WIDTH.float32 * 0.5 - 324 + 12 + i.float32 * 104.0
     let tileY = DEFAULT_HEIGHT.float32 - 72 + 6 + menuCardOffsets[i].float32
     renderCastCard(ui, sk, window, layout, tileX, tileY, i,
-                   castNames[i], castGifts[i])
+                   castNames[i], castGifts[i],
+                   game.elapsedTime, game.deltaTime)
   drawCenteredText(sk, layout, "Small", "1-6 or arrow keys preview the cast • Enter begins",
                    heroCenter, layout.bottom - layout.px(28), rgbx(122, 134, 152, 255))
 
