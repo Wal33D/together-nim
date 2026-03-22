@@ -2,6 +2,7 @@
 ## The goal is mood and depth, not literal scenery props.
 
 import math
+import chroma
 import "../constants"
 import "../entities/level"
 import "render_backend"
@@ -27,6 +28,55 @@ proc mixColor(a, b: constants.Color, t: float): constants.Color =
   result.r = uint8(float(a.r) + (float(b.r) - float(a.r)) * clamped)
   result.g = uint8(float(a.g) + (float(b.g) - float(a.g)) * clamped)
   result.b = uint8(float(a.b) + (float(b.b) - float(a.b)) * clamped)
+
+const
+  ActColors: array[5, constants.Color] = [
+    (r: 220'u8, g: 160'u8, b: 60'u8),   # Act 1: warm amber
+    (r: 80'u8, g: 160'u8, b: 200'u8),    # Act 2: soft cyan
+    (r: 140'u8, g: 100'u8, b: 180'u8),   # Act 3: muted purple
+    (r: 60'u8, g: 60'u8, b: 160'u8),     # Act 4: deep indigo
+    (r: 220'u8, g: 220'u8, b: 240'u8),   # Act 5: near-white
+  ]
+  TransitionDuration = 2.0
+
+proc toChroma(c: constants.Color): chroma.Color =
+  chroma.color(c.r.float32 / 255.0, c.g.float32 / 255.0, c.b.float32 / 255.0)
+
+proc actForLevel(levelId: int): int =
+  ## Return act number (1-5) based on level ID.
+  min(5, (levelId - 1) div 6 + 1)
+
+proc seededVal(seed, index, lo, hi: int): int =
+  ## Deterministic pseudo-random value from seed and index.
+  let hash = ((seed * 7919 + index * 6271) and 0x7FFFFFFF) mod 65521
+  lo + hash mod (hi - lo + 1)
+
+var
+  currentAct: int = 0
+  transitionFromAct: int = 0
+  transitionStart: float = -10.0
+
+proc actColorForLevel(levelId: int, time: float): chroma.Color =
+  ## Return the act palette color, blending over 2s at act boundaries.
+  let act = actForLevel(levelId)
+  if currentAct == 0:
+    currentAct = act
+  elif act != currentAct:
+    transitionFromAct = currentAct
+    transitionStart = time
+    currentAct = act
+
+  let elapsed = time - transitionStart
+  if elapsed < TransitionDuration and transitionFromAct > 0:
+    let t = elapsed / TransitionDuration
+    result = chroma.mix(
+      ActColors[transitionFromAct - 1].toChroma,
+      ActColors[act - 1].toChroma,
+      t
+    )
+  else:
+    transitionFromAct = 0
+    result = ActColors[act - 1].toChroma
 
 proc themeForScene(scene: BackdropScene): BackdropTheme =
   case scene
@@ -215,13 +265,64 @@ proc renderAmbientStrata(renderer: RendererPtr, theme: BackdropTheme, scene: Bac
     drawFilledRect(renderer, 0, 74, DEFAULT_WIDTH.cint, 110)
   renderer.setDrawBlendMode(BlendMode_None)
 
+proc renderMidGroundSilhouettes(renderer: RendererPtr, actColor: chroma.Color, act: int, camX: float) =
+  ## Procedurally generated column shapes scrolling at 0.4x camera speed.
+  let darkColor = chroma.darken(actColor, 0.4)
+  let cr = uint8(darkColor.r * 255.0)
+  let cg = uint8(darkColor.g * 255.0)
+  let cb = uint8(darkColor.b * 255.0)
+  let count = seededVal(act, 999, 8, 12)
+  let scrollShift = int(camX * 0.4) mod DEFAULT_WIDTH
+
+  renderer.setDrawBlendMode(BlendMode_Blend)
+  renderer.setDrawColor(cr, cg, cb, 200)
+
+  for i in 0..<count:
+    let baseX = seededVal(act, i * 3, 0, DEFAULT_WIDTH - 1)
+    let h = seededVal(act, i * 3 + 1, 60, 180)
+    let w = seededVal(act, i * 3 + 2, 20, 50)
+    let x = ((baseX - scrollShift) mod DEFAULT_WIDTH + DEFAULT_WIDTH) mod DEFAULT_WIDTH
+    let y = DEFAULT_HEIGHT - h
+    drawFilledRect(renderer, cint(x), cint(y), cint(w), cint(h))
+
+  renderer.setDrawBlendMode(BlendMode_None)
+
+proc renderNearGroundDetail(renderer: RendererPtr, actColor: chroma.Color, act: int, camX: float) =
+  ## Small rect clusters at ground level scrolling at 0.8x camera speed.
+  let lightColor = chroma.lighten(actColor, 0.1)
+  let cr = uint8(lightColor.r * 255.0)
+  let cg = uint8(lightColor.g * 255.0)
+  let cb = uint8(lightColor.b * 255.0)
+  let count = seededVal(act, 888, 20, 30)
+  let scrollShift = int(camX * 0.8) mod DEFAULT_WIDTH
+  let groundZone = DEFAULT_HEIGHT * 15 div 100
+  let groundTop = DEFAULT_HEIGHT - groundZone
+
+  renderer.setDrawBlendMode(BlendMode_Blend)
+  renderer.setDrawColor(cr, cg, cb, 180)
+
+  for i in 0..<count:
+    let baseX = seededVal(act, i * 5 + 100, 0, DEFAULT_WIDTH - 1)
+    let h = seededVal(act, i * 5 + 101, 4, 12)
+    let w = seededVal(act, i * 5 + 102, 6, 20)
+    let yOff = seededVal(act, i * 5 + 103, 0, max(1, groundZone - h))
+    let x = ((baseX - scrollShift) mod DEFAULT_WIDTH + DEFAULT_WIDTH) mod DEFAULT_WIDTH
+    let y = groundTop + yOff
+    drawFilledRect(renderer, cint(x), cint(y), cint(w), cint(h))
+
+  renderer.setDrawBlendMode(BlendMode_None)
+
 proc renderBackdrop*(renderer: RendererPtr, level: Level, camX, time: float) =
   let theme = backdropThemeForLevel(level.id)
+  let act = actForLevel(level.id)
+  let actColor = actColorForLevel(level.id, time)
   renderSkyGradient(renderer, theme)
   renderCelestialBody(renderer, theme, theme.scene, time)
   renderAmbientStrata(renderer, theme, theme.scene)
   renderStars(renderer, theme, level.id, time)
   renderAurora(renderer, theme, time)
   renderHorizonBands(renderer, theme, camX)
+  renderMidGroundSilhouettes(renderer, actColor, act, camX)
   renderMist(renderer, theme, theme.scene, time)
+  renderNearGroundDetail(renderer, actColor, act, camX)
   renderWaterShimmer(renderer, theme, time)
