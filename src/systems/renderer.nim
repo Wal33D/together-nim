@@ -12,6 +12,17 @@ import "particles"
 import "render_backend"
 import math
 
+const
+  ActTints: array[5, (uint8, uint8, uint8, uint8)] = [
+    (255'u8, 200'u8, 100'u8, 20'u8),  # Act 1: warm gold
+    (100'u8, 160'u8, 255'u8, 20'u8),  # Act 2: soft blue
+    (160'u8, 100'u8, 200'u8, 20'u8),  # Act 3: muted purple
+    (60'u8,  60'u8,  140'u8, 26'u8),  # Act 4: deep indigo
+    (255'u8, 255'u8, 255'u8, 15'u8),  # Act 5: white/prismatic
+  ]
+  VignetteDepth = 100
+  VignettePasses = 3
+
 proc renderMenu(renderer: RendererPtr, game: Game) =
   let top = (r: 8'u8, g: 11'u8, b: 18'u8)
   let bottom = (r: 18'u8, g: 24'u8, b: 34'u8)
@@ -81,6 +92,36 @@ proc renderParticleSystem(renderer: RendererPtr, system: ParticleSystem,
     if sz >= 3:
       renderer.setDrawColor(255, 255, 255, alpha div 3)
       drawOutlineRect(renderer, rx, ry, rsz, rsz)
+  renderer.setDrawBlendMode(BlendMode_None)
+
+proc renderAmbientOverlay(renderer: RendererPtr, levelIdx: int) =
+  ## Draw per-act color tint and vignette darkening at screen edges.
+  let actIdx = actForLevel(levelIdx)
+  if actIdx < 0:
+    return
+
+  renderer.setDrawBlendMode(BlendMode_Blend)
+
+  # Per-act tint — full-screen rect.
+  let tint = ActTints[actIdx]
+  renderer.setDrawColor(tint[0], tint[1], tint[2], tint[3])
+  drawFilledRect(renderer, 0, 0, DEFAULT_WIDTH.cint, DEFAULT_HEIGHT.cint)
+
+  # Vignette — 3 passes per edge, each narrower and slightly more opaque.
+  for pass in 0 ..< VignettePasses:
+    let t = float(VignettePasses - pass) / float(VignettePasses)
+    let w = int(float(VignetteDepth) * t)
+    let alpha = uint8(float(38) * (1.0 - t) / float(VignettePasses - 1) + 5.0)
+    renderer.setDrawColor(0, 0, 0, alpha)
+    # Left edge.
+    drawFilledRect(renderer, 0, 0, w.cint, DEFAULT_HEIGHT.cint)
+    # Right edge.
+    drawFilledRect(renderer, (DEFAULT_WIDTH - w).cint, 0, w.cint, DEFAULT_HEIGHT.cint)
+    # Top edge.
+    drawFilledRect(renderer, 0, 0, DEFAULT_WIDTH.cint, w.cint)
+    # Bottom edge.
+    drawFilledRect(renderer, 0, (DEFAULT_HEIGHT - w).cint, DEFAULT_WIDTH.cint, w.cint)
+
   renderer.setDrawBlendMode(BlendMode_None)
 
 proc renderGameplay(renderer: RendererPtr, game: Game) =
@@ -247,6 +288,9 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
       renderer.setDrawColor(ring.color.r, ring.color.g, ring.color.b, alpha)
       drawOutlineRect(renderer, rx, ry, rw, rh)
     renderer.setDrawBlendMode(BlendMode_None)
+
+  # Ambient lighting overlay — per-act tint and vignette.
+  renderAmbientOverlay(renderer, game.currentLevel)
 
 proc renderPaused(renderer: RendererPtr, game: Game) =
   ## Render gameplay only; the animated dim overlay is handled by the Silky UI layer.
