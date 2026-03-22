@@ -203,6 +203,14 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
     renderer.setDrawColor(chColor.r, chColor.g, chColor.b, 255)
     drawFilledRect(renderer, dx, dy, dw, dh)
 
+    # Dim overlay on previously active character during switch
+    if i == game.prevActiveCharacterIndex and game.charDimTimer > 0.0:
+      let dimAlpha = uint8(min(255.0, game.charDimTimer / 0.3 * 50.0))
+      renderer.setDrawBlendMode(BlendMode_Blend)
+      renderer.setDrawColor(0, 0, 0, dimAlpha)
+      drawFilledRect(renderer, dx, dy, dw, dh)
+      renderer.setDrawBlendMode(BlendMode_None)
+
     # Active character border
     if isActive:
       renderer.setDrawColor(255, 255, 255, 255)
@@ -222,6 +230,23 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
       renderer.setDrawColor(255, 220, 80, alpha)
       drawFilledRect(renderer, dx, dy, dw, dh)
       renderer.setDrawBlendMode(BlendMode_None)
+
+  # Ring particles (character switch flourish)
+  if game.particles.ringParticles.len > 0:
+    renderer.setDrawBlendMode(BlendMode_Blend)
+    for ring in game.particles.ringParticles:
+      let progress = 1.0 - ring.life / ring.maxLife
+      let scale = 1.0 + progress
+      let w = ring.baseW * scale
+      let h = ring.baseH * scale
+      let rx = (ring.x - w * 0.5).cint - camX
+      let ry = (ring.y - h * 0.5).cint - camY
+      let rw = w.cint
+      let rh = h.cint
+      let alpha = uint8(max(0.0, min(255.0, (ring.life / ring.maxLife) * 255.0)))
+      renderer.setDrawColor(ring.color.r, ring.color.g, ring.color.b, alpha)
+      drawOutlineRect(renderer, rx, ry, rw, rh)
+    renderer.setDrawBlendMode(BlendMode_None)
 
 proc renderPaused(renderer: RendererPtr, game: Game) =
   ## Render gameplay only; the animated dim overlay is handled by the Silky UI layer.
