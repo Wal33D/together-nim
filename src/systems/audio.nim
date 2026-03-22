@@ -3,6 +3,9 @@
 ## Compile with -d:withAudio to enable CoreAudio output (used by together.nim).
 ## Without that flag all procs are harmless no-ops, safe for unit tests.
 
+import
+  "../constants"
+
 type
   SoundKind* = enum
     soundJump, soundLand, soundDeath, soundLevelComplete,
@@ -161,12 +164,20 @@ when defined(withAudio):
       pitchScale: float
       ampScale: float
 
+  const
+    CrossfadeDuration = 2.5
+    DefaultPaletteRoot = ActPalettes[0].baseFreqs[0]
+
   var
     gInstances: array[MAX_INSTANCES, SoundInstance]
     gMusicTracks: array[2, MusicTrack]
     gAudioOpen = false
     gQueue: AudioQueueRef
     gAudioMutex: PthreadMutex
+    gCurrentPalette: TonalPalette = ActPalettes[0]
+    gTargetPalette: TonalPalette = ActPalettes[0]
+    gPaletteCrossfadeT: float = 1.0
+    gCrossfading: bool = false
 
   proc durationSamples(step: MusicStep): int =
     max(1, (step.durationMs * SAMPLE_RATE) div 1000)
@@ -194,6 +205,20 @@ when defined(withAudio):
     max(-32767, min(32767, baseSample + s))
 
   proc mixMusicTracks(buf: ptr UncheckedArray[int16], numSamples: int) =
+    # Advance palette crossfade per buffer.
+    var paletteScale: float
+    if gCrossfading:
+      gPaletteCrossfadeT += float(numSamples) / (CrossfadeDuration * float(SAMPLE_RATE))
+      if gPaletteCrossfadeT >= 1.0:
+        gPaletteCrossfadeT = 1.0
+        gCurrentPalette = gTargetPalette
+        gCrossfading = false
+      let blendedRoot = gCurrentPalette.baseFreqs[0] +
+        (gTargetPalette.baseFreqs[0] - gCurrentPalette.baseFreqs[0]) * gPaletteCrossfadeT
+      paletteScale = blendedRoot / DefaultPaletteRoot
+    else:
+      paletteScale = gCurrentPalette.baseFreqs[0] / DefaultPaletteRoot
+
     for track in gMusicTracks.mitems:
       if not track.active or track.pattern.len == 0:
         continue
@@ -206,7 +231,7 @@ when defined(withAudio):
         let noteProgress =
           if stepDuration > 0: float(track.sampleInStep) / float(stepDuration)
           else: 0.0
-        let freq = (step.freqStart + (step.freqEnd - step.freqStart) * noteProgress) * track.pitchScale
+        let freq = (step.freqStart + (step.freqEnd - step.freqStart) * noteProgress) * track.pitchScale * paletteScale
         var amp = step.amplitude * track.ampScale
 
         # Gentle fade at loop boundaries to avoid clicks.
@@ -425,8 +450,19 @@ when defined(withAudio):
       gInstances[0] = inst  # steal oldest slot when full
     discard pthread_mutex_unlock(addr gAudioMutex)
 
+  proc setActPalette*(palette: TonalPalette) =
+    ## Start a crossfade to the given tonal palette if it differs from the current one.
+    if not gAudioOpen: return
+    discard pthread_mutex_lock(addr gAudioMutex)
+    if palette.name != gCurrentPalette.name:
+      gTargetPalette = palette
+      gPaletteCrossfadeT = 0.0
+      gCrossfading = true
+    discard pthread_mutex_unlock(addr gAudioMutex)
+
 else:
   # Stub implementations when audio is disabled (unit tests)
   proc initAudio*() = discard
   proc shutdownAudio*() = discard
   proc playSound*(kind: SoundKind) = discard
+  proc setActPalette*(palette: TonalPalette) = discard

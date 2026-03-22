@@ -51,3 +51,17 @@ const CHAR_COLORS*: array[6, Color] = [
 # Default character dimensions (used for AABB when per-character size is unavailable)
 const CHAR_WIDTH*  = 24
 const CHAR_HEIGHT* = 24
+
+# Tonal palettes for per-act ambient music
+type
+  TonalPalette* = object
+    baseFreqs*: array[3, float]
+    name*: string
+
+const ActPalettes*: array[5, TonalPalette] = [
+  TonalPalette(baseFreqs: [261.6, 329.6, 392.0], name: "C major"),      # Act 1
+  TonalPalette(baseFreqs: [349.2, 440.0, 523.3], name: "F major"),      # Act 2
+  TonalPalette(baseFreqs: [293.7, 349.2, 440.0], name: "D minor"),      # Act 3
+  TonalPalette(baseFreqs: [220.0, 261.6, 329.6], name: "A minor"),      # Act 4
+  TonalPalette(baseFreqs: [261.6, 392.0, 0.0],   name: "C open fifth"), # Act 5
+]
