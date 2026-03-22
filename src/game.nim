@@ -47,6 +47,8 @@ type
     actTitleTimer*: float
     actTitleTarget*: int
     exitEmitTimers*: seq[float]
+    charDimTimer*: float
+    prevActiveCharacterIndex*: int
 
 const
   ActTitleFadeIn* = 1.0
@@ -178,6 +180,15 @@ proc emitCompletionParticles(game: var Game) =
     game.particles.emitCompletion(c.characterCenterX(), c.characterCenterY(),
                                   completionColor)
 
+proc emitSwitchParticles(game: var Game, idx: int) =
+  ## Emit a white ring on the newly active character.
+  let c = game.characters[idx]
+  let whiteColor: Color = (r: 255'u8, g: 255'u8, b: 255'u8)
+  game.particles.emitSwitchRing(
+    c.x + float(c.width) * 0.5,
+    c.y + float(c.height) * 0.5,
+    float(c.width), float(c.height), whiteColor)
+
 proc accentCharacterSwitch(game: var Game, previousIdx, newIdx: int) =
   game.camera.boostResponse(0.18)
 
@@ -257,7 +268,11 @@ proc selectActiveCharacter*(game: var Game, idx: int): bool =
     game.characters[game.activeCharacterIndex].jumpBufferTimer = 0.0
 
   game.activeCharacterIndex = idx
+  game.prevActiveCharacterIndex = previousIdx
+  game.charDimTimer = 0.3
   game.accentCharacterSwitch(previousIdx, idx)
+  game.emitSwitchParticles(idx)
+  playSound(soundCharSwitch)
   true
 
 proc cycleActiveCharacter*(game: var Game, delta: int): bool =
@@ -274,7 +289,11 @@ proc cycleActiveCharacter*(game: var Game, delta: int): bool =
 
   game.characters[currentIdx].jumpBufferTimer = 0.0
   game.activeCharacterIndex = newIdx
+  game.prevActiveCharacterIndex = currentIdx
+  game.charDimTimer = 0.3
   game.accentCharacterSwitch(currentIdx, newIdx)
+  game.emitSwitchParticles(newIdx)
+  playSound(soundCharSwitch)
   true
 
 proc loadLevel*(game: var Game, idx: int) =
@@ -583,6 +602,10 @@ proc update*(game: var Game, dt: float) =
           game.narrationRevealed += 1
         else:
           game.narrationActive = false
+
+    # Character switch dim timer
+    if game.charDimTimer > 0.0:
+      game.charDimTimer = max(0.0, game.charDimTimer - scaledDt)
 
   of levelWin:
     game.levelWinTimer += scaledDt

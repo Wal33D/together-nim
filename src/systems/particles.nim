@@ -18,8 +18,15 @@ type
     targetX*: float
     targetY*: float
 
+  RingParticle* = object
+    x*, y*: float
+    baseW*, baseH*: float
+    life*, maxLife*: float
+    color*: Color
+
   ParticleSystem* = object
     particles*: seq[Particle]
+    ringParticles*: seq[RingParticle]
 
 const MAX_PARTICLES = 200
 
@@ -234,6 +241,30 @@ proc emitRespawnReform*(system: var ParticleSystem, spawnX, spawnY: float, color
       targetY: spawnY
     ))
 
+const RingLife = 0.3
+
+proc emitSwitchRing*(system: var ParticleSystem, x, y, w, h: float, color: Color) =
+  ## Spawn one expanding ring particle centered at (x, y) with given dimensions.
+  system.ringParticles.add(RingParticle(
+    x: x,
+    y: y,
+    baseW: w,
+    baseH: h,
+    life: RingLife,
+    maxLife: RingLife,
+    color: color
+  ))
+
+proc updateRingParticles*(system: var ParticleSystem, dt: float) =
+  ## Advance ring particle lifetimes and remove dead ones.
+  var i = 0
+  while i < system.ringParticles.len:
+    system.ringParticles[i].life -= dt
+    if system.ringParticles[i].life <= 0.0:
+      system.ringParticles.del(i)
+    else:
+      inc i
+
 proc update*(system: var ParticleSystem, dt: float) =
   ## Advance all particles and remove dead ones.
   var i = 0
@@ -255,3 +286,4 @@ proc update*(system: var ParticleSystem, dt: float) =
       p.vx *= pow(0.88, dt * 60.0)  # frame-rate-independent friction
       system.particles[i] = p
       inc i
+  system.updateRingParticles(dt)
