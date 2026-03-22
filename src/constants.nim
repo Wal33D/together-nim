@@ -10,6 +10,9 @@ const TERMINAL_VELOCITY* = MAX_FALL_SPEED
 const GRACEFUL_TERMINAL* = 400.0
 const FRICTION* = 0.85
 const AIR_RESISTANCE* = 0.95
+const GroundAccelTime* = 0.08   # Seconds to reach max speed from stop.
+const GroundDecelTime* = 0.05   # Seconds to decelerate to stop.
+const AirControlFactor* = 0.6   # Fraction of ground acceleration available in air.
 const MOVE_SPEED* = 165.0
 const TIME_SCALE* = 0.83           # Contemplative feel
 

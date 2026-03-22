@@ -448,13 +448,12 @@ proc update*(game: var Game, dt: float) =
   of playing:
     # Apply movement to active character
     if game.activeCharacterIndex < game.characters.len:
-      var speed = game.characters[game.activeCharacterIndex].moveSpeed()
-      var vx = 0.0
-      if game.leftHeld: vx -= speed
-      if game.rightHeld: vx += speed
-      game.characters[game.activeCharacterIndex].vx = vx
-      if vx > 0: game.characters[game.activeCharacterIndex].facingRight = true
-      elif vx < 0: game.characters[game.activeCharacterIndex].facingRight = false
+      var dir = 0
+      if game.leftHeld: dir -= 1
+      if game.rightHeld: dir += 1
+      game.characters[game.activeCharacterIndex].inputDir = dir
+      if dir > 0: game.characters[game.activeCharacterIndex].facingRight = true
+      elif dir < 0: game.characters[game.activeCharacterIndex].facingRight = false
 
     # Physics
     if game.currentLevel >= 0 and game.currentLevel < allLevels.len:

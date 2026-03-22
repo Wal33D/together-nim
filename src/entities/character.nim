@@ -36,6 +36,7 @@ type
     idleTimer*: float             # for idle sway
     landingTimer*: float          # flash on landing
     contentment*: float           # 0-1 emotional glow
+    inputDir*: int                # -1, 0, or 1 from current input
 
 proc newCharacter*(id: string): Character =
   result.x = 0.0

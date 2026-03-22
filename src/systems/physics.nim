@@ -1,8 +1,10 @@
 ## Physics and collision detection system
 
-import "../constants"
-import "../entities/character"
-import "../entities/level"
+import
+  std/math,
+  "../constants",
+  "../entities/character",
+  "../entities/level"
 
 type
   Rect* = object
@@ -132,11 +134,21 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
     if not c.grounded:
       c.coyoteTimer += dt
 
-    # Friction
-    if c.grounded:
-      c.vx *= FRICTION
+    # Horizontal acceleration / deceleration
+    let maxSpeed = c.moveSpeed()
+    let accel = maxSpeed / GroundAccelTime
+    let decel = maxSpeed / GroundDecelTime
+    let airFactor = if c.grounded: 1.0 else: AirControlFactor
+
+    if c.inputDir != 0:
+      c.vx += float(c.inputDir) * accel * airFactor * dt
+      c.vx = clamp(c.vx, -maxSpeed, maxSpeed)
     else:
-      c.vx *= AIR_RESISTANCE
+      let step = decel * airFactor * dt
+      if abs(c.vx) <= step:
+        c.vx = 0.0
+      else:
+        c.vx -= sgn(c.vx).float * step
 
     # Move
     c.x += c.vx * dt
