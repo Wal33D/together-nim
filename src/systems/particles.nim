@@ -8,10 +8,12 @@ type
   Particle* = object
     x*, y*: float
     vx*, vy*: float
-    life*: float     ## remaining lifetime in seconds
-    maxLife*: float  ## total lifetime for alpha calculation
+    life*: float        ## remaining lifetime in seconds
+    maxLife*: float     ## total lifetime for alpha calculation
     color*: Color
-    size*: float     ## pixel size
+    size*: float        ## pixel size
+    gravityScale*: float ## multiplier on gravity (0.0 = no gravity)
+    fadeTime*: float     ## seconds before death to start fading (0.0 = fade over full lifetime)
 
   ParticleSystem* = object
     particles*: seq[Particle]
@@ -49,7 +51,8 @@ proc emitBurst*(system: var ParticleSystem, x, y: float, count: int,
       life: life,
       maxLife: life,
       color: color,
-      size: size
+      size: size,
+      gravityScale: 1.0
     ))
 
 proc emit*(system: var ParticleSystem, x, y: float, count: int,
@@ -84,7 +87,8 @@ proc emitJumpFan(system: var ParticleSystem, x, y: float, color: Color,
       life: 0.3,
       maxLife: 0.3,
       color: blended,
-      size: size
+      size: size,
+      gravityScale: 1.0
     ))
 
 proc emitJump*(system: var ParticleSystem, x, y: float, color: Color) =
@@ -132,7 +136,8 @@ proc emitWallSpark*(system: var ParticleSystem, x, y: float, charH: float,
       life: SparkLife,
       maxLife: SparkLife,
       color: SparkColor,
-      size: size
+      size: size,
+      gravityScale: 1.0
     ))
 
 proc emitButtonShimmer*(system: var ParticleSystem, x, y: float, color: Color) =
@@ -156,8 +161,28 @@ proc emitButtonShimmer*(system: var ParticleSystem, x, y: float, color: Color) =
       life: ShimmerLife,
       maxLife: ShimmerLife,
       color: color,
-      size: size
+      size: size,
+      gravityScale: 1.0
     ))
+
+proc emitExitBeckoning*(system: var ParticleSystem, exitX, exitY, exitW, exitH: float, color: Color) =
+  ## One rising particle from a random point within the exit zone.
+  let spawnX = exitX + rand(exitW)
+  let spawnY = exitY + rand(exitH)
+  let size = randRange(3.0, 4.0)
+  const BeckonLife = 2.0
+  pushParticle(system, Particle(
+    x: spawnX,
+    y: spawnY,
+    vx: randRange(-10.0, 10.0),
+    vy: -30.0,
+    life: BeckonLife,
+    maxLife: BeckonLife,
+    color: color,
+    size: size,
+    gravityScale: 0.0,
+    fadeTime: 0.5
+  ))
 
 proc update*(system: var ParticleSystem, dt: float) =
   ## Advance all particles and remove dead ones.
@@ -170,7 +195,7 @@ proc update*(system: var ParticleSystem, dt: float) =
     else:
       p.x += p.vx * dt
       p.y += p.vy * dt
-      p.vy += 280.0 * dt  # gentle downward gravity
+      p.vy += 280.0 * p.gravityScale * dt  # gentle downward gravity
       p.vx *= pow(0.88, dt * 60.0)  # frame-rate-independent friction
       system.particles[i] = p
       inc i

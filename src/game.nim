@@ -1,6 +1,7 @@
 ## Game state machine, update logic, and level management
 
 import
+  std/math,
   windy,
   constants,
   entities/character,
@@ -45,6 +46,7 @@ type
     menuAtmosphere*: Atmosphere
     actTitleTimer*: float
     actTitleTarget*: int
+    exitEmitTimers*: seq[float]
 
 const
   ActTitleFadeIn* = 1.0
@@ -291,6 +293,7 @@ proc loadLevel*(game: var Game, idx: int) =
     atmColors.add(CHAR_COLORS[c.colorIndex mod 6])
   game.atmosphere = newAtmosphere(atmColors)
   game.particles = ParticleSystem(particles: @[])
+  game.exitEmitTimers = newSeq[float](level.exits.len)
 
   # Narration
   game.narrationText = level.narration
@@ -483,6 +486,31 @@ proc update*(game: var Game, dt: float) =
           let cy = b.y + b.height * 0.5
           let buttonColor: Color = (r: 255'u8, g: 255'u8, b: 80'u8)
           game.particles.emitButtonShimmer(cx, cy, buttonColor)
+
+      # Exit beckoning particles — continuous emission per exit
+      if game.exitEmitTimers.len < level.exits.len:
+        game.exitEmitTimers = newSeq[float](level.exits.len)
+      for ei in 0..<level.exits.len:
+        let e = level.exits[ei]
+        let ecx = e.x + e.width * 0.5
+        let ecy = e.y + e.height * 0.5
+        var near = false
+        for c in game.characters:
+          let dx = characterCenterX(c) - ecx
+          let dy = characterCenterY(c) - ecy
+          if sqrt(dx * dx + dy * dy) < 100.0:
+            near = true
+            break
+        let interval = if near: 0.15 else: 0.3
+        game.exitEmitTimers[ei] += scaledDt
+        if game.exitEmitTimers[ei] >= interval:
+          game.exitEmitTimers[ei] -= interval
+          var exitColor: Color = (r: 128'u8, g: 128'u8, b: 128'u8)
+          for ci, charId in level.characters:
+            if charId == e.characterId:
+              exitColor = CHAR_COLORS[game.characters[ci].colorIndex mod 6]
+              break
+          game.particles.emitExitBeckoning(e.x, e.y, e.width, e.height, exitColor)
 
       # Buffered jump: if the active character landed this frame, spend the buffer immediately.
       if game.activeCharacterIndex < game.characters.len and
