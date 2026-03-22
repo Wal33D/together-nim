@@ -112,6 +112,53 @@ proc emitCompletion*(system: var ParticleSystem, x, y: float, color: Color) =
   ## Slightly brighter celebration burst for level completion.
   system.emitBurst(x, y, 8, color, 18.0, 34.0, -14.0, 0.24, 0.50, 1.5, 3.4)
 
+proc emitWallSpark*(system: var ParticleSystem, x, y: float, charH: float,
+                    wallOnRight: bool) =
+  ## Emit trailing sparks at the wall-contact edge during a wall slide.
+  const
+    SparkColor: Color = (r: 255'u8, g: 255'u8, b: 204'u8)
+    SparkLife = 0.15
+  for i in 0..<2:
+    if system.particles.len >= MAX_PARTICLES:
+      break
+    let spawnY = y + rand(charH * 0.5)
+    let hScatter = randRange(-15.0, 15.0)
+    let size = randRange(2.0, 3.0)
+    pushParticle(system, Particle(
+      x: x,
+      y: spawnY,
+      vx: hScatter,
+      vy: 120.0,
+      life: SparkLife,
+      maxLife: SparkLife,
+      color: SparkColor,
+      size: size
+    ))
+
+proc emitButtonShimmer*(system: var ParticleSystem, x, y: float, color: Color) =
+  ## Ring burst of 12 particles radiating from (x, y).
+  const
+    ShimmerLife = 0.5
+    ParticleCount = 12
+  for i in 0..<ParticleCount:
+    if system.particles.len >= MAX_PARTICLES:
+      break
+    let angle = float(i) * 30.0 * PI / 180.0
+    let speed = randRange(60.0, 100.0)
+    let vx = cos(angle) * speed
+    let vy = sin(angle) * speed + (-20.0)
+    let size = randRange(4.0, 6.0)
+    pushParticle(system, Particle(
+      x: x,
+      y: y,
+      vx: vx,
+      vy: vy,
+      life: ShimmerLife,
+      maxLife: ShimmerLife,
+      color: color,
+      size: size
+    ))
+
 proc update*(system: var ParticleSystem, dt: float) =
   ## Advance all particles and remove dead ones.
   var i = 0
