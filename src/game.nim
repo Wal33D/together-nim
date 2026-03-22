@@ -317,6 +317,7 @@ proc loadLevel*(game: var Game, idx: int) =
   game.activeCharacterIndex = 0
   for i, charId in level.characters:
     var c = newCharacter(charId)
+    c.idleFidgetTimer = float(i) * 0.5
     # Spawn characters spread on the first platform
     c.x = 50.0 + float(i) * 60.0
     c.y = level.platforms[0].y - float(c.height) - 2.0

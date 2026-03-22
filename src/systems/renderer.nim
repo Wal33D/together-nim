@@ -271,7 +271,7 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
     let isActive = i == game.activeCharacterIndex
     let chColor = CHAR_COLORS[ch.colorIndex mod 6]
 
-    let dx = ch.drawX().cint - camX
+    let dx = (ch.drawX() + ch.idleOffsetX).cint - camX
     let dy = (ch.drawY() + ch.idleSway()).cint - camY
     let dw = ch.drawWidth().cint
     let dh = ch.drawHeight().cint
@@ -336,17 +336,22 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
       let eyeY = (dy.float + dh.float * 0.25).cint
       let leftEyeX = (centerX - eyeSep / 2.0 - eyeRadius.float).cint
       let rightEyeX = (centerX + eyeSep / 2.0 - eyeRadius.float).cint
-      let pupilOffset: cint = if ch.facingRight: 1 else: -1
+      let pupilOffset: cint =
+        if ch.lookDir != 0: ch.lookDir.cint
+        elif ch.facingRight: 1
+        else: -1
 
-      # White sclera
-      renderer.setDrawColor(255, 255, 255, 255)
-      drawFilledRect(renderer, leftEyeX, eyeY, eyeSize, eyeSize)
-      drawFilledRect(renderer, rightEyeX, eyeY, eyeSize, eyeSize)
+      # Skip eye rendering when blinking
+      if not ch.blinking:
+        # White sclera
+        renderer.setDrawColor(255, 255, 255, 255)
+        drawFilledRect(renderer, leftEyeX, eyeY, eyeSize, eyeSize)
+        drawFilledRect(renderer, rightEyeX, eyeY, eyeSize, eyeSize)
 
-      # Dark pupils
-      renderer.setDrawColor(30, 30, 30, 255)
-      drawFilledRect(renderer, leftEyeX + 1 + pupilOffset, eyeY + 1, pupilSize, pupilSize)
-      drawFilledRect(renderer, rightEyeX + 1 + pupilOffset, eyeY + 1, pupilSize, pupilSize)
+        # Dark pupils
+        renderer.setDrawColor(30, 30, 30, 255)
+        drawFilledRect(renderer, leftEyeX + 1 + pupilOffset, eyeY + 1, pupilSize, pupilSize)
+        drawFilledRect(renderer, rightEyeX + 1 + pupilOffset, eyeY + 1, pupilSize, pupilSize)
 
       # Mouth
       let mouthW = (dw.float * 0.25).cint

@@ -33,6 +33,11 @@ type
     # Animation
     squashX*, squashY*: float     # 1.0 = normal, <1 = squashed, >1 = stretched
     idleTimer*: float             # for idle sway
+    idleFidgetTimer*: float       # stagger offset so characters don't fidget in sync
+    idleOffsetX*: float           # visual horizontal offset for dreamy sway (Luca)
+    lookDir*: int                 # -1/0/+1 look direction for idle look-around (Cara)
+    blinking*: bool               # true during slow blink (Felix)
+    blinkTimer*: float            # tracks blink duration
     landingTimer*: float          # flash on landing
     contentment*: float           # 0-1 emotional glow
     anticipation*: float          # 0-1 moving toward another character
@@ -58,6 +63,11 @@ proc newCharacter*(id: string): Character =
   result.squashX = 1.0
   result.squashY = 1.0
   result.idleTimer = 0.0
+  result.idleFidgetTimer = 0.0
+  result.idleOffsetX = 0.0
+  result.lookDir = 0
+  result.blinking = false
+  result.blinkTimer = 0.0
   result.landingTimer = 0.0
   result.contentment = 0.0
   result.anticipation = 0.0
@@ -121,8 +131,45 @@ proc updateAnimation*(c: var Character, dt: float) =
   if c.landingTimer > 0:
     c.landingTimer -= dt
 
-  # Idle sway
-  c.idleTimer += dt
+  # Idle timer — reset on input or movement; otherwise increment
+  if c.inputDir != 0 or abs(c.vx) > 5.0:
+    c.idleTimer = 0.0
+    c.idleOffsetX = 0.0
+    c.lookDir = 0
+    c.blinking = false
+    c.blinkTimer = 0.0
+  else:
+    c.idleTimer += dt
+
+  # Per-character idle fidgets (activate after 2s idle and grounded)
+  if c.idleTimer > 2.0 and c.grounded:
+    let fidgetTime = c.idleTimer - 2.0 + c.idleFidgetTimer
+    case c.ability
+    of doubleJump:
+      # Pip: small bounce every 3s
+      let prev = fidgetTime - dt
+      if floor(fidgetTime / 3.0) > floor(prev / 3.0):
+        c.squashY = 0.9
+    of floatAbility:
+      # Luca: dreamy side-sway
+      c.idleOffsetX = 2.0 * sin(c.idleTimer * 1.5)
+    of heavy:
+      # Bruno: weight shift over 4s period
+      c.squashX = 1.0 + sin(c.idleTimer * PI / 2.0) * 0.03
+    of wallJump:
+      # Cara: look-around cycling -1, +1, 0 every 1s
+      let phase = int(floor(fidgetTime)) mod 3
+      case phase
+      of 0: c.lookDir = -1
+      of 1: c.lookDir = 1
+      else: c.lookDir = 0
+    of coyoteTime:
+      # Felix: slow blink every 5s for 0.2s
+      let cyclePos = fidgetTime mod 5.0
+      c.blinking = cyclePos < 0.2
+    of gracefulFall:
+      # Ivy: breathing — squashY oscillates +/-0.02 on 3s sine
+      c.squashY = 1.0 + sin(c.idleTimer * PI * 2.0 / 3.0) * 0.02
 
 proc triggerLanding*(c: var Character) =
   c.squashX = 1.3
