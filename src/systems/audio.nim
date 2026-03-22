@@ -6,7 +6,8 @@
 type
   SoundKind* = enum
     soundJump, soundLand, soundDeath, soundLevelComplete,
-    soundCharSwitch, soundExitReached
+    soundCharSwitch, soundExitReached,
+    soundMenuHover, soundMenuSelect, soundMenuBack, soundTransitionSwoosh
 
   MusicStep* = object
     freqStart*, freqEnd*: float
@@ -124,7 +125,10 @@ when defined(withAudio):
 
   type
     NoteEnvelope = enum
-      envFlat, envDecay
+      envFlat, envDecay, envRampUp, envRampDown
+
+    NoteWaveform = enum
+      wfSine, wfNoise
 
     SoundNote = object
       freqStart: float
@@ -132,6 +136,7 @@ when defined(withAudio):
       durationSamples: int
       amplitude: float
       envelope: NoteEnvelope
+      waveform: NoteWaveform
 
     SoundInstance = object
       active: bool
@@ -142,6 +147,8 @@ when defined(withAudio):
       sampleInNote: int
       totalSamples: int
       samplesPlayed: int
+      filterState: float
+      noiseState: uint32
 
     MusicTrack = object
       active: bool
@@ -252,10 +259,13 @@ when defined(withAudio):
           else: 0.0
         let freq = note.freqStart + (note.freqEnd - note.freqStart) * noteProgress
 
-        # Amplitude with optional decay envelope
+        # Amplitude with envelope
         var amp = note.amplitude
-        if note.envelope == envDecay:
-          amp *= exp(-6.0 * noteProgress)
+        case note.envelope
+        of envFlat: discard
+        of envDecay: amp *= exp(-6.0 * noteProgress)
+        of envRampUp: amp *= noteProgress
+        of envRampDown: amp *= (1.0 - noteProgress)
 
         # Global fade-in/out to prevent pops
         if inst.samplesPlayed < FADE_SAMPLES:
@@ -264,13 +274,25 @@ when defined(withAudio):
         if remaining < FADE_SAMPLES:
           amp *= float(remaining) / float(FADE_SAMPLES)
 
-        # Generate and mix sample (saturating add)
-        let sample = int32(sin(inst.phase * 2.0 * PI) * amp * 28000.0)
-        buf[i] = int16(max(-32767, min(32767, int32(buf[i]) + sample)))
+        # Generate sample based on waveform
+        var rawSample: float
+        case note.waveform
+        of wfSine:
+          rawSample = sin(inst.phase * 2.0 * PI)
+          inst.phase += freq / float(SAMPLE_RATE)
+          if inst.phase >= 1.0: inst.phase -= 1.0
+        of wfNoise:
+          inst.noiseState = inst.noiseState xor (inst.noiseState shl 13)
+          inst.noiseState = inst.noiseState xor (inst.noiseState shr 17)
+          inst.noiseState = inst.noiseState xor (inst.noiseState shl 5)
+          let noiseVal = float(cast[int32](inst.noiseState)) / float(high(int32))
+          let coeff = min(1.0, 2.0 * PI * freq / float(SAMPLE_RATE))
+          inst.filterState = inst.filterState * (1.0 - coeff) + noiseVal * coeff
+          rawSample = inst.filterState
 
-        # Advance oscillator
-        inst.phase += freq / float(SAMPLE_RATE)
-        if inst.phase >= 1.0: inst.phase -= 1.0
+        # Mix sample (saturating add)
+        let sample = int32(rawSample * amp * 28000.0)
+        buf[i] = int16(max(-32767, min(32767, int32(buf[i]) + sample)))
         inc inst.sampleInNote
         inc inst.samplesPlayed
 
@@ -340,14 +362,17 @@ when defined(withAudio):
     inst.sampleInNote  = 0
     inst.samplesPlayed = 0
     inst.noteCount     = 0
+    inst.filterState   = 0.0
+    inst.noiseState    = 0xDEADBEEF'u32
 
     template addNote(f1, f2: float, ms: int, amp: float,
-                     env: NoteEnvelope = envFlat) =
+                     env: NoteEnvelope = envFlat,
+                     wf: NoteWaveform = wfSine) =
       let ni = inst.noteCount
       inst.notes[ni] = SoundNote(
         freqStart: f1, freqEnd: f2,
         durationSamples: (ms * SAMPLE_RATE) div 1000,
-        amplitude: amp, envelope: env)
+        amplitude: amp, envelope: env, waveform: wf)
       inc inst.noteCount
 
     case kind
@@ -372,6 +397,18 @@ when defined(withAudio):
     of soundExitReached:
       # Gentle chime: 600 Hz, 150ms
       addNote(600, 600, 150, 0.3)
+    of soundMenuHover:
+      # Subtle tick: 200 Hz sine, 15ms, fast exponential decay
+      addNote(200, 200, 15, 0.25, envDecay)
+    of soundMenuSelect:
+      # Ascending confirmation: 400→600 Hz sweep, 40ms, linear ramp up
+      addNote(400, 600, 40, 0.3, envRampUp)
+    of soundMenuBack:
+      # Descending cancel: 300→200 Hz sweep, 40ms, linear ramp down
+      addNote(300, 200, 40, 0.3, envRampDown)
+    of soundTransitionSwoosh:
+      # Filtered noise swoosh: lowpass sweep 800→200 Hz, 200ms, decay envelope
+      addNote(800, 200, 200, 0.35, envDecay, wfNoise)
 
     inst.totalSamples = 0
     for i in 0..<inst.noteCount:

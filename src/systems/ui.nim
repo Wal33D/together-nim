@@ -217,18 +217,25 @@ proc noteHot(ui: UiRenderer, widgetId: string, wantsMouse = true,
 
 proc cycleMenuSpotlight*(ui: UiRenderer, delta: int) =
   const count = 6
+  let prev = ui.menuSpotlight
   ui.menuSpotlight = (ui.menuSpotlight + delta + count * 4) mod count
+  if ui.menuSpotlight != prev:
+    playSound(soundMenuHover)
 
 proc cyclePauseSelection*(ui: UiRenderer, delta: int) =
   const count = 3
+  let prev = ui.pauseSelection
   ui.pauseSelection = (ui.pauseSelection + delta + count * 4) mod count
+  if ui.pauseSelection != prev:
+    playSound(soundMenuHover)
 
 proc activateFocusedAction*(ui: UiRenderer, game: var Game) =
   case game.state
   of menu:
     game.startGame()
-    playSound(soundCharSwitch)
+    playSound(soundMenuSelect)
   of paused:
+    playSound(soundMenuSelect)
     case ui.pauseSelection
     of 0:
       game.state = playing
@@ -681,7 +688,7 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
         discard startTween(menuTweenPool, 0.95, 1.0, 0.2, easeOutElastic,
           proc(v: float) = btnScale = v))
     game.startGame()
-    playSound(soundCharSwitch)
+    playSound(soundMenuSelect)
 
   sk.drawSoftPanel(ribbonPos, ribbonSize, rgbx(10, 12, 18, 110), rgbx(52, 62, 82, 120))
   for i in 0 ..< castNames.len:
