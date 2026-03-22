@@ -135,6 +135,30 @@ proc emitWallSpark*(system: var ParticleSystem, x, y: float, charH: float,
       size: size
     ))
 
+proc emitButtonShimmer*(system: var ParticleSystem, x, y: float, color: Color) =
+  ## Ring burst of 12 particles radiating from (x, y).
+  const
+    ShimmerLife = 0.5
+    ParticleCount = 12
+  for i in 0..<ParticleCount:
+    if system.particles.len >= MAX_PARTICLES:
+      break
+    let angle = float(i) * 30.0 * PI / 180.0
+    let speed = randRange(60.0, 100.0)
+    let vx = cos(angle) * speed
+    let vy = sin(angle) * speed + (-20.0)
+    let size = randRange(4.0, 6.0)
+    pushParticle(system, Particle(
+      x: x,
+      y: y,
+      vx: vx,
+      vy: vy,
+      life: ShimmerLife,
+      maxLife: ShimmerLife,
+      color: color,
+      size: size
+    ))
+
 proc update*(system: var ParticleSystem, dt: float) =
   ## Advance all particles and remove dead ones.
   var i = 0

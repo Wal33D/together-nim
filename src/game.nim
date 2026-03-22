@@ -476,6 +476,14 @@ proc update*(game: var Game, dt: float) =
           game.particles.emitWallSpark(sparkX, c.y, float(c.height), wallOnRight)
         game.characters[i] = c
 
+      # Button activation shimmer — emit on false→true edge
+      for b in game.currentLevelState.buttons:
+        if b.active and not b.prevActive:
+          let cx = b.x + b.width * 0.5
+          let cy = b.y + b.height * 0.5
+          let buttonColor: Color = (r: 255'u8, g: 255'u8, b: 80'u8)
+          game.particles.emitButtonShimmer(cx, cy, buttonColor)
+
       # Buffered jump: if the active character landed this frame, spend the buffer immediately.
       if game.activeCharacterIndex < game.characters.len and
          game.characters[game.activeCharacterIndex].jumpBufferTimer > 0.0 and

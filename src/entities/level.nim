@@ -19,6 +19,8 @@ type
     width*, height*: float
     doorId*: int
     requiresHeavy*: bool
+    active*: bool
+    prevActive*: bool
 
   Door* = object
     id*: int

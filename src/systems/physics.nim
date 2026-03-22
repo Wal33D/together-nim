@@ -99,6 +99,11 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
   for d in 0..<level.doors.len:
     level.doors[d].isOpen = false
 
+  # Snapshot and reset button active state for edge detection
+  for b in 0..<level.buttons.len:
+    level.buttons[b].prevActive = level.buttons[b].active
+    level.buttons[b].active = false
+
   for i in 0..<characters.len:
     var c = characters[i]
 
@@ -197,12 +202,14 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
 
     # Button/door interaction — grounded character on button opens matching door
     if c.grounded:
-      for button in level.buttons:
-        let bRect = Rect(x: button.x, y: button.y, w: button.width, h: button.height)
+      for bi in 0..<level.buttons.len:
+        let bRect = Rect(x: level.buttons[bi].x, y: level.buttons[bi].y,
+                         w: level.buttons[bi].width, h: level.buttons[bi].height)
         if intersects(toRect(c), bRect):
-          if not button.requiresHeavy or c.ability == heavy:
+          if not level.buttons[bi].requiresHeavy or c.ability == heavy:
+            level.buttons[bi].active = true
             for d in 0..<level.doors.len:
-              if level.doors[d].id == button.doorId:
+              if level.doors[d].id == level.buttons[bi].doorId:
                 level.doors[d].isOpen = true
 
     characters[i] = c
