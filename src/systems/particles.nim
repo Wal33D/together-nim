@@ -58,9 +58,43 @@ proc emit*(system: var ParticleSystem, x, y: float, count: int,
   system.emitBurst(x, y, count, color, spread, speed, -speed * 0.5,
                    0.25, 0.70, 2.0, 4.0)
 
+proc blendWithWhite(c: Color, whiteFraction: float): Color =
+  ## Mix a color toward white by the given fraction.
+  let f = 1.0 - whiteFraction
+  result.r = uint8(float(c.r) * f + 255.0 * whiteFraction)
+  result.g = uint8(float(c.g) * f + 255.0 * whiteFraction)
+  result.b = uint8(float(c.b) * f + 255.0 * whiteFraction)
+
+proc emitJumpFan(system: var ParticleSystem, x, y: float, color: Color,
+                 count: int, halfArc: float) =
+  ## Downward-fanning burst shared by jump and double-jump emitters.
+  let blended = blendWithWhite(color, 0.3)
+  const CenterAngle = 3.0 * PI / 2.0
+  for i in 0..<count:
+    if system.particles.len >= MAX_PARTICLES:
+      break
+    let angle = CenterAngle + randRange(-halfArc, halfArc)
+    let speed = randRange(80.0, 150.0)
+    let size = randRange(3.0, 5.0)
+    pushParticle(system, Particle(
+      x: x,
+      y: y,
+      vx: cos(angle) * speed,
+      vy: sin(angle) * speed,
+      life: 0.3,
+      maxLife: 0.3,
+      color: blended,
+      size: size
+    ))
+
 proc emitJump*(system: var ParticleSystem, x, y: float, color: Color) =
-  ## Small, upward-leaning burst for jump takeoff.
-  system.emitBurst(x, y, 4, color, 8.0, 34.0, -18.0, 0.18, 0.34, 1.5, 2.6)
+  ## Downward-fanning burst at character feet for jump takeoff.
+  let count = 6 + rand(2)
+  system.emitJumpFan(x, y, color, count, PI / 3.0)
+
+proc emitDoubleJump*(system: var ParticleSystem, x, y: float, color: Color) =
+  ## Wider downward burst for Pip's double-jump.
+  system.emitJumpFan(x, y, color, 10, 4.0 * PI / 9.0)
 
 proc emitLanding*(system: var ParticleSystem, x, y: float, color: Color) =
   ## Low dust puff for touchdown.

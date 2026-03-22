@@ -133,8 +133,12 @@ proc findCharacterIndex(game: Game, characterId: string): int =
 
 proc emitJumpParticles(game: var Game, idx: int) =
   let c = game.characters[idx]
-  game.particles.emitJump(c.characterFeetX(), c.characterFeetY(),
-                          CHAR_COLORS[c.colorIndex mod 6])
+  let charColor = CHAR_COLORS[c.colorIndex mod 6]
+  if c.ability == doubleJump and c.jumpCount >= 2:
+    game.particles.emitDoubleJump(c.characterFeetX(), c.characterFeetY(),
+                                  charColor)
+  else:
+    game.particles.emitJump(c.characterFeetX(), c.characterFeetY(), charColor)
 
 proc emitLandingParticles(game: var Game, idx: int) =
   let c = game.characters[idx]
