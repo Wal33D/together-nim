@@ -174,8 +174,6 @@ when defined(withAudio):
   const
     CrossfadeDuration = 2.5
     DefaultPaletteRoot = ActPalettes[0].baseFreqs[0]
-    IntermittentOnSec = 2.0
-    IntermittentCycleSec = 6.0
     VibratoRate = 5.0
     VibratoDepth = 2.0
 
@@ -183,6 +181,7 @@ when defined(withAudio):
     gInstances: array[MAX_INSTANCES, SoundInstance]
     gMusicTracks: array[2, MusicTrack]
     gCharOscillators: array[6, CharOscillator]
+    gCharOscActConfig: CharOscillatorActConfig = CharOscActConfigs[0]
     gAudioOpen = false
     gQueue: AudioQueueRef
     gAudioMutex: PthreadMutex
@@ -276,16 +275,21 @@ when defined(withAudio):
     ## Mix per-character sine oscillators into the buffer.
     let bufSeconds = float(numSamples) / float(SAMPLE_RATE)
     let lerpFactor = min(1.0, 2.0 * bufSeconds)
+    let intermittentCycleSec = gCharOscActConfig.onDuration + gCharOscActConfig.offDuration
     for idx in 0..<6:
       var osc = addr gCharOscillators[idx]
       osc.currentAmp += (osc.targetAmp - osc.currentAmp) * lerpFactor
       if osc.currentAmp < 0.0001:
         # Advance phases even when silent to avoid discontinuity on re-entry.
-        osc.intermittentPhase += bufSeconds / IntermittentCycleSec
-        if osc.intermittentPhase >= 1.0:
-          osc.intermittentPhase -= 1.0
+        if intermittentCycleSec > 0.0:
+          osc.intermittentPhase += bufSeconds / intermittentCycleSec
+          if osc.intermittentPhase >= 1.0:
+            osc.intermittentPhase -= 1.0
         continue
-      let baseFreq = DefaultPaletteRoot * CharFreqRatios[idx] * paletteScale
+      var baseFreq = DefaultPaletteRoot * CharFreqRatios[idx] * paletteScale
+      # Apply interval shift to Luca only (Act 4 dissonance).
+      if gCharOscActConfig.intervalShift != 0.0 and idx == 1:
+        baseFreq *= pow(2.0, gCharOscActConfig.intervalShift / 12.0)
       for i in 0..<numSamples:
         let freq = baseFreq + VibratoDepth * sin(osc.vibratoPhase * 2.0 * PI)
         let s = int32(sin(osc.phase * 2.0 * PI) * osc.currentAmp * 28000.0)
@@ -296,27 +300,30 @@ when defined(withAudio):
         osc.vibratoPhase += VibratoRate / float(SAMPLE_RATE)
         if osc.vibratoPhase >= 1.0:
           osc.vibratoPhase -= 1.0
-      osc.intermittentPhase += bufSeconds / IntermittentCycleSec
-      if osc.intermittentPhase >= 1.0:
-        osc.intermittentPhase -= 1.0
+      if intermittentCycleSec > 0.0:
+        osc.intermittentPhase += bufSeconds / intermittentCycleSec
+        if osc.intermittentPhase >= 1.0:
+          osc.intermittentPhase -= 1.0
 
   proc setCharacterDistance*(charIdx: int, distToNearest: float) =
     ## Set the target amplitude for a character oscillator based on proximity.
     if not gAudioOpen: return
     if charIdx < 0 or charIdx > 5: return
     discard pthread_mutex_lock(addr gAudioMutex)
+    let ampMul = gCharOscActConfig.ampMultiplier
+    let cycleSec = gCharOscActConfig.onDuration + gCharOscActConfig.offDuration
     if distToNearest > 200.0:
       # Intermittent faint tone when far away.
-      let inOnWindow = gCharOscillators[charIdx].intermittentPhase <
-          (IntermittentOnSec / IntermittentCycleSec)
+      let onFraction = if cycleSec > 0.0: gCharOscActConfig.onDuration / cycleSec else: 0.5
+      let inOnWindow = gCharOscillators[charIdx].intermittentPhase < onFraction
       if inOnWindow:
-        gCharOscillators[charIdx].targetAmp = 0.03
+        gCharOscillators[charIdx].targetAmp = 0.03 * ampMul
       else:
         gCharOscillators[charIdx].targetAmp = 0.0
     else:
       # Scale 0.03..0.10 as distance goes from 200 to 0.
       gCharOscillators[charIdx].targetAmp =
-        0.03 + 0.07 * (1.0 - distToNearest / 200.0)
+        (0.03 + 0.07 * (1.0 - distToNearest / 200.0)) * ampMul
     discard pthread_mutex_unlock(addr gAudioMutex)
 
   proc aqCallback(inUserData: pointer, inAQ: AudioQueueRef,
@@ -511,6 +518,13 @@ when defined(withAudio):
       gInstances[0] = inst  # steal oldest slot when full
     discard pthread_mutex_unlock(addr gAudioMutex)
 
+  proc setCharOscActConfig*(config: CharOscillatorActConfig) =
+    ## Store per-act oscillator configuration, applied in next buffer fill.
+    if not gAudioOpen: return
+    discard pthread_mutex_lock(addr gAudioMutex)
+    gCharOscActConfig = config
+    discard pthread_mutex_unlock(addr gAudioMutex)
+
   proc setActPalette*(palette: TonalPalette) =
     ## Start a crossfade to the given tonal palette if it differs from the current one.
     if not gAudioOpen: return
@@ -527,4 +541,5 @@ else:
   proc shutdownAudio*() = discard
   proc playSound*(kind: SoundKind) = discard
   proc setActPalette*(palette: TonalPalette) = discard
+  proc setCharOscActConfig*(config: CharOscillatorActConfig) = discard
   proc setCharacterDistance*(charIdx: int, distToNearest: float) = discard

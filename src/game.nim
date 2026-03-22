@@ -363,6 +363,7 @@ proc loadLevel*(game: var Game, idx: int) =
     if levelNum >= act.startLevel and levelNum <= act.endLevel:
       if ai < ActPalettes.len:
         setActPalette(ActPalettes[ai])
+        setCharOscActConfig(CharOscActConfigs[ai])
       break
 
   # Snap camera to active character immediately

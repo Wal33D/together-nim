@@ -83,3 +83,19 @@ const ActPalettes*: array[5, TonalPalette] = [
   TonalPalette(baseFreqs: [220.0, 261.6, 329.6], name: "A minor"),      # Act 4
   TonalPalette(baseFreqs: [261.6, 392.0, 0.0],   name: "C open fifth"), # Act 5
 ]
+
+# Per-act oscillator configuration for emotional arc audio progression.
+type
+  CharOscillatorActConfig* = object
+    ampMultiplier*: float
+    onDuration*: float
+    offDuration*: float
+    intervalShift*: float
+
+const CharOscActConfigs*: array[5, CharOscillatorActConfig] = [
+  CharOscillatorActConfig(ampMultiplier: 0.5, onDuration: 1.5, offDuration: 6.0, intervalShift: 0.0),
+  CharOscillatorActConfig(ampMultiplier: 0.7, onDuration: 2.0, offDuration: 3.0, intervalShift: 0.0),
+  CharOscillatorActConfig(ampMultiplier: 0.9, onDuration: 3.0, offDuration: 2.0, intervalShift: 0.0),
+  CharOscillatorActConfig(ampMultiplier: 1.0, onDuration: 2.0, offDuration: 2.0, intervalShift: 1.0),
+  CharOscillatorActConfig(ampMultiplier: 1.0, onDuration: 3.0, offDuration: 1.0, intervalShift: 0.0),
+]
