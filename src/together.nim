@@ -1,7 +1,6 @@
 ## Together - A narrative puzzle-platformer
-## Platform layer: Windy + Boxy + Silky, with SDL2 for audio/controllers.
+## Platform layer: Windy + Boxy + Silky.
 
-import sdl2
 import windy
 import opengl
 import times
@@ -48,7 +47,7 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer) =
     if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
       ui.activateFocusedAction(game)
     if window.buttonPressed[KeyEscape]:
-      game.handleKey(SCANCODE_ESCAPE)
+      game.handleKey(KeyEscape)
     return
   of actTitle:
     return
@@ -77,11 +76,11 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer) =
     playSound(soundCharSwitch)
 
   if window.buttonPressed[KeyEnter]:
-    game.handleKey(SCANCODE_RETURN)
+    game.handleKey(KeyEnter)
   if window.buttonPressed[KeyEscape]:
-    game.handleKey(SCANCODE_ESCAPE)
+    game.handleKey(KeyEscape)
   if window.buttonPressed[KeyR]:
-    game.handleKey(SCANCODE_R)
+    game.handleKey(KeyR)
 
 proc primaryScreenSize(window: Window): IVec2 =
   let screens = getScreens()
@@ -138,10 +137,6 @@ proc setFullscreen(window: Window, state: var WindowModeState, enabled: bool) =
     window.fullscreen = enabled
 
 proc main() =
-  if sdl2.init(INIT_AUDIO or INIT_GAMECONTROLLER) != SdlSuccess:
-    echo "SDL2 init failed: ", sdl2.getError()
-    quit(1)
-
   var fullscreenEnabled = loadSave().fullscreen
   var windowMode = WindowModeState()
 
@@ -204,7 +199,6 @@ proc main() =
   closeController()
   shutdownAudio()
   window.close()
-  sdl2.quit()
 
 when isMainModule:
   main()

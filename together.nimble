@@ -8,7 +8,6 @@ srcDir = "src"
 bin = @["together"]
 
 requires "nim >= 2.0.0"
-requires "sdl2 >= 2.0.0"
 requires "boxy >= 0.7.0"
 requires "windy >= 0.4.4"
 requires "silky >= 0.0.1"

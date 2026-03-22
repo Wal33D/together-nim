@@ -1,4 +1,5 @@
 import unittest
+import windy
 import "../src/game"
 import "../src/constants"
 import "../src/entities/character"
@@ -20,7 +21,7 @@ suite "game state machine":
 
   test "enter transitions menu to actTitle then playing":
     var g = newGame()
-    g.handleKey(SCANCODE_RETURN)
+    g.handleKey(KeyEnter)
     check g.state == actTitle
     g.skipActTitle()
     check g.state == playing
@@ -28,22 +29,22 @@ suite "game state machine":
 
   test "escape transitions playing to paused":
     var g = newGame()
-    g.handleKey(SCANCODE_RETURN)
+    g.handleKey(KeyEnter)
     g.skipActTitle()
-    g.handleKey(SCANCODE_ESCAPE)
+    g.handleKey(KeyEscape)
     check g.state == paused
 
   test "escape transitions paused to playing":
     var g = newGame()
-    g.handleKey(SCANCODE_RETURN)
+    g.handleKey(KeyEnter)
     g.skipActTitle()
-    g.handleKey(SCANCODE_ESCAPE)
-    g.handleKey(SCANCODE_ESCAPE)
+    g.handleKey(KeyEscape)
+    g.handleKey(KeyEscape)
     check g.state == playing
 
   test "escape in menu does nothing":
     var g = newGame()
-    g.handleKey(SCANCODE_ESCAPE)
+    g.handleKey(KeyEscape)
     check g.state == menu
 
   test "startGame loads level 0 with pip":

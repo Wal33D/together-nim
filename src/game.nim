@@ -1,13 +1,15 @@
 ## Game state machine, update logic, and level management
 
-import constants
-import entities/character
-import entities/level
-import systems/levels
-import systems/physics
-import systems/camera
-import systems/atmosphere
-import systems/audio
+import
+  windy,
+  constants,
+  entities/character,
+  entities/level,
+  systems/levels,
+  systems/physics,
+  systems/camera,
+  systems/atmosphere,
+  systems/audio
 import systems/particles
 
 type
@@ -58,10 +60,6 @@ const
     ActDef(number: 5, name: "Transcendence",   startLevel: 25, endLevel: 30, themeColor: IVY_COLOR),
   ]
 
-const
-  SCANCODE_RETURN* = 40.cint
-  SCANCODE_ESCAPE* = 41.cint
-  SCANCODE_R* = 21.cint
 
 proc jumpGraceWindow(c: Character): float =
   if c.ability == coyoteTime:
@@ -370,24 +368,24 @@ proc nextLevel*(game: var Game) =
   else:
     game.state = credits
 
-proc handleKey*(game: var Game, scancode: cint) =
+proc handleKey*(game: var Game, button: windy.Button) =
   case game.state
   of menu:
-    if scancode == SCANCODE_RETURN:
+    if button == KeyEnter:
       game.startGame()
   of playing:
-    if scancode == SCANCODE_ESCAPE:
+    if button == KeyEscape:
       game.state = paused
-    elif scancode == SCANCODE_R:
+    elif button == KeyR:
       game.restartLevel()
   of paused:
-    if scancode == SCANCODE_ESCAPE:
+    if button == KeyEscape:
       game.state = playing
   of levelWin:
-    if scancode == SCANCODE_RETURN:
+    if button == KeyEnter:
       game.nextLevel()
   of credits:
-    if scancode == SCANCODE_RETURN:
+    if button == KeyEnter:
       game.state = menu
   of actTitle:
     discard
