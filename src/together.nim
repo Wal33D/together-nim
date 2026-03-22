@@ -48,7 +48,7 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer) =
     if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
       ui.activateFocusedAction(game)
     if window.buttonPressed[KeyEscape]:
-      game.handleKey(SCANCODE_ESCAPE)
+      game.handleKey(KeyEscape)
     return
   of actTitle:
     return
@@ -77,11 +77,11 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer) =
     playSound(soundCharSwitch)
 
   if window.buttonPressed[KeyEnter]:
-    game.handleKey(SCANCODE_RETURN)
+    game.handleKey(KeyEnter)
   if window.buttonPressed[KeyEscape]:
-    game.handleKey(SCANCODE_ESCAPE)
+    game.handleKey(KeyEscape)
   if window.buttonPressed[KeyR]:
-    game.handleKey(SCANCODE_R)
+    game.handleKey(KeyR)
 
 proc primaryScreenSize(window: Window): IVec2 =
   let screens = getScreens()

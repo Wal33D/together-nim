@@ -2,6 +2,7 @@
 ## Manages IOKit HID game controller lifecycle and maps controller input to game actions.
 
 import
+  windy,
   ../game,
   ./audio
 
@@ -91,11 +92,11 @@ proc handleControllerButton*(game: var Game, button: uint8, isDown: bool) =
       else:
         case game.state
         of menu:
-          game.handleKey(SCANCODE_RETURN)
+          game.handleKey(KeyEnter)
         of levelWin:
-          game.handleKey(SCANCODE_RETURN)
+          game.handleKey(KeyEnter)
         of credits:
-          game.handleKey(SCANCODE_RETURN)
+          game.handleKey(KeyEnter)
         else:
           discard
     elif game.state == playing:
@@ -103,11 +104,11 @@ proc handleControllerButton*(game: var Game, button: uint8, isDown: bool) =
 
   of ButtonB:
     if isDown:
-      game.handleKey(SCANCODE_R)
+      game.handleKey(KeyR)
 
   of ButtonStart:
     if isDown:
-      game.handleKey(SCANCODE_ESCAPE)
+      game.handleKey(KeyEscape)
 
   of ButtonLB:
     if isDown and game.state == playing and game.cycleActiveCharacter(-1):
