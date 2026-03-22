@@ -18,8 +18,8 @@ suite "levels":
   test "level 5 has two exits":
     check level5.exits.len == 2
 
-  test "all levels array has 31 levels":
-    check allLevels.len == 31
+  test "all levels array has 32 levels":
+    check allLevels.len == 32
 
   test "level 6 introduces bruno":
     check level6.characters == @["pip", "luca", "bruno"]
