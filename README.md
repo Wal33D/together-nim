@@ -1,86 +1,67 @@
-# Together (Nim) `v0.3.0`
+# Together
 
 *"Pip woke up. This was unusual, because Pip had never been asleep."*
 
-A narrative puzzle-platformer about colored rectangles discovering consciousness, friendship, and what it means to belong. Rebuilt from the ground up in **Nim** with **Windy** for the window loop, **SDL2** for audio/controllers, **Boxy** for the world render path, and **Silky** for the UI layer.
+A quiet puzzle-platformer about colored rectangles who discover consciousness, friendship, and what it means to belong. Six characters, each with a unique gift. None of them can reach the exit alone.
 
-Inspired by *Thomas Was Alone*. Originally built in TypeScript at [candycomp.com](https://candycomp.com), now reimagined as a native desktop game orchestrated by [Scriptorium](https://github.com/Wal33D/scriptorium).
+Inspired by [Thomas Was Alone](https://store.steampowered.com/app/220780/Thomas_Was_Alone/). Built in **Nim** with Windy, Boxy, Silky, and SDL2. Developed with [Scriptorium](https://github.com/monofuel/scriptorium).
 
-Current state: a 12-level campaign with Felix and Ivy in the playable arc, ambient procedural music, improved jump feel, layered atmospheric backdrops, and a fresh Windy/Silky UI pass for menus and overlays.
+![Gameplay — Pip in Level 1: Awakening](assets/screenshots/gameplay.png)
 
-## Current Build
+## The Cast
 
-- Version: `0.3.0`
-- Runtime stack: Windy for windowing/input, SDL2 for audio and controllers, Boxy for world rendering, Silky for UI
-- Campaign: 12 playable levels
-- Recent improvements: Windy/Silky UI migration, jump buffering and coyote time polish, procedural ambient music, atmospheric backdrops, gameplay particles, fullscreen toggle with saved preference
+| | Name | Gift | Personality |
+|---|------|------|-------------|
+| :pink_square: | **Pip** | Double jump | Curious and brave. Always leaps before she looks. |
+| :yellow_square: | **Luca** | Float | Dreamy and gentle. Softens every fall. |
+| :brown_square: | **Bruno** | Heavy pressure | Quiet and steady. Holds the ground for everyone else. |
+| :purple_square: | **Cara** | Wall jump | Playful and fearless. Finds paths where none exist. |
+| :orange_square: | **Felix** | Coyote time | Patient. Never rushes. Lands when he's ready. |
+| :blue_square: | **Ivy** | Graceful fall | Composed and kind. Makes the descent feel like flying. |
 
-## Roadmap
+Each character's limitation is another character's strength. That's the whole point.
 
-The working version-by-version plan from `v0.4.0` through `v0.9.0` lives in [docs/ROADMAP.md](docs/ROADMAP.md).
+## What's Here
 
-## Screenshots
-
-![Title screen](assets/screenshots/menu.png)
-
-![Gameplay](assets/screenshots/gameplay.png)
-
-## The Family
-
-| Character | Color | Gift |
-|-----------|-------|------|
-| **Pip** | Pink | Double jump — reaches new heights |
-| **Luca** | Yellow | Float — drifts gently through the world |
-| **Bruno** | Brown | Heavy — presses buttons, holds things together |
-| **Cara** | Light Pink | Wall jump — climbs where others can't |
-| **Felix** | Tan | Long coyote time — patient, never rushed |
-| **Ivy** | Teal | Graceful fall — lands in peace |
+- 30 levels across 5 acts, each with its own emotional arc
+- 6 playable characters with distinct physics and abilities
+- Per-character narration moments and story beats
+- Procedural ambient music that shifts with proximity and act progression
+- Atmospheric backdrops, particles, and glow effects
+- Star challenges, save persistence, and settings
+- Gamepad support
 
 ## Controls
 
 | Action | Key |
 |--------|-----|
-| Move | Arrow keys or A/D |
+| Move | Arrow keys / A, D |
 | Jump | Space |
 | Switch character | 1-6 |
 | Pause | Escape |
 | Fullscreen | F11 |
 | Restart level | R |
-| Start / Continue | Enter |
 
 ## Build & Run
 
-Requires [Nim](https://nim-lang.org/) >= 2.0.0 and [SDL2](https://www.libsdl.org/). The Treeform stack (`boxy`, `windy`, `silky`, `pixie`) is declared in `together.nimble`.
+Requires [Nim](https://nim-lang.org/) >= 2.0 and [SDL2](https://www.libsdl.org/).
 
 ```bash
-# Install SDL2 (macOS)
 brew install sdl2
-
-# Install Nim SDL2 bindings
-nimble install sdl2
-
-# Install project dependencies
 nimble install -y
-
-# Build
-nim c -o:together -d:release src/together.nim
-
-# Run (macOS — SDL2 needs library path)
-DYLD_LIBRARY_PATH=/opt/homebrew/lib ./together
-
-# Run tests
-make test
+nim c -d:release -o:together src/together.nim
+./together
 ```
+
+Run tests with `make test`.
 
 ## Built with Scriptorium
 
-This game is being developed using [Scriptorium](https://github.com/Wal33D/scriptorium), a git-native agent orchestration system. Scriptorium's Architect breaks the game into areas and tickets, coding agents implement features in parallel worktrees, a review agent checks their work, and passing changes merge to master automatically.
+This game is developed using [Scriptorium](https://github.com/monofuel/scriptorium), a git-native AI agent orchestration system by [Monofuel](https://github.com/monofuel). Scriptorium reads a spec, generates tickets, assigns parallel coding agents, reviews their work, and merges passing changes to master automatically.
 
-The `scriptorium/plan` branch contains the full planning state — spec, areas, tickets, and their lifecycle.
+The `scriptorium/plan` branch contains the full planning state. Over 70 tickets have been completed autonomously so far.
 
-Thanks to Monofuel on GitHub for creating Orchestrator / Scriptorium and for the underlying workflow that powers this project.
-
-Thanks as well to Monofuel for [Sygnosphere](https://github.com/monofuel/sygnosphere), which Andrew pointed us to as a practical reference for running Boxy world rendering and Silky overlays together in the same Windy/OpenGL frame loop.
+Thanks to Monofuel for creating Scriptorium and for [Sygnosphere](https://github.com/monofuel/sygnosphere), which served as a reference for running Boxy world rendering and Silky UI overlays together in the same Windy/OpenGL frame loop.
 
 ## License
 

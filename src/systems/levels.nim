@@ -592,6 +592,12 @@ const level19* = Level(
   doors: @[
     Door(id: 1, x: 700.0, y: 380.0, width: 20.0, height: 80.0, isOpen: false),
   ],
+  movingPlatforms: @[
+    MovingPlatform(waypoints: @[(x: 250.0, y: 430.0), (x: 400.0, y: 430.0)],
+                   width: 90.0, height: 20.0, speed: 45.0,
+                   pingPong: true, forward: true,
+                   x: 250.0, y: 430.0, prevX: 250.0, prevY: 430.0),
+  ],
   starChallenge: StarChallenge(timeTarget: 90.0, secretX: 380.0, secretY: 275.0),
   levelWidth: 1200.0,
   levelHeight: 500.0,
@@ -675,6 +681,12 @@ const level21* = Level(
   ],
   doors: @[
     Door(id: 1, x: 1370.0, y: 380.0, width: 20.0, height: 80.0, isOpen: false),
+  ],
+  movingPlatforms: @[
+    MovingPlatform(waypoints: @[(x: 790.0, y: 435.0), (x: 870.0, y: 435.0)],
+                   width: 80.0, height: 20.0, speed: 50.0,
+                   pingPong: true, forward: true,
+                   x: 790.0, y: 435.0, prevX: 790.0, prevY: 435.0),
   ],
   starChallenge: StarChallenge(timeTarget: 100.0, secretX: 370.0, secretY: 395.0),
   levelWidth: 1600.0,
@@ -944,6 +956,12 @@ const level26* = Level(
     Door(id: 2, x: 800.0,  y: 480.0, width: 20.0, height: 80.0, isOpen: false),
     Door(id: 3, x: 1580.0, y: 480.0, width: 20.0, height: 80.0, isOpen: false),
   ],
+  movingPlatforms: @[
+    MovingPlatform(waypoints: @[(x: 1100.0, y: 530.0), (x: 1260.0, y: 530.0)],
+                   width: 80.0, height: 20.0, speed: 55.0,
+                   pingPong: true, forward: true,
+                   x: 1100.0, y: 530.0, prevX: 1100.0, prevY: 530.0),
+  ],
   starChallenge: StarChallenge(timeTarget: 120.0, secretX: 1360.0, secretY: 375.0),
   levelWidth: 1820.0,
   levelHeight: 600.0,
@@ -1047,6 +1065,12 @@ const level28* = Level(
     Door(id: 1, x: 740.0,  y: 340.0, width: 20.0, height: 80.0, isOpen: false),
     Door(id: 2, x: 850.0,  y: 420.0, width: 20.0, height: 80.0, isOpen: false),
     Door(id: 3, x: 1360.0, y: 400.0, width: 20.0, height: 80.0, isOpen: false),
+  ],
+  movingPlatforms: @[
+    MovingPlatform(waypoints: @[(x: 170.0, y: 540.0), (x: 170.0, y: 400.0)],
+                   width: 70.0, height: 20.0, speed: 60.0,
+                   pingPong: true, forward: true,
+                   x: 170.0, y: 540.0, prevX: 170.0, prevY: 540.0),
   ],
   starChallenge: StarChallenge(timeTarget: 140.0, secretX: 830.0, secretY: 255.0),
   levelWidth: 1700.0,
