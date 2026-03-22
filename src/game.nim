@@ -327,6 +327,14 @@ proc loadLevel*(game: var Game, idx: int) =
   game.narrationActive = level.narration.len > 0
   game.levelWinTimer = 0.0
   game.jumpPressed = false
+  # Set tonal palette for this act.
+  let levelNum = idx + 1
+  for ai, act in Acts:
+    if levelNum >= act.startLevel and levelNum <= act.endLevel:
+      if ai < ActPalettes.len:
+        setActPalette(ActPalettes[ai])
+      break
+
   # Snap camera to active character immediately
   if game.characters.len > 0:
     let ch = game.characters[0]
