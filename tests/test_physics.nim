@@ -350,6 +350,59 @@ suite "moving platforms":
     # Platform should have moved into the vertical segment.
     check level.movingPlatforms[0].y > 0.0
 
+  test "jumping off moving platform stops rider displacement":
+    var mp = newMovingPlatform(100.0, 400.0, 300.0, 400.0, 200.0, 20.0, 1.0)
+    var chars = @[newCharacter("pip")]
+    chars[0].x = 150.0
+    chars[0].y = 400.0 - float(chars[0].height)
+    chars[0].grounded = true
+    chars[0].vy = 0.0
+    chars[0].vx = 0.0
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[],
+                      movingPlatforms: @[mp])
+    # First frame: establish riding.
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    check chars[0].grounded == true
+    check chars[0].x > 150.0  # character moved with platform
+    # Jump off the platform.
+    applyJump(chars[0])
+    check chars[0].grounded == false
+    let jumpX = chars[0].x
+    # Second frame: platform keeps moving but character should not follow.
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    let platformDx = level.movingPlatforms[0].x - level.movingPlatforms[0].prevX
+    check platformDx > 0.0
+    check abs(chars[0].x - jumpX) < 1.0
+
+  test "platform reversal while riding follows new direction":
+    var mp = newMovingPlatform(0.0, 400.0, 100.0, 400.0, 200.0, 20.0, 1.0)
+    mp.progress = 0.9
+    mp.x = 90.0
+    mp.prevX = 90.0
+    var chars = @[newCharacter("pip")]
+    chars[0].x = 120.0
+    chars[0].y = 400.0 - float(chars[0].height)
+    chars[0].grounded = true
+    chars[0].vy = 0.0
+    chars[0].vx = 0.0
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[],
+                      movingPlatforms: @[mp])
+    # Step until the platform reverses direction.
+    var reversed = false
+    var preReversalX = chars[0].x
+    for step in 0 ..< 20:
+      discard updatePhysics(chars, level, FIXED_TIMESTEP)
+      if not level.movingPlatforms[0].forward:
+        reversed = true
+        preReversalX = chars[0].x
+        break
+    check reversed == true
+    # After reversal the platform moves left; step a few more frames.
+    for step in 0 ..< 5:
+      discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    # Character should have followed the platform leftward.
+    check chars[0].x < preReversalX
+
 suite "dying character physics":
   test "dying character skips gravity":
     var chars = @[newCharacter("pip")]
