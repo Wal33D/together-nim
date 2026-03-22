@@ -391,14 +391,9 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
       let leftEyeX = (centerX - eyeSep / 2.0 - eyeRadius.float).cint
       let rightEyeX = (centerX + eyeSep / 2.0 - eyeRadius.float).cint
       let pupilOffset: cint =
-        if ch.proximityTarget >= 0 and ch.proximityTarget < game.characters.len:
-          let target = game.characters[ch.proximityTarget]
-          let targetCx = target.x + float(target.width) * 0.5
-          let selfCx = ch.x + float(ch.width) * 0.5
-          if targetCx > selfCx: 1.cint else: -1.cint
-        elif ch.lookDir != 0: ch.lookDir.cint
-        elif ch.facingRight: 1
-        else: -1
+        if ch.pupilOffset >= 0.33: 1
+        elif ch.pupilOffset <= -0.33: -1
+        else: 0
 
       # Skip eye rendering when blinking
       if not ch.blinking:
