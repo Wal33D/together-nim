@@ -539,7 +539,8 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
         drawFilledRect(renderer, rightEyeX + 1 + pupilOffset, eyeY + 1, pupilSize, pupilSize)
 
       # Mouth
-      let mouthW = (dw.float * 0.25).cint
+      let mouthFrac = if ch.celebrating: 0.38 else: 0.25
+      let mouthW = (dw.float * mouthFrac).cint
       let mouthX = (centerX - mouthW.float / 2.0).cint
       let mouthY = (dy.float + dh.float * 0.72).cint
       let chromaColor = chroma.color(chColor.r.float32 / 255.0,

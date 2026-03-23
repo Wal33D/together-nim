@@ -1,7 +1,7 @@
 ## Game state machine, update logic, and level management
 
 import
-  std/[math, tables],
+  std/[math, random, tables],
   windy,
   constants,
   entities/character,
@@ -668,6 +668,14 @@ proc update*(game: var Game, dt: float) =
               exitColor = CHAR_COLORS[game.characters[ci].colorIndex mod 6]
               break
           game.particles.emitExitBeckoning(e.x, e.y, e.width, e.height, exitColor)
+
+      # Secret orb ambient sparkle emission
+      if not game.secretCollected:
+        let sc = level.starChallenge
+        if sc.secretX != 0.0 or sc.secretY != 0.0:
+          if rand(60) < 2:
+            let orbSparkleColor: Color = (r: 255'u8, g: 255'u8, b: 255'u8)
+            game.particles.emitSparkle(sc.secretX, sc.secretY, orbSparkleColor)
 
       # Secret collectible overlap check
       if not game.secretCollected:
