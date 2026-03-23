@@ -509,3 +509,38 @@ suite "proximity glow":
 
     check g.characters[0].glowGoldMix < 0.02
     check g.characters[1].glowGoldMix < 0.02
+
+  test "isolation timer increments when far apart":
+    var pip = newCharacter("pip")
+    pip.x = 50.0; pip.y = 370.0; pip.grounded = true
+    var luca = newCharacter("luca")
+    luca.x = 600.0; luca.y = 370.0; luca.grounded = true
+    var g = makePlayingGame(@[pip, luca])
+
+    for _ in 0..60:
+      g.update(FIXED_TIMESTEP)
+
+    check g.characters[0].isolationTimer > 0.5
+    check g.characters[1].isolationTimer > 0.5
+
+  test "isolation timer resets when characters meet":
+    var pip = newCharacter("pip")
+    pip.x = 50.0; pip.y = 370.0; pip.grounded = true
+    var luca = newCharacter("luca")
+    luca.x = 600.0; luca.y = 370.0; luca.grounded = true
+    var g = makePlayingGame(@[pip, luca])
+
+    # Build up isolation time.
+    for _ in 0..60:
+      g.update(FIXED_TIMESTEP)
+    check g.characters[0].isolationTimer > 0.5
+
+    # Move characters close together (within ProximityFar = 200px).
+    g.characters[0].x = 100.0
+    g.characters[1].x = 150.0
+
+    for _ in 0..5:
+      g.update(FIXED_TIMESTEP)
+
+    check g.characters[0].isolationTimer == 0.0
+    check g.characters[1].isolationTimer == 0.0
