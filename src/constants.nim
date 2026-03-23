@@ -65,13 +65,14 @@ type
     name*: string
 
 # Frequency ratios relative to palette root for per-character oscillators.
+# Act 1 root is C4 (261.6 Hz); ratio × root gives each character's note.
 const CharFreqRatios*: array[6, float] = [
-  4.0,   # Pip: two octaves up — bright, curious
-  2.5,   # Luca: major tenth above root — dreamy
-  0.5,   # Bruno: one octave below — grounding
-  3.75,  # Cara: major seventh × 2 — nimble
-  2.25,  # Felix: major ninth — patient
-  3.36,  # Ivy: major sixth × 2 — graceful
+  2.0,    # Pip: C5 (523.3 Hz) — bright, curious
+  1.26,   # Luca: E4 (329.6 Hz) — dreamy
+  0.5,    # Bruno: C3 (130.8 Hz) — grounding
+  1.888,  # Cara: B4 (493.9 Hz) — nimble
+  1.123,  # Felix: D4 (293.7 Hz) — patient
+  1.682,  # Ivy: A4 (440.0 Hz) — graceful
 ]
 
 const ActPalettes*: array[5, TonalPalette] = [
