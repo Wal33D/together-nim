@@ -14,26 +14,29 @@ suite "limbic resonance constants and stubs":
     for palette in ActPalettes:
       check palette.baseFreqs[0] > 0.0
 
-  test "CharOscActConfigs has 5 entries":
-    check CharOscActConfigs.len == 5
+  test "ActOscillatorParams has 5 entries":
+    check ActOscillatorParams.len == 5
 
   test "Act 1 config values":
-    check CharOscActConfigs[0].ampMultiplier == 0.5
-    check CharOscActConfigs[0].onDuration == 1.5
+    check ActOscillatorParams[1].ampMultiplier == 0.5
+    check ActOscillatorParams[1].onDuration == 1.5
+    check ActOscillatorParams[1].dissonanceIdx == -1
+
+  test "Act 4 dissonance targets character 2 by a tritone":
+    check ActOscillatorParams[4].dissonanceIdx == 2
+    check ActOscillatorParams[4].dissonanceSemitones == 6.0
 
   test "Act 5 config resolved values":
-    check CharOscActConfigs[4].ampMultiplier == 1.0
-    check CharOscActConfigs[4].intervalShift == 0.0
-
-  test "Act 4 dissonance shift":
-    check CharOscActConfigs[3].intervalShift == 1.0
+    check ActOscillatorParams[5].ampMultiplier == 1.0
+    check ActOscillatorParams[5].dissonanceIdx == -1
+    check ActOscillatorParams[5].dissonanceSemitones == 0.0
 
   test "setCharacterDistance stub does not raise":
     setCharacterDistance(0, 300.0)
     setCharacterDistance(5, 0.0)
 
-  test "setCharOscActConfig stub does not raise":
-    setCharOscActConfig(CharOscActConfigs[2])
+  test "setActOscConfig stub does not raise":
+    setActOscConfig(ActOscillatorParams[3])
 
   test "soundReunion and soundSeparation exist":
     playSound(soundReunion)

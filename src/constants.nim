@@ -85,16 +85,27 @@ const ActPalettes*: array[5, TonalPalette] = [
 
 # Per-act oscillator configuration for emotional arc audio progression.
 type
-  CharOscillatorActConfig* = object
-    ampMultiplier*: float
-    onDuration*: float
-    offDuration*: float
-    intervalShift*: float
+  ActOscParams* = object
+    ampMultiplier*: float         ## Scales all character oscillator targetAmps.
+    onDuration*: float            ## Seconds oscillator stays on (lonely state).
+    offDuration*: float           ## Seconds oscillator stays off (lonely state).
+    dissonanceIdx*: int           ## Character index to detune (-1 = none).
+    dissonanceSemitones*: float   ## Semitones to shift (0.0 = none).
 
-const CharOscActConfigs*: array[5, CharOscillatorActConfig] = [
-  CharOscillatorActConfig(ampMultiplier: 0.5, onDuration: 1.5, offDuration: 6.0, intervalShift: 0.0),
-  CharOscillatorActConfig(ampMultiplier: 0.7, onDuration: 2.0, offDuration: 3.0, intervalShift: 0.0),
-  CharOscillatorActConfig(ampMultiplier: 0.9, onDuration: 3.0, offDuration: 2.0, intervalShift: 0.0),
-  CharOscillatorActConfig(ampMultiplier: 1.0, onDuration: 2.0, offDuration: 2.0, intervalShift: 1.0),
-  CharOscillatorActConfig(ampMultiplier: 1.0, onDuration: 3.0, offDuration: 1.0, intervalShift: 0.0),
+const ActOscillatorParams*: array[1..5, ActOscParams] = [
+  # Act 1 — Awakening: sparse, lonely
+  ActOscParams(ampMultiplier: 0.50, onDuration: 1.5, offDuration: 6.0,
+               dissonanceIdx: -1, dissonanceSemitones: 0.0),
+  # Act 2 — Belonging: notes find each other
+  ActOscParams(ampMultiplier: 0.70, onDuration: 2.0, offDuration: 3.0,
+               dissonanceIdx: -1, dissonanceSemitones: 0.0),
+  # Act 3 — Challenge: rhythmic confidence
+  ActOscParams(ampMultiplier: 0.90, onDuration: 3.0, offDuration: 2.0,
+               dissonanceIdx: -1, dissonanceSemitones: 0.0),
+  # Act 4 — Separation: tension, one voice detuned by a tritone (6 semitones)
+  ActOscParams(ampMultiplier: 1.00, onDuration: 2.0, offDuration: 3.0,
+               dissonanceIdx: 2, dissonanceSemitones: 6.0),
+  # Act 5 — Transcendence: consonant resolution, full warmth
+  ActOscParams(ampMultiplier: 1.00, onDuration: 3.0, offDuration: 1.0,
+               dissonanceIdx: -1, dissonanceSemitones: 0.0),
 ]

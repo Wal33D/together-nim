@@ -184,7 +184,7 @@ when defined(withAudio):
     gInstances: array[MAX_INSTANCES, SoundInstance]
     gMusicTracks: array[2, MusicTrack]
     gCharOscillators: array[6, CharOscillator]
-    gCharOscActConfig: CharOscillatorActConfig = CharOscActConfigs[0]
+    gCharOscActConfig: ActOscParams = ActOscillatorParams[1]
     gAudioOpen = false
     gQueue: AudioQueueRef
     gAudioMutex: PthreadMutex
@@ -290,9 +290,9 @@ when defined(withAudio):
             osc.intermittentPhase -= 1.0
         continue
       var baseFreq = DefaultPaletteRoot * CharFreqRatios[idx] * paletteScale
-      # Apply interval shift to Luca only (Act 4 dissonance).
-      if gCharOscActConfig.intervalShift != 0.0 and idx == 1:
-        baseFreq *= pow(2.0, gCharOscActConfig.intervalShift / 12.0)
+      # Apply dissonance shift to the designated character (e.g. Act 4 tritone).
+      if gCharOscActConfig.dissonanceIdx == idx and gCharOscActConfig.dissonanceSemitones != 0.0:
+        baseFreq *= pow(2.0, gCharOscActConfig.dissonanceSemitones / 12.0)
       for i in 0..<numSamples:
         let freq = baseFreq + VibratoDepth * sin(osc.vibratoPhase * 2.0 * PI)
         let s = int32(sin(osc.phase * 2.0 * PI) * osc.currentAmp * 28000.0)
@@ -544,7 +544,7 @@ when defined(withAudio):
       gInstances[0] = inst  # steal oldest slot when full
     discard pthread_mutex_unlock(addr gAudioMutex)
 
-  proc setCharOscActConfig*(config: CharOscillatorActConfig) =
+  proc setActOscConfig*(config: ActOscParams) =
     ## Store per-act oscillator configuration, applied in next buffer fill.
     if not gAudioOpen: return
     discard pthread_mutex_lock(addr gAudioMutex)
@@ -567,5 +567,5 @@ else:
   proc shutdownAudio*() = discard
   proc playSound*(kind: SoundKind) = discard
   proc setActPalette*(palette: TonalPalette) = discard
-  proc setCharOscActConfig*(config: CharOscillatorActConfig) = discard
+  proc setActOscConfig*(config: ActOscParams) = discard
   proc setCharacterDistance*(charIdx: int, distToNearest: float) = discard
