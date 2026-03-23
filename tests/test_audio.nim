@@ -19,7 +19,7 @@ suite "audio system":
     check kinds.len == 6
 
   test "playSound is safe without audio initialised":
-    # Audio is not open (SDL not initialised in unit tests).
+    # Audio is not open (CoreAudio not initialised in unit tests).
     # playSound must return without crashing.
     playSound(soundJump)
     playSound(soundLand)
