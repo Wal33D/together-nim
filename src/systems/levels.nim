@@ -1225,4 +1225,25 @@ const level32* = Level(
   levelHeight: 500.0,
 )
 
-const allLevels*: array[32, Level] = [level1, level2, level3, level4, level5, level6, level7, level8, level9, level10, level11, level12, level13, level14, level15, level16, level17, level18, level19, level20, level21, level22, level23, level24, level25, level26, level27, level28, level29, level30, level31, level32]
+const level33* = Level(
+  id: 33,
+  name: "Shoulders",
+  narration: "Bruno held steady. He knew they needed him exactly where he was.",
+  characters: @["bruno", "pip"],
+  platforms: @[
+    Platform(x: 0.0,   y: 460.0, width: 800.0, height: 20.0),   # ground
+    Platform(x: 480.0, y: 255.0, width: 200.0, height: 20.0),   # high ledge
+  ],
+  hazards: @[],
+  exits: @[
+    Exit(x: 590.0, y: 205.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 650.0, y: 410.0, width: 40.0, height: 50.0, characterId: "bruno"),
+  ],
+  buttons: @[],
+  doors: @[],
+  starChallenge: StarChallenge(timeTarget: 60.0, secretX: 510.0, secretY: 230.0),
+  levelWidth: 800.0,
+  levelHeight: 500.0,
+)
+
+const allLevels*: array[33, Level] = [level1, level2, level3, level4, level5, level6, level7, level8, level9, level10, level11, level12, level13, level14, level15, level16, level17, level18, level19, level20, level21, level22, level23, level24, level25, level26, level27, level28, level29, level30, level31, level32, level33]
