@@ -408,7 +408,10 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
       block:
         let glowScale = ch.glowScale
         let glowAlpha = ch.glowAlpha
-        let pulse = glowAlpha + 0.05 * sin(game.elapsedTime * PI * 2.0 / 3.0)
+        # Loneliness pulse: grows in amplitude the longer a character is isolated.
+        let lonelinessAmp = min(0.08, ch.isolationTimer * 0.008)
+        let pulse = glowAlpha + 0.05 * sin(game.elapsedTime * PI * 2.0 / 3.0) +
+          lonelinessAmp * sin(game.elapsedTime * PI * 2.0 / 1.5)
         let charW = dw.float
         let charH = dh.float
         let charX = dx.float
