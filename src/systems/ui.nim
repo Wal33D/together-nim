@@ -282,8 +282,8 @@ proc cyclePauseSelection*(ui: UiRenderer, delta: int) =
     playSound(soundMenuHover)
 
 proc cycleSettingsCursor*(game: var Game, delta: int) =
-  ## Move settings cursor up/down (0=WindowSize, 1=Fullscreen, 2=VSync, 3=Back).
-  const count = 4
+  ## Move settings cursor up/down (0=WindowSize, 1=Fullscreen, 2=VSync, 3=Volume, 4=Back).
+  const count = 5
   let prev = game.settingsCursor
   game.settingsCursor = (game.settingsCursor + delta + count * 4) mod count
   if game.settingsCursor != prev:
@@ -1071,7 +1071,7 @@ proc renderSettings(ui: UiRenderer, sk: Silky, window: Window,
   ## Render the settings screen with option rows and Back button.
   let
     panelW = 420.0'f32
-    panelH = 280.0'f32
+    panelH = 318.0'f32
     baseX = DEFAULT_WIDTH.float32 * 0.5 - panelW * 0.5
     baseY = DEFAULT_HEIGHT.float32 * 0.5 - panelH * 0.5
     pos = layout.p(baseX, baseY)
@@ -1091,7 +1091,7 @@ proc renderSettings(ui: UiRenderer, sk: Silky, window: Window,
   let labelX = baseX + 40
   let valueX = baseX + panelW - 40
 
-  for i in 0 ..< 3:
+  for i in 0 ..< 4:
     let rowY = rowStartY + i.float32 * rowH
     let focused = game.settingsCursor == i
     let textAlpha: uint8 = if focused: 255 else: 180
@@ -1108,6 +1108,7 @@ proc renderSettings(ui: UiRenderer, sk: Silky, window: Window,
       of 0: "Window Size"
       of 1: "Fullscreen"
       of 2: "VSync"
+      of 3: "Volume"
       else: ""
 
     let value = case i
@@ -1118,6 +1119,8 @@ proc renderSettings(ui: UiRenderer, sk: Silky, window: Window,
         if game.fullscreenEnabled: "On" else: "Off"
       of 2:
         if game.vsyncEnabled: "On" else: "Off"
+      of 3:
+        $int(getMasterVolume() * 100) & "%"
       else: ""
 
     discard sk.drawUiText(layout, "Body", label,
@@ -1136,8 +1139,8 @@ proc renderSettings(ui: UiRenderer, sk: Silky, window: Window,
       discard sk.drawUiText(layout, "Body", ">", rightArrowPos, arrowColor)
 
   # Back button.
-  let backY = rowStartY + 3.0 * rowH + 10
-  let focused = game.settingsCursor == 3
+  let backY = rowStartY + 4.0 * rowH + 10
+  let focused = game.settingsCursor == 4
   let backColor = if focused: rgbx(244, 247, 250, 255) else: rgbx(180, 196, 220, 180)
   if focused:
     sk.drawRect(layout.p(baseX + 20, backY - 4),
@@ -1147,9 +1150,9 @@ proc renderSettings(ui: UiRenderer, sk: Silky, window: Window,
                    layout.p(0, backY).y, backColor)
 
   # Mouse interaction for rows.
-  for i in 0 ..< 4:
-    let rowY = if i < 3: rowStartY + i.float32 * rowH
-               else: rowStartY + 3.0 * rowH + 10
+  for i in 0 ..< 5:
+    let rowY = if i < 4: rowStartY + i.float32 * rowH
+               else: rowStartY + 4.0 * rowH + 10
     let rowRect = rect(layout.p(baseX + 20, rowY - 4).x,
                        layout.p(baseX + 20, rowY - 4).y,
                        layout.px(panelW - 40),

@@ -192,6 +192,7 @@ when defined(withAudio):
     gTargetPalette: TonalPalette = ActPalettes[0]
     gPaletteCrossfadeT: float = 1.0
     gCrossfading: bool = false
+    gMasterVolume: float = 1.0
 
   proc durationSamples(step: MusicStep): int =
     max(1, (step.durationMs * SAMPLE_RATE) div 1000)
@@ -413,6 +414,11 @@ when defined(withAudio):
           if inst.noteIndex >= inst.noteCount:
             inst.active = false
 
+    # Apply master volume to the final mix.
+    if gMasterVolume < 1.0:
+      for i in 0..<numSamples:
+        buf[i] = int16(float(buf[i]) * gMasterVolume)
+
     discard pthread_mutex_unlock(addr gAudioMutex)
 
     inBuffer.mAudioDataByteSize = inBuffer.mAudioDataBytesCapacity
@@ -561,6 +567,16 @@ when defined(withAudio):
       gCrossfading = true
     discard pthread_mutex_unlock(addr gAudioMutex)
 
+  proc setMasterVolume*(vol: float) =
+    ## Set master volume, clamped to 0.0..1.0.
+    discard pthread_mutex_lock(addr gAudioMutex)
+    gMasterVolume = clamp(vol, 0.0, 1.0)
+    discard pthread_mutex_unlock(addr gAudioMutex)
+
+  proc getMasterVolume*(): float =
+    ## Return the current master volume.
+    result = gMasterVolume
+
 else:
   # Stub implementations when audio is disabled (unit tests)
   proc initAudio*() = discard
@@ -569,3 +585,5 @@ else:
   proc setActPalette*(palette: TonalPalette) = discard
   proc setCharOscActConfig*(config: CharOscillatorActConfig) = discard
   proc setCharacterDistance*(charIdx: int, distToNearest: float) = discard
+  proc setMasterVolume*(vol: float) = discard
+  proc getMasterVolume*(): float = 1.0
