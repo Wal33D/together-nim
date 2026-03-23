@@ -85,6 +85,8 @@ var
 const
   # Level index (0-based) at which each cast member unlocks.
   CharUnlockLevels: array[6, int] = [0, 4, 5, 7, 10, 11]
+  CardHoverQuotes: array[6, string] = ["What's up there?", "I was just... floating.",
+    "I'll hold this.", "Watch me.", "...no rush.", "Gently, now."]
 
 proc isCharLocked(idx: int): bool =
   ## Return true when a cast member has not yet been encountered.
@@ -578,7 +580,7 @@ proc renderGameplayHud(sk: Silky, layout: UiLayout, game: Game) =
 
 proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
                     x, y: float32, idx: int, name, gift: string,
-                    time, dt: float) =
+                    time, dt, menuTime: float) =
   let
     base = CHAR_COLORS[idx mod CHAR_COLORS.len]
     selected = idx == ui.menuSpotlight
@@ -610,9 +612,29 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
     baseSize = layout.sz(96, 40)
     scaledW = baseSize.x * breathe
     scaledH = baseSize.y * breathe
+
+    # Per-character idle micro-animation offsets (disabled when selected).
+    mt = menuTime.float32
+    idleX =
+      if selected: 0.0'f32
+      else:
+        case idx
+        of 0: sin(mt * 3.7'f32) * 2.0'f32          # Pip: rapid X jitter.
+        of 3: 0.0'f32                                 # Cara: Y only.
+        of 5: sin(mt * 0.7'f32) * 3.0'f32            # Ivy: gentle sway.
+        else: 0.0'f32
+    idleY =
+      if selected: 0.0'f32
+      else:
+        case idx
+        of 1: sin(mt * 0.9'f32) * 1.5'f32            # Luca: approximate tilt as Y shift.
+        of 2: sin(mt * 0.5'f32) * 1.5'f32            # Bruno: slow settle.
+        of 3: sin(mt * 1.1'f32 + 0.5'f32) * 2.0'f32  # Cara: slight upward gaze.
+        else: 0.0'f32
+
     pos = snap(vec2(
-      posBase.x + (baseSize.x - scaledW) * 0.5,
-      posBase.y + (baseSize.y - scaledH) * 0.5))
+      posBase.x + (baseSize.x - scaledW) * 0.5 + idleX,
+      posBase.y + (baseSize.y - scaledH) * 0.5 + idleY))
     size = vec2(scaledW, scaledH)
     cardRect = rect(pos.x, pos.y, size.x, size.y)
     hovered = window.mousePos.vec2.overlaps(cardRect)
@@ -663,6 +685,24 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
   sk.drawRect(pos + layout.d(12, 13), layout.sz(14, 14), accent)
   discard sk.drawUiText(layout, "Small", name, pos + layout.d(34, 10),
                         if hovered or selected: rgbx(238, 242, 247, 255) else: rgbx(178, 188, 204, 255))
+
+  # Felix (idx 4): thin white blink bar at top 20% of card, every ~3s.
+  if idx == 4 and not selected:
+    let
+      blinkCycle = mt mod 3.0'f32
+      blinkT = blinkCycle - 2.6'f32
+    if blinkT >= 0.0 and blinkT <= 0.4:
+      let blinkAlpha = sin(blinkT / 0.4'f32 * PI.float32) * 0.3
+      sk.drawRect(
+        vec2(pos.x + layout.px(4), pos.y + size.y * 0.1),
+        vec2(size.x - layout.px(8), layout.px(2)),
+        rgbx(255, 255, 255, uint8(blinkAlpha * 255.0)))
+
+  # Hover personality quote above card.
+  if hovered:
+    drawCenteredText(sk, layout, "Small", CardHoverQuotes[idx],
+                     pos.x + size.x * 0.5, pos.y - layout.px(14),
+                     rgbx(220, 226, 236, 200))
 
 proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
                 layout: UiLayout, game: var Game) =
@@ -839,7 +879,7 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
     let tileY = DEFAULT_HEIGHT.float32 - 72 + 6 + menuCardOffsets[i].float32
     renderCastCard(ui, sk, window, layout, tileX, tileY, i,
                    castNames[i], castGifts[i],
-                   game.elapsedTime, game.deltaTime)
+                   game.elapsedTime, game.deltaTime, game.menuTime)
 
   drawCenteredText(sk, layout, "Small", "Up/Down selects • Enter confirms • 1-6 preview cast",
                    heroCenter, layout.bottom - layout.px(28), rgbx(122, 134, 152, 255))

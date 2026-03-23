@@ -19,7 +19,7 @@ suite "levels":
     check level5.exits.len == 2
 
   test "all levels array has 33 levels":
-    check allLevels.len == 33
+    check allLevels.len == 34
 
   test "level 6 introduces bruno":
     check level6.characters == @["pip", "luca", "bruno"]
