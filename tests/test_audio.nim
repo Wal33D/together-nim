@@ -15,8 +15,10 @@ suite "audio system":
 
   test "SoundKind enum has all required values":
     let kinds = [soundJump, soundLand, soundDeath, soundLevelComplete,
-                 soundCharSwitch, soundExitReached]
-    check kinds.len == 6
+                 soundCharSwitch, soundExitReached,
+                 soundMenuHover, soundMenuSelect, soundMenuBack,
+                 soundTransitionSwoosh]
+    check kinds.len == 10
 
   test "playSound is safe without audio initialised":
     # Audio is not open (CoreAudio not initialised in unit tests).
