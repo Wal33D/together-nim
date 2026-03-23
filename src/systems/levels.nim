@@ -1246,4 +1246,36 @@ const level33* = Level(
   levelHeight: 500.0,
 )
 
-const allLevels*: array[33, Level] = [level1, level2, level3, level4, level5, level6, level7, level8, level9, level10, level11, level12, level13, level14, level15, level16, level17, level18, level19, level20, level21, level22, level23, level24, level25, level26, level27, level28, level29, level30, level31, level32, level33]
+const level34* = Level(
+  id: 34,
+  name: "Carried",
+  narration: "They didn't always need the same things. But right now, they needed each other.",
+  characters: @["pip", "luca", "bruno"],
+  platforms: @[
+    Platform(x: 0.0,   y: 460.0, width: 200.0, height: 20.0),   # left ground
+    Platform(x: 600.0, y: 460.0, width: 400.0, height: 20.0),   # right ground
+    Platform(x: 640.0, y: 350.0, width: 160.0, height: 20.0),   # mid ledge (Luca exit)
+    Platform(x: 680.0, y: 220.0, width: 130.0, height: 20.0),   # high ledge (Pip exit)
+  ],
+  hazards: @[
+    Hazard(x: 200.0, y: 470.0, width: 400.0, height: 10.0),     # chasm spikes
+  ],
+  exits: @[
+    Exit(x: 710.0, y: 170.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 660.0, y: 300.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 880.0, y: 410.0, width: 40.0, height: 50.0, characterId: "bruno"),
+  ],
+  buttons: @[],
+  doors: @[],
+  movingPlatforms: @[
+    MovingPlatform(waypoints: @[(x: 220.0, y: 460.0), (x: 560.0, y: 460.0)],
+                   width: 110.0, height: 20.0, speed: 80.0,
+                   pingPong: true, forward: true,
+                   x: 220.0, y: 460.0, prevX: 220.0, prevY: 460.0),
+  ],
+  starChallenge: StarChallenge(timeTarget: 80.0, secretX: 700.0, secretY: 195.0),
+  levelWidth: 1000.0,
+  levelHeight: 500.0,
+)
+
+const allLevels*: array[34, Level] = [level1, level2, level3, level4, level5, level6, level7, level8, level9, level10, level11, level12, level13, level14, level15, level16, level17, level18, level19, level20, level21, level22, level23, level24, level25, level26, level27, level28, level29, level30, level31, level32, level33, level34]
