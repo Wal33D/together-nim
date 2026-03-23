@@ -937,6 +937,11 @@ proc update*(game: var Game, dt: float) =
         game.characters[i].glowScale += (targetScale - game.characters[i].glowScale) * lerpRate
         game.characters[i].glowAlpha += (targetAlpha - game.characters[i].glowAlpha) * lerpRate
         game.characters[i].glowGoldMix += (targetGoldMix - game.characters[i].glowGoldMix) * lerpRate
+        # Isolation timer: increment when no neighbour within ProximityFar, reset on contact.
+        if minDists[i] > ProximityFar:
+          game.characters[i].isolationTimer += scaledDt
+        else:
+          game.characters[i].isolationTimer = 0.0
 
     # Update atmospheric background effects
     game.atmosphere.update(scaledDt)

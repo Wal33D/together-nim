@@ -296,7 +296,7 @@ proc renderAmbientStrata(renderer: RendererPtr, theme: BackdropTheme, scene: Bac
     drawFilledRect(renderer, 0, 160, DEFAULT_WIDTH.cint, 90)
   renderer.setDrawBlendMode(BlendMode_None)
 
-proc renderMidGroundSilhouettes(renderer: RendererPtr, actColor: chroma.Color, act: int, camX: float) =
+proc renderMidGroundSilhouettes(renderer: RendererPtr, actColor: chroma.Color, act: int, camX: float, scene: BackdropScene) =
   ## Procedurally generated column shapes scrolling at 0.4x camera speed.
   let darkColor = chroma.darken(actColor, 0.4)
   let cr = uint8(darkColor.r * 255.0)
@@ -314,8 +314,59 @@ proc renderMidGroundSilhouettes(renderer: RendererPtr, actColor: chroma.Color, a
     let w = seededVal(act, i * 3 + 2, 20, 50)
     let x = ((baseX - scrollShift) mod DEFAULT_WIDTH + DEFAULT_WIDTH) mod DEFAULT_WIDTH
     let y = DEFAULT_HEIGHT - h
-    drawFilledRect(renderer, cint(x), cint(y), cint(w), cint(h))
-    drawFilledRect(renderer, cint(x - DEFAULT_WIDTH), cint(y), cint(w), cint(h))
+
+    case scene
+    of dawnMeadow:
+      # Tapered tree silhouettes: wide base + narrower top (2:1 width ratio).
+      let topW = w div 2
+      let topH = h div 3
+      let baseH = h - topH
+      let topX = x + (w - topW) div 2
+      drawFilledRect(renderer, cint(x), cint(y + topH), cint(w), cint(baseH))
+      drawFilledRect(renderer, cint(x - DEFAULT_WIDTH), cint(y + topH), cint(w), cint(baseH))
+      drawFilledRect(renderer, cint(topX), cint(y), cint(topW), cint(topH))
+      drawFilledRect(renderer, cint(topX - DEFAULT_WIDTH), cint(y), cint(topW), cint(topH))
+    of riverValley:
+      # Rounded bush mounds: 2-3 stacked rects of decreasing width, centered.
+      let layers = seededVal(act, i * 3 + 50, 2, 3)
+      let layerH = h div layers
+      for layer in 0..<layers:
+        let shrink = layer * w div (layers * 2)
+        let lw = max(4, w - shrink * 2)
+        let lx = x + shrink
+        let ly = y + layer * layerH
+        drawFilledRect(renderer, cint(lx), cint(ly), cint(lw), cint(layerH + 1))
+        drawFilledRect(renderer, cint(lx - DEFAULT_WIDTH), cint(ly), cint(lw), cint(layerH + 1))
+    of stoneRuins:
+      # Broken columns: pillar with a 30-50% narrower cap offset left or right.
+      let capNarrow = seededVal(act, i * 3 + 60, 30, 50)
+      let capW = max(4, w * (100 - capNarrow) div 100)
+      let capH = h div 4
+      let pillarH = h - capH
+      let offsetDir = if (i mod 2) == 0: -capW div 4 else: capW div 4
+      let capX = x + (w - capW) div 2 + offsetDir
+      drawFilledRect(renderer, cint(x), cint(y + capH), cint(w), cint(pillarH))
+      drawFilledRect(renderer, cint(x - DEFAULT_WIDTH), cint(y + capH), cint(w), cint(pillarH))
+      drawFilledRect(renderer, cint(capX), cint(y), cint(capW), cint(capH))
+      drawFilledRect(renderer, cint(capX - DEFAULT_WIDTH), cint(y), cint(capW), cint(capH))
+    of nightSky:
+      # Crystal spires: tall narrow base with a short pointed tip (4px wide).
+      let tipH = min(20, h div 4)
+      let baseH = h - tipH
+      let tipX = x + (w - 4) div 2
+      drawFilledRect(renderer, cint(x), cint(y + tipH), cint(w), cint(baseH))
+      drawFilledRect(renderer, cint(x - DEFAULT_WIDTH), cint(y + tipH), cint(w), cint(baseH))
+      drawFilledRect(renderer, cint(tipX), cint(y), 4, cint(tipH))
+      drawFilledRect(renderer, cint(tipX - DEFAULT_WIDTH), cint(y), 4, cint(tipH))
+    of aetherPlane:
+      # Floating disconnected blocks: 2 rects separated by a seeded gap.
+      let gap = seededVal(act, i * 3 + 70, 10, 20)
+      let topH = h div 3
+      let botH = h - topH - gap
+      drawFilledRect(renderer, cint(x), cint(y), cint(w), cint(topH))
+      drawFilledRect(renderer, cint(x - DEFAULT_WIDTH), cint(y), cint(w), cint(topH))
+      drawFilledRect(renderer, cint(x), cint(y + topH + gap), cint(w), cint(botH))
+      drawFilledRect(renderer, cint(x - DEFAULT_WIDTH), cint(y + topH + gap), cint(w), cint(botH))
 
   renderer.setDrawBlendMode(BlendMode_None)
 
@@ -355,7 +406,7 @@ proc renderBackdrop*(renderer: RendererPtr, level: Level, camX, time: float) =
   renderStars(renderer, theme, level.id, time)
   renderAurora(renderer, theme, time)
   renderHorizonBands(renderer, theme, camX)
-  renderMidGroundSilhouettes(renderer, actColor, act, camX)
+  renderMidGroundSilhouettes(renderer, actColor, act, camX, theme.scene)
   renderMist(renderer, theme, theme.scene, time)
   renderNearGroundDetail(renderer, actColor, act, camX)
   renderWaterShimmer(renderer, theme, time)
