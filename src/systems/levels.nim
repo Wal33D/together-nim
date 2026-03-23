@@ -1278,4 +1278,33 @@ const level34* = Level(
   levelHeight: 500.0,
 )
 
-const allLevels*: array[34, Level] = [level1, level2, level3, level4, level5, level6, level7, level8, level9, level10, level11, level12, level13, level14, level15, level16, level17, level18, level19, level20, level21, level22, level23, level24, level25, level26, level27, level28, level29, level30, level31, level32, level33, level34]
+const level35* = Level(
+  id: 35,
+  name: "Summit",
+  narration: "Pip had never been this high. She could see everything from up here.",
+  characters: @["pip", "luca", "bruno"],
+  platforms: @[
+    Platform(x: 0.0,   y: 460.0, width: 250.0,  height: 20.0),   # left ground (start)
+    Platform(x: 550.0, y: 460.0, width: 450.0,  height: 20.0),   # right ground (Bruno exit side)
+    Platform(x: 350.0, y: 460.0, width: 100.0,  height: 20.0),   # stack platform (over gap)
+    Platform(x: 300.0, y: 100.0, width: 20.0,   height: 360.0),  # left wall (blocks shortcut)
+    Platform(x: 600.0, y: 340.0, width: 140.0,  height: 20.0),   # mid platform (Luca exit)
+    Platform(x: 620.0, y: 215.0, width: 130.0,  height: 20.0),   # high platform (Pip exit)
+  ],
+  hazards: @[
+    Hazard(x: 250.0, y: 470.0, width: 100.0, height: 10.0),      # gap spikes left
+    Hazard(x: 450.0, y: 470.0, width: 100.0, height: 10.0),      # gap spikes right
+  ],
+  exits: @[
+    Exit(x: 660.0, y: 165.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 640.0, y: 290.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 900.0, y: 410.0, width: 40.0, height: 50.0, characterId: "bruno"),
+  ],
+  buttons: @[],
+  doors: @[],
+  starChallenge: StarChallenge(timeTarget: 75.0, secretX: 680.0, secretY: 190.0),
+  levelWidth: 1000.0,
+  levelHeight: 500.0,
+)
+
+const allLevels*: array[35, Level] = [level1, level2, level3, level4, level5, level6, level7, level8, level9, level10, level11, level12, level13, level14, level15, level16, level17, level18, level19, level20, level21, level22, level23, level24, level25, level26, level27, level28, level29, level30, level31, level32, level33, level34, level35]

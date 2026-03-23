@@ -565,8 +565,8 @@ suite "credits sequence":
   test "nextLevel enters credits after last level":
     var g = newGame()
     g.state = playing
-    # Set to the last valid level index (34 levels, 0-indexed).
-    g.currentLevel = 33
+    # Set to the last valid level index (35 levels, 0-indexed).
+    g.currentLevel = 34
     g.nextLevel()
     check g.state == credits
     check g.creditsTimer == 0.0
