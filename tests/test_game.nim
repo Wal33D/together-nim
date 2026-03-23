@@ -544,3 +544,35 @@ suite "proximity glow":
 
     check g.characters[0].isolationTimer == 0.0
     check g.characters[1].isolationTimer == 0.0
+
+suite "credits sequence":
+  test "enterCredits sets state and resets timer":
+    var g = newGame()
+    g.screenBrightness = 1.0
+    g.creditsTimer = 5.0
+    g.enterCredits()
+    check g.state == credits
+    check g.creditsTimer == 0.0
+    check g.screenBrightness == 0.0
+
+  test "credits timer advances during update":
+    var g = newGame()
+    g.enterCredits()
+    let before = g.creditsTimer
+    g.update(FIXED_TIMESTEP)
+    check g.creditsTimer > before
+
+  test "nextLevel enters credits after last level":
+    var g = newGame()
+    g.state = playing
+    # Set to the last valid level index (34 levels, 0-indexed).
+    g.currentLevel = 33
+    g.nextLevel()
+    check g.state == credits
+    check g.creditsTimer == 0.0
+
+  test "enter key in credits returns to menu":
+    var g = newGame()
+    g.enterCredits()
+    g.handleKey(KeyEnter)
+    check g.state == menu
