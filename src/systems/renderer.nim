@@ -227,14 +227,22 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
   let camX = (game.camera.x + game.camera.shakeOffsetX).cint
   let camY = (game.camera.y + game.camera.shakeOffsetY).cint
 
-  # Platforms
-  renderer.setDrawColor(90, 90, 110, 255)
+  # Platforms (gradient fill: lighter top, darker bottom; 1px dark outline)
   for p in level.platforms:
-    drawFilledRect(renderer, p.x.cint - camX, p.y.cint - camY, p.width.cint, p.height.cint)
-    # Top edge highlight
-    renderer.setDrawColor(120, 120, 145, 255)
-    drawFilledRect(renderer, p.x.cint - camX, p.y.cint - camY, p.width.cint, 2)
-    renderer.setDrawColor(90, 90, 110, 255)
+    let px = p.x.cint - camX
+    let py = p.y.cint - camY
+    let pw = p.width.cint
+    let ph = p.height.cint
+    let bands = max(1, ph.int)
+    for band in 0 ..< bands:
+      let t = if bands > 1: float(band) / float(bands - 1) else: 0.0
+      let r = uint8(110.0 + (70.0 - 110.0) * t)
+      let g = uint8(110.0 + (70.0 - 110.0) * t)
+      let b = uint8(135.0 + (90.0 - 135.0) * t)
+      renderer.setDrawColor(r, g, b, 255)
+      drawFilledRect(renderer, px, py + band.cint, pw, 1)
+    renderer.setDrawColor(40, 40, 55, 255)
+    drawOutlineRect(renderer, px, py, pw, ph)
 
   # Moving platform waypoint path indicators
   renderer.setDrawBlendMode(BlendMode_Blend)
@@ -298,8 +306,10 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
       if charId == e.characterId:
         exitColor = CHAR_COLORS[game.characters[i].colorIndex mod 6]
         break
-    # Glow behind
-    renderer.setDrawColor(exitColor.r, exitColor.g, exitColor.b, 40)
+    # Pulsing glow behind (sine wave, period 2s)
+    let exitPulse = 0.5 + 0.5 * sin(game.elapsedTime * PI)
+    let exitGlowAlpha = uint8(20.0 + 30.0 * exitPulse)
+    renderer.setDrawColor(exitColor.r, exitColor.g, exitColor.b, exitGlowAlpha)
     drawFilledRect(renderer, (e.x - 4).cint - camX, (e.y - 4).cint - camY,
                    (e.width + 8).cint, (e.height + 8).cint)
     # Outline
@@ -359,6 +369,45 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
           renderConnectionLine(renderer, cx1 - float(camX), cy1 - float(camY),
                                cx2 - float(camX), cy2 - float(camY), avgColor, fade)
     renderer.setDrawBlendMode(BlendMode_None)
+
+  # Character shadows — ellipse below each character on nearest platform
+  renderer.setDrawBlendMode(BlendMode_Blend)
+  for ch in game.characters:
+    if ch.isDying() or ch.isRespawning():
+      continue
+    let charBottom = ch.y + float(ch.height)
+    let charLeft = ch.x
+    let charRight = ch.x + float(ch.width)
+    # Find nearest platform surface below the character.
+    var shadowY = level.levelHeight
+    for p in level.platforms:
+      if p.y >= charBottom and p.x < charRight and p.x + p.width > charLeft:
+        if p.y < shadowY:
+          shadowY = p.y
+    for mp in level.movingPlatforms:
+      if mp.y >= charBottom and mp.x < charRight and mp.x + mp.width > charLeft:
+        if mp.y < shadowY:
+          shadowY = mp.y
+    let dist = shadowY - charBottom
+    let maxShadowDist = 200.0
+    let alpha = if dist <= 0.0: 40'u8
+                elif dist >= maxShadowDist: 10'u8
+                else: uint8(40.0 - 30.0 * (dist / maxShadowDist))
+    let shadowW = float(ch.width)
+    let shadowH = shadowW * 0.3
+    let halfW = shadowW * 0.5
+    let halfH = shadowH * 0.5
+    let cx = ch.x + float(ch.width) * 0.5 - float(camX)
+    let sy = shadowY - float(camY)
+    renderer.setDrawColor(0, 0, 0, alpha)
+    let strips = max(3, int(shadowH))
+    for s in 0 ..< strips:
+      let t = (float(s) + 0.5) / float(strips)
+      let yOff = -halfH + shadowH * t
+      let ratio = yOff / halfH
+      let xRadius = halfW * sqrt(max(0.0, 1.0 - ratio * ratio))
+      drawFilledRect(renderer, cx - xRadius, sy - halfH + shadowH * t, xRadius * 2.0, 1.0)
+  renderer.setDrawBlendMode(BlendMode_None)
 
   # Characters
   for i, ch in game.characters:
@@ -490,7 +539,8 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
         drawFilledRect(renderer, rightEyeX + 1 + pupilOffset, eyeY + 1, pupilSize, pupilSize)
 
       # Mouth
-      let mouthW = (dw.float * 0.25).cint
+      let mouthFrac = if ch.celebrating: 0.38 else: 0.25
+      let mouthW = (dw.float * mouthFrac).cint
       let mouthX = (centerX - mouthW.float / 2.0).cint
       let mouthY = (dy.float + dh.float * 0.72).cint
       let chromaColor = chroma.color(chColor.r.float32 / 255.0,
