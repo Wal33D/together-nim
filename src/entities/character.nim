@@ -52,6 +52,7 @@ type
     glowGoldMix*: float            # gold tint blend for full-group proximity (0..0.15)
     pupilOffset*: float             # smooth pupil direction (-1..+1); thresholded to pixel offset
     prevProximityTarget*: int        # previous frame's proximityTarget; -1 = none
+    isolationTimer*: float           # seconds without any neighbour within 200 px; resets on contact
 
 proc newCharacter*(id: string): Character =
   result.x = 0.0
@@ -90,6 +91,7 @@ proc newCharacter*(id: string): Character =
   result.glowGoldMix = 0.0
   result.pupilOffset = 0.0
   result.prevProximityTarget = -1
+  result.isolationTimer = 0.0
   case id
   of "pip":
     result.width = 24; result.height = 24
