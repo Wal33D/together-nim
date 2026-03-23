@@ -1,7 +1,7 @@
 ## Game state machine, update logic, and level management
 
 import
-  std/[math, tables],
+  std/[math, random, tables],
   windy,
   constants,
   entities/character,
@@ -65,6 +65,7 @@ type
     settingsWindowPreset*: int
     fullscreenEnabled*: bool
     vsyncEnabled*: bool
+    creditsTimer*: float
 
 const
   ProximityNear* = 80.0
@@ -516,6 +517,12 @@ proc continueGame*(game: var Game) =
 proc restartLevel*(game: var Game) =
   game.loadLevel(game.currentLevel)
 
+proc enterCredits*(game: var Game) =
+  ## Transition to the credits sequence.
+  game.state = credits
+  game.creditsTimer = 0.0
+  game.screenBrightness = 0.0
+
 proc nextLevel*(game: var Game) =
   let nextIdx = game.currentLevel + 1
   if nextIdx < allLevels.len:
@@ -525,7 +532,7 @@ proc nextLevel*(game: var Game) =
       game.loadLevel(nextIdx)
       game.state = playing
   else:
-    game.state = credits
+    game.enterCredits()
 
 proc openSettings*(game: var Game) =
   ## Enter the settings screen, remembering where to return.
@@ -662,6 +669,14 @@ proc update*(game: var Game, dt: float) =
               break
           game.particles.emitExitBeckoning(e.x, e.y, e.width, e.height, exitColor)
 
+      # Secret orb ambient sparkle emission
+      if not game.secretCollected:
+        let sc = level.starChallenge
+        if sc.secretX != 0.0 or sc.secretY != 0.0:
+          if rand(60) < 2:
+            let orbSparkleColor: Color = (r: 255'u8, g: 255'u8, b: 255'u8)
+            game.particles.emitSparkle(sc.secretX, sc.secretY, orbSparkleColor)
+
       # Secret collectible overlap check
       if not game.secretCollected:
         let sc = level.starChallenge
@@ -698,7 +713,7 @@ proc update*(game: var Game, dt: float) =
         game.screenBrightness = min(1.0, game.finaleTimer / 2.0)
         if game.finaleTimer >= 2.0:
           game.finaleActive = false
-          game.state = credits
+          game.enterCredits()
 
       # Check win — all characters at their exits
       if game.characters.len > 0:
@@ -978,6 +993,9 @@ proc update*(game: var Game, dt: float) =
     if game.actTitleTimer >= ActTitleDuration:
       game.loadLevel(game.actTitleTarget)
       game.state = playing
+
+  of credits:
+    game.creditsTimer += scaledDt
 
   else:
     discard
