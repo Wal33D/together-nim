@@ -215,11 +215,6 @@ var
       header: "<CoreFoundation/CoreFoundation.h>".}: CFArrayCallBacks
   kCFRunLoopDefaultMode {.importc,
       header: "<CoreFoundation/CoreFoundation.h>".}: CFStringRef
-  kIOHIDDeviceUsagePageKey {.importc,
-      header: "<IOKit/hid/IOHIDKeys.h>".}: CFStringRef
-  kIOHIDDeviceUsageKey {.importc,
-      header: "<IOKit/hid/IOHIDKeys.h>".}: CFStringRef
-
 const
   KCFNumberSInt32Type = 3'i32
   KHIDPageGenericDesktop = 0x01'u32
@@ -251,6 +246,12 @@ proc CFArrayCreate(allocator: CFAllocatorRef, values: pointer,
 
 proc CFRelease(cf: pointer)
   {.importc, header: "<CoreFoundation/CoreFoundation.h>".}
+
+proc CFStringCreateWithCString(alloc: CFAllocatorRef, cStr: cstring,
+    encoding: uint32): CFStringRef
+  {.importc, header: "<CoreFoundation/CoreFoundation.h>".}
+
+const KCFStringEncodingUTF8 = 0x08000100'u32
 
 proc IOHIDManagerCreate(allocator: CFAllocatorRef,
     options: IOOptionBits): IOHIDManagerRef
@@ -375,9 +376,11 @@ proc createMatchingDict(usagePage: uint32, usage: uint32): CFDictionaryRef =
   var usageVal = usage.int32
   let pageNum = CFNumberCreate(nil, KCFNumberSInt32Type, addr pageVal)
   let usageNum = CFNumberCreate(nil, KCFNumberSInt32Type, addr usageVal)
+  let usagePageKey = CFStringCreateWithCString(nil, "DeviceUsagePage", KCFStringEncodingUTF8)
+  let usageKey = CFStringCreateWithCString(nil, "DeviceUsage", KCFStringEncodingUTF8)
   var keys: array[2, pointer] = [
-    cast[pointer](kIOHIDDeviceUsagePageKey),
-    cast[pointer](kIOHIDDeviceUsageKey)]
+    cast[pointer](usagePageKey),
+    cast[pointer](usageKey)]
   var vals: array[2, pointer] = [
     cast[pointer](pageNum),
     cast[pointer](usageNum)]
@@ -385,6 +388,8 @@ proc createMatchingDict(usagePage: uint32, usage: uint32): CFDictionaryRef =
     addr kCFTypeDictionaryKeyCallBacks, addr kCFTypeDictionaryValueCallBacks)
   CFRelease(pageNum)
   CFRelease(usageNum)
+  CFRelease(usagePageKey)
+  CFRelease(usageKey)
 
 proc openFirstController*() =
   ## Create an IOKit HID Manager and register for gamepad/joystick devices.

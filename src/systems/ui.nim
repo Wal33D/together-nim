@@ -439,18 +439,24 @@ proc button(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout, pos, si
     ui.noteHot(widgetId, wantsMouse = true, wantsKeyboard = clicked)
 
   sk.drawSoftPanel(pos, size, fill, muted(accent, if active: 255'u8 else: 210'u8))
-  sk.drawRect(pos, vec2(size.x, layout.px(5)), muted(accent, if active: 255'u8 else: 210'u8))
+  sk.drawRect(pos, vec2(size.x, layout.px(3)), muted(accent, if active: 255'u8 else: 210'u8))
 
-  discard sk.drawUiText(layout, "Body", label, pos + layout.d(18, 16),
-                        if active: rgbx(244, 247, 250, 255) else: rgbx(232, 236, 242, 255))
   if detail.len > 0:
-    discard sk.drawUiText(layout, "Small", detail, pos + layout.d(18, 46),
+    discard sk.drawUiText(layout, "Body", label, pos + layout.d(18, 8),
+                          if active: rgbx(244, 247, 250, 255) else: rgbx(232, 236, 242, 255))
+    discard sk.drawUiText(layout, "Small", detail, pos + layout.d(18, 28),
                           if active: rgbx(156, 168, 188, 255) else: rgbx(136, 148, 168, 255))
+  else:
+    # Center label vertically in button when no detail text.
+    let labelSize = sk.uiTextSize(layout, "Body", label)
+    let labelY = (size.y - labelSize.y) * 0.5
+    discard sk.drawUiText(layout, "Body", label, pos + vec2(layout.px(18), labelY),
+                          if active: rgbx(244, 247, 250, 255) else: rgbx(232, 236, 242, 255))
   clicked
 
 proc actionButton(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout, x, y, w: float32,
                   label, detail, widgetId: string, accent: ColorRGBX): bool =
-  button(ui, sk, window, layout, layout.p(x, y), layout.sz(w, 74), label, detail, widgetId, accent)
+  button(ui, sk, window, layout, layout.p(x, y), layout.sz(w, 56), label, detail, widgetId, accent)
 
 proc renderBuildStamp(sk: Silky, layout: UiLayout) =
   let
@@ -749,18 +755,16 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
   let heroColor = CHAR_COLORS[spotlight mod CHAR_COLORS.len]
   let heroAccent = rgbx(heroColor.r, heroColor.g, heroColor.b, 255)
   let
-    heroPos = layout.p(DEFAULT_WIDTH.float32 * 0.5 - 204, 92)
-    heroSize = layout.sz(408, 212)
-    buttonPos = vec2(heroPos.x + layout.px(42), heroPos.y + heroSize.y - layout.px(86))
-    buttonSize = vec2(heroSize.x - layout.px(84), layout.px(58))
-    ribbonPos = layout.p(DEFAULT_WIDTH.float32 * 0.5 - 324, DEFAULT_HEIGHT.float32 - 72)
-    ribbonSize = layout.sz(648, 52)
+    heroPos = layout.p(DEFAULT_WIDTH.float32 * 0.5 - 204, 20)
+    heroSize = layout.sz(408, 160)
+    ribbonPos = layout.p(80, DEFAULT_HEIGHT.float32 - 82)
+    ribbonSize = layout.sz(640, 58)
     heroCenter = layout.centerX
     tagline = "A quiet platformer about color, cooperation, and timing."
-    heroLinePos = vec2(heroPos.x + layout.px(46), heroPos.y + layout.px(128))
+    heroLinePos = vec2(heroPos.x + layout.px(46), heroPos.y + layout.px(126))
     heroLineWidth = heroSize.x - layout.px(92)
 
-  sk.drawSoftPanel(heroPos, heroSize, rgbx(10, 12, 18, 184), muted(heroAccent, 185))
+  sk.drawSoftPanel(heroPos, heroSize, rgbx(10, 12, 18, 230), muted(heroAccent, 185))
   let titleAlpha = clamp(menuTitleAlpha * 255.0, 0.0, 255.0).uint8
 
   # Update title glow and shimmer timing.
@@ -778,57 +782,18 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
     if titleShimmerX > 1.0:
       titleShimmerX = -1.0
 
-  # Color-cycling glow halo behind the title.
-  if titleAlpha > 0:
-    let
-      titleSize = sk.uiTextSize(layout, "Display", "TOGETHER")
-      titleX = heroCenter - titleSize.x * 0.5
-      titleY = heroPos.y + layout.px(30)
-      glowColor = hsl(titleGlowHue * 360.0, 70.0, 60.0).color
-      glowR = clamp(glowColor.r * 255.0, 0.0, 255.0).uint8
-      glowG = clamp(glowColor.g * 255.0, 0.0, 255.0).uint8
-      glowB = clamp(glowColor.b * 255.0, 0.0, 255.0).uint8
-      glowBase = float(titleAlpha) / 255.0
-    # Draw concentric glow layers from outer to inner.
-    for layer in countdown(3, 0):
-      let
-        spread = layout.px(float32(layer + 1) * 8.0)
-        layerA = uint8(glowBase * (22.0 - float(layer) * 4.0))
-        gp = vec2(titleX - spread, titleY - spread * 0.5)
-        gs = vec2(titleSize.x + spread * 2.0, titleSize.y + spread)
-      sk.drawRect(gp, gs, rgbx(glowR, glowG, glowB, layerA))
-
-  drawCenteredText(sk, layout, "Display", "TOGETHER", heroCenter, heroPos.y + layout.px(30), rgbx(246, 248, 251, titleAlpha))
-
-  # Shimmer sweep across the title.
-  if titleShimmerX >= 0.0 and titleAlpha > 0:
-    let
-      titleSize = sk.uiTextSize(layout, "Display", "TOGETHER")
-      titleX = heroCenter - titleSize.x * 0.5
-      titleY = heroPos.y + layout.px(30)
-      bandW = layout.px(48.0)
-      bandCenter = titleX + titleShimmerX.float32 * (titleSize.x + bandW) - bandW * 0.5
-      shimmerA = uint8(float(titleAlpha) / 255.0 * 64.0)
-    # Draw the shimmer as a narrow bright band clamped to title width.
-    for i in 0..<3:
-      let
-        offset = float32(i - 1) * bandW * 0.4
-        bx = max(titleX, bandCenter + offset - bandW * 0.5)
-        bxEnd = min(titleX + titleSize.x, bandCenter + offset + bandW * 0.5)
-        bw = bxEnd - bx
-        ba = uint8(float(shimmerA) * (1.0 - float(abs(i - 1)) * 0.5))
-      if bw > 0.0:
-        sk.drawRect(vec2(bx, titleY), vec2(bw, titleSize.y), rgbx(255, 255, 255, ba))
+  # Title text — clean white on dark panel, no glow/shimmer.
+  drawCenteredText(sk, layout, "Display", "TOGETHER", heroCenter, heroPos.y + layout.px(18), rgbx(246, 248, 251, titleAlpha))
   drawCenteredText(sk, layout, "Small", tagline,
-                   heroCenter, heroPos.y + layout.px(84), rgbx(160, 171, 192, 255))
-  sk.drawRect(vec2(heroCenter - layout.px(16), heroPos.y + layout.px(112)), layout.sz(32, 32), heroAccent)
-  drawCenteredText(sk, layout, "Body", castNames[spotlight], heroCenter, heroPos.y + layout.px(154),
+                   heroCenter, heroPos.y + layout.px(50), rgbx(160, 171, 192, 255))
+  sk.drawRect(vec2(heroCenter - layout.px(8), heroPos.y + layout.px(70)), layout.sz(16, 16), heroAccent)
+  drawCenteredText(sk, layout, "Body", castNames[spotlight], heroCenter, heroPos.y + layout.px(92),
                    rgbx(242, 245, 248, 255))
   drawCenteredText(sk, layout, "Small", castRoles[spotlight] & " • " & castGifts[spotlight], heroCenter,
-                   heroPos.y + layout.px(184), heroAccent)
+                   heroPos.y + layout.px(112), heroAccent)
   discard sk.drawUiText(layout, "Small", castHeroLines[spotlight], heroLinePos,
                         rgbx(220, 226, 236, 255),
-                        maxWidth = heroLineWidth, maxHeight = layout.px(36), wordWrap = true)
+                        maxWidth = heroLineWidth, maxHeight = layout.px(28), wordWrap = true)
 
   # 4-button vertical menu below hero panel.
   const
@@ -840,11 +805,11 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
       rgbx(140, 152, 172, 255),
     ]
   let
-    menuBtnW = 240.0'f32
-    menuBtnH = 42.0'f32
-    menuBtnGap = 8.0'f32
+    menuBtnW = 260.0'f32
+    menuBtnH = 36.0'f32
+    menuBtnGap = 6.0'f32
     menuColumnX = DEFAULT_WIDTH.float32 * 0.5 - menuBtnW * 0.5
-    menuColumnY = 320.0'f32
+    menuColumnY = 200.0'f32
 
   # Sliding indicator lerp toward focused button Y.
   let targetIndicatorY = layout.p(0, menuColumnY + menuCursor.float32 * (menuBtnH + menuBtnGap)).y
@@ -905,7 +870,7 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
                      elif focused: rgbx(244, 247, 250, textAlpha)
                      else: rgbx(200, 208, 222, textAlpha)
     drawCenteredText(sk, layout, "Body", MenuLabels[i], layout.centerX,
-                     pos.y + layout.px(10), labelColor)
+                     pos.y + layout.px(8), labelColor)
 
     # Continue progress indicator and character silhouettes.
     if i == 1 and menuHasSave and alpha > 0.5:
@@ -922,12 +887,12 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
       if contLevel >= 0 and contLevel < allLevels.len:
         let
           partyChars = allLevels[contLevel].characters
-          silW = layout.px(8)
-          silH = layout.px(8)
-          silGap = layout.px(4)
+          silW = layout.px(6)
+          silH = layout.px(6)
+          silGap = layout.px(3)
           silTotalW = partyChars.len.float32 * silW + max(0, partyChars.len - 1).float32 * silGap
           silStartX = layout.centerX - silTotalW * 0.5
-          silY = pos.y + size.y + layout.px(16)
+          silY = pos.y + size.y + layout.px(12)
         for ci, charId in partyChars:
           let
             cIdx = charColorIndex(charId)
@@ -956,41 +921,47 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
 
   sk.drawSoftPanel(ribbonPos, ribbonSize, rgbx(10, 12, 18, 110), rgbx(52, 62, 82, 120))
   for i in 0 ..< castNames.len:
-    let tileX = DEFAULT_WIDTH.float32 * 0.5 - 324 + 12 + i.float32 * 104.0
-    let tileY = DEFAULT_HEIGHT.float32 - 72 + 6 + menuCardOffsets[i].float32
+    # 6 cards × 96px wide + 5 gaps × 8px = 616px total. Center in 800px → start at 92.
+    let tileX = 92.0 + i.float32 * 104.0
+    let tileY = DEFAULT_HEIGHT.float32 - 82 + 10 + menuCardOffsets[i].float32
     renderCastCard(ui, sk, window, layout, tileX, tileY, i,
                    castNames[i], castGifts[i],
                    game.elapsedTime, game.deltaTime, game.menuTime)
 
   drawCenteredText(sk, layout, "Small", "Up/Down selects • Enter confirms • 1-6 preview cast",
-                   heroCenter, layout.bottom - layout.px(28), rgbx(122, 134, 152, 255))
+                   heroCenter, layout.bottom - layout.px(18), rgbx(122, 134, 152, 255))
 
 proc renderPauseModal(ui: UiRenderer, sk: Silky, window: Window,
                       layout: UiLayout, game: var Game) =
   let
-    baseX = DEFAULT_WIDTH.float32 * 0.5 - 168
-    baseY = DEFAULT_HEIGHT.float32 * 0.5 - 116 + pauseModalY
+    panelW = 320.0'f32
+    panelH = 280.0'f32
+    baseX = DEFAULT_WIDTH.float32 * 0.5 - panelW * 0.5
+    baseY = DEFAULT_HEIGHT.float32 * 0.5 - panelH * 0.5 + pauseModalY
     pos = layout.p(baseX, baseY)
-    size = layout.sz(336, 240)
+    size = layout.sz(panelW, panelH)
     levelText =
       if game.currentLevel >= 0 and game.currentLevel < allLevels.len:
         let level = game.currentLevelState
         &"Level {level.id}: {level.name}"
       else:
         "Current room"
-    resumePos = layout.p(baseX + 34, baseY + 102)
-    resumeSize = layout.sz(336 - 68, 54)
-    restartPos = layout.p(baseX + 34, baseY + 166)
-    restartSize = layout.sz(118, 42)
-    menuPos = layout.p(baseX + 34 + 130, baseY + 166)
-    menuSize = layout.sz(336 - 68 - 130, 42)
-    settingsPos = layout.p(baseX + 34, baseY + 218)
-    settingsSize = layout.sz(336 - 68, 42)
+    insetX = 28.0'f32
+    btnW = panelW - insetX * 2
+    halfBtnW = (btnW - 10) * 0.5
+    resumePos = layout.p(baseX + insetX, baseY + 100)
+    resumeSize = layout.sz(btnW, 46)
+    restartPos = layout.p(baseX + insetX, baseY + 158)
+    restartSize = layout.sz(halfBtnW, 38)
+    menuPos = layout.p(baseX + insetX + halfBtnW + 10, baseY + 158)
+    menuSize = layout.sz(halfBtnW, 38)
+    settingsPos = layout.p(baseX + insetX, baseY + 208)
+    settingsSize = layout.sz(btnW, 38)
   sk.drawSoftPanel(pos, size, rgbx(10, 12, 18, 232), rgbx(90, 104, 132, 180))
-  discard sk.drawUiText(layout, "Display", "Paused", pos + layout.d(34, 24), rgbx(248, 249, 251, 255))
-  discard sk.drawUiText(layout, "Small", levelText, pos + layout.d(36, 72), rgbx(162, 174, 194, 255))
+  discard sk.drawUiText(layout, "Display", "Paused", pos + layout.d(insetX + 6, 22), rgbx(248, 249, 251, 255))
+  discard sk.drawUiText(layout, "Small", levelText, pos + layout.d(insetX + 8, 62), rgbx(162, 174, 194, 255))
   discard sk.drawUiText(layout, "Small", "Esc resumes • arrows change focus • Enter confirms",
-                        pos + layout.d(36, 90), rgbx(134, 146, 166, 255))
+                        pos + layout.d(insetX + 8, 80), rgbx(134, 146, 166, 255))
 
   if pauseBtn1Alpha > 0.01:
     if window.mousePos.vec2.overlaps(rect(resumePos.x, resumePos.y, resumeSize.x, resumeSize.y)):
@@ -1035,15 +1006,20 @@ proc renderPauseModal(ui: UiRenderer, sk: Silky, window: Window,
 proc renderWinModal(ui: UiRenderer, sk: Silky, window: Window,
                     layout: UiLayout, game: var Game) =
   let
-    pos = layout.p(DEFAULT_WIDTH.float32 * 0.5 - 226, DEFAULT_HEIGHT.float32 * 0.5 - 132)
-    size = layout.sz(452, 264)
+    winW = 400.0'f32
+    winH = 220.0'f32
+    winX = DEFAULT_WIDTH.float32 * 0.5 - winW * 0.5
+    winY = DEFAULT_HEIGHT.float32 * 0.5 - winH * 0.5
+    pos = layout.p(winX, winY)
+    size = layout.sz(winW, winH)
   sk.drawPanel(pos, size, rgbx(12, 14, 18, 220), rgbx(132, 110, 54, 240))
-  discard sk.drawUiText(layout, "Display", "Together", pos + layout.d(42, 28), rgbx(248, 232, 178, 255))
-  discard sk.drawUiText(layout, "Body", "Everyone made it through.", pos + layout.d(46, 94),
-                        rgbx(238, 240, 244, 255))
-  discard sk.drawUiText(layout, "Small", "Press Enter or continue to the next room.",
-                        pos + layout.d(46, 126), rgbx(160, 170, 186, 255))
-  if ui.actionButton(sk, window, layout, DEFAULT_WIDTH.float32 * 0.5 - 226 + 46, DEFAULT_HEIGHT.float32 * 0.5 - 132 + 166, 452 - 92,
+  drawCenteredText(sk, layout, "Display", "Together", layout.centerX,
+                   pos.y + layout.px(24), rgbx(248, 232, 178, 255))
+  drawCenteredText(sk, layout, "Body", "Everyone made it through.", layout.centerX,
+                   pos.y + layout.px(72), rgbx(238, 240, 244, 255))
+  drawCenteredText(sk, layout, "Small", "Press Enter or continue to the next room.",
+                   layout.centerX, pos.y + layout.px(100), rgbx(160, 170, 186, 255))
+  if ui.actionButton(sk, window, layout, winX + 40, winY + 136, winW - 80,
                      "Continue", "Advance to the next level.",
                      "win_continue", rgbx(232, 184, 88, 255)):
     game.nextLevel()
@@ -1051,17 +1027,24 @@ proc renderWinModal(ui: UiRenderer, sk: Silky, window: Window,
 proc renderCredits(ui: UiRenderer, sk: Silky, window: Window,
                    layout: UiLayout, game: var Game) =
   let
-    pos = layout.p(DEFAULT_WIDTH.float32 * 0.5 - 250, 72)
-    size = layout.sz(500, 360)
+    credW = 440.0'f32
+    credH = 340.0'f32
+    credX = DEFAULT_WIDTH.float32 * 0.5 - credW * 0.5
+    credY = DEFAULT_HEIGHT.float32 * 0.5 - credH * 0.5
+    pos = layout.p(credX, credY)
+    size = layout.sz(credW, credH)
   sk.drawPanel(pos, size, rgbx(10, 12, 18, 214), rgbx(78, 92, 116, 230))
-  discard sk.drawUiText(layout, "Display", "Together", pos + layout.d(48, 28), rgbx(248, 249, 251, 255))
-  discard sk.drawUiText(layout, "Body", "They were shapes.", pos + layout.d(52, 104), rgbx(228, 233, 241, 255))
-  discard sk.drawUiText(layout, "Body", "They were colors.", pos + layout.d(52, 136), rgbx(228, 233, 241, 255))
-  discard sk.drawUiText(layout, "Body", "They were love in geometric form.",
-                        pos + layout.d(52, 168), rgbx(228, 233, 241, 255))
-  discard sk.drawUiText(layout, "Small", "UI iteration now runs on Windy + Boxy + Silky.",
-                        pos + layout.d(52, 230), rgbx(150, 160, 180, 255))
-  if ui.actionButton(sk, window, layout, DEFAULT_WIDTH.float32 * 0.5 - 250 + 52, 72 + 276, 500 - 104,
+  drawCenteredText(sk, layout, "Display", "Together", layout.centerX,
+                   pos.y + layout.px(24), rgbx(248, 249, 251, 255))
+  drawCenteredText(sk, layout, "Body", "They were shapes.", layout.centerX,
+                   pos.y + layout.px(80), rgbx(228, 233, 241, 255))
+  drawCenteredText(sk, layout, "Body", "They were colors.", layout.centerX,
+                   pos.y + layout.px(108), rgbx(228, 233, 241, 255))
+  drawCenteredText(sk, layout, "Body", "They were love in geometric form.",
+                   layout.centerX, pos.y + layout.px(136), rgbx(228, 233, 241, 255))
+  drawCenteredText(sk, layout, "Small", "UI iteration now runs on Windy + Boxy + Silky.",
+                   layout.centerX, pos.y + layout.px(190), rgbx(150, 160, 180, 255))
+  if ui.actionButton(sk, window, layout, credX + 46, credY + 230, credW - 92,
                      "Return to Menu", "Back to the title screen.",
                      "credits_menu", rgbx(108, 168, 232, 255)):
     game.state = menu
@@ -1070,8 +1053,8 @@ proc renderSettings(ui: UiRenderer, sk: Silky, window: Window,
                      layout: UiLayout, game: var Game) =
   ## Render the settings screen with option rows and Back button.
   let
-    panelW = 420.0'f32
-    panelH = 318.0'f32
+    panelW = 380.0'f32
+    panelH = 290.0'f32
     baseX = DEFAULT_WIDTH.float32 * 0.5 - panelW * 0.5
     baseY = DEFAULT_HEIGHT.float32 * 0.5 - panelH * 0.5
     pos = layout.p(baseX, baseY)
@@ -1083,13 +1066,14 @@ proc renderSettings(ui: UiRenderer, sk: Silky, window: Window,
 
   sk.drawSoftPanel(pos, size, rgbx(10, 12, 18, 232), rgbx(90, 104, 132, 180))
   drawCenteredText(sk, layout, "Display", "Settings", layout.centerX,
-                   pos.y + layout.px(24), rgbx(248, 249, 251, 255))
+                   pos.y + layout.px(22), rgbx(248, 249, 251, 255))
 
-  # Option rows.
-  let rowStartY = baseY + 80
-  let rowH = 38.0'f32
-  let labelX = baseX + 40
-  let valueX = baseX + panelW - 40
+  # Option rows — consistent spacing with vertically centered text.
+  let rowStartY = baseY + 68
+  let rowH = 36.0'f32
+  let rowInset = 24.0'f32
+  let labelX = baseX + rowInset + 12
+  let valueRightEdge = baseX + panelW - rowInset - 12
 
   for i in 0 ..< 4:
     let rowY = rowStartY + i.float32 * rowH
@@ -1100,8 +1084,8 @@ proc renderSettings(ui: UiRenderer, sk: Silky, window: Window,
 
     # Highlight bar for focused row.
     if focused:
-      sk.drawRect(layout.p(baseX + 20, rowY - 4),
-                  layout.sz(panelW - 40, rowH),
+      sk.drawRect(layout.p(baseX + rowInset, rowY),
+                  layout.sz(panelW - rowInset * 2, rowH),
                   rgbx(40, 48, 64, 160))
 
     let label = case i
@@ -1123,39 +1107,40 @@ proc renderSettings(ui: UiRenderer, sk: Silky, window: Window,
         $int(getMasterVolume() * 100) & "%"
       else: ""
 
+    # Vertically center text within the row.
+    let textYOffset = rowY + (rowH - 16) * 0.5
     discard sk.drawUiText(layout, "Body", label,
-                          layout.p(labelX, rowY), textColor)
+                          layout.p(labelX, textYOffset), textColor)
     let valSize = sk.uiTextSize(layout, "Body", value)
-    discard sk.drawUiText(layout, "Body", value,
-                          layout.p(valueX, rowY) - vec2(valSize.x, 0),
-                          valueColor)
+    let valPos = layout.p(valueRightEdge, textYOffset) - vec2(valSize.x, 0)
+    discard sk.drawUiText(layout, "Body", value, valPos, valueColor)
 
     # Arrow hints for focused row.
     if focused:
       let arrowColor = rgbx(140, 155, 180, 200)
-      let leftArrowPos = layout.p(valueX, rowY) - vec2(valSize.x + layout.px(20), 0)
-      let rightArrowPos = layout.p(valueX, rowY) + vec2(layout.px(8), 0)
-      discard sk.drawUiText(layout, "Body", "<", leftArrowPos, arrowColor)
-      discard sk.drawUiText(layout, "Body", ">", rightArrowPos, arrowColor)
+      discard sk.drawUiText(layout, "Body", "<",
+                            valPos - vec2(layout.px(18), 0), arrowColor)
+      discard sk.drawUiText(layout, "Body", ">",
+                            valPos + vec2(valSize.x + layout.px(8), 0), arrowColor)
 
   # Back button.
-  let backY = rowStartY + 4.0 * rowH + 10
-  let focused = game.settingsCursor == 4
-  let backColor = if focused: rgbx(244, 247, 250, 255) else: rgbx(180, 196, 220, 180)
-  if focused:
-    sk.drawRect(layout.p(baseX + 20, backY - 4),
-                layout.sz(panelW - 40, rowH),
+  let backY = rowStartY + 4.0 * rowH + 16
+  let backFocused = game.settingsCursor == 4
+  let backColor = if backFocused: rgbx(244, 247, 250, 255) else: rgbx(180, 196, 220, 180)
+  if backFocused:
+    sk.drawRect(layout.p(baseX + rowInset, backY),
+                layout.sz(panelW - rowInset * 2, rowH),
                 rgbx(40, 48, 64, 160))
   drawCenteredText(sk, layout, "Body", "Back", layout.centerX,
-                   layout.p(0, backY).y, backColor)
+                   layout.p(0, backY + (rowH - 16) * 0.5).y, backColor)
 
   # Mouse interaction for rows.
   for i in 0 ..< 5:
     let rowY = if i < 4: rowStartY + i.float32 * rowH
-               else: rowStartY + 4.0 * rowH + 10
-    let rowRect = rect(layout.p(baseX + 20, rowY - 4).x,
-                       layout.p(baseX + 20, rowY - 4).y,
-                       layout.px(panelW - 40),
+               else: rowStartY + 4.0 * rowH + 16
+    let rowRect = rect(layout.p(baseX + rowInset, rowY).x,
+                       layout.p(baseX + rowInset, rowY).y,
+                       layout.px(panelW - rowInset * 2),
                        layout.px(rowH))
     if window.mousePos.vec2.overlaps(rowRect):
       if game.settingsCursor != i:
