@@ -4,7 +4,7 @@
 ## Without that flag all procs are harmless no-ops, safe for unit tests.
 
 import
-  "../constants"
+  ../constants
 
 type
   SoundKind* = enum
