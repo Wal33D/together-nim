@@ -34,3 +34,15 @@ suite "limbic resonance constants and stubs":
 
   test "setCharOscActConfig stub does not raise":
     setCharOscActConfig(CharOscActConfigs[2])
+
+  test "soundReunion and soundSeparation exist":
+    playSound(soundReunion)
+    playSound(soundSeparation)
+
+  test "proximity threshold crossing triggers no crash":
+    # Far away, then close — should trigger reunion logic.
+    setCharacterDistance(0, 200.0)
+    setCharacterDistance(0, 50.0)
+    # Close, then far — should trigger separation logic.
+    setCharacterDistance(0, 50.0)
+    setCharacterDistance(0, 200.0)

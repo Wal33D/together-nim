@@ -396,6 +396,31 @@ proc renderNearGroundDetail(renderer: RendererPtr, actColor: chroma.Color, act: 
 
   renderer.setDrawBlendMode(BlendMode_None)
 
+proc renderForegroundStrip(renderer: RendererPtr, actColor: chroma.Color, act: int, camX: float) =
+  ## Dense fast-scrolling rect strip at the very bottom of the viewport (1.2x).
+  let lightColor = chroma.lighten(actColor, 0.15)
+  let cr = uint8(lightColor.r * 255.0)
+  let cg = uint8(lightColor.g * 255.0)
+  let cb = uint8(lightColor.b * 255.0)
+  let count = seededVal(act, 777, 24, 36)
+  let scrollShift = int(camX * 1.2) mod DEFAULT_WIDTH
+  let stripTop = DEFAULT_HEIGHT - 20
+
+  renderer.setDrawBlendMode(BlendMode_Blend)
+  renderer.setDrawColor(cr, cg, cb, 160)
+
+  for i in 0..<count:
+    let baseX = seededVal(act, i * 7 + 200, 0, DEFAULT_WIDTH - 1)
+    let h = seededVal(act, i * 7 + 201, 4, 16)
+    let w = seededVal(act, i * 7 + 202, 8, 28)
+    let yOff = seededVal(act, i * 7 + 203, 0, max(1, 20 - h))
+    let x = ((baseX - scrollShift) mod DEFAULT_WIDTH + DEFAULT_WIDTH) mod DEFAULT_WIDTH
+    let y = stripTop + yOff
+    drawFilledRect(renderer, cint(x), cint(y), cint(w), cint(h))
+    drawFilledRect(renderer, cint(x - DEFAULT_WIDTH), cint(y), cint(w), cint(h))
+
+  renderer.setDrawBlendMode(BlendMode_None)
+
 proc renderBackdrop*(renderer: RendererPtr, level: Level, camX, time: float) =
   let theme = backdropThemeForLevel(level.id)
   let act = actForLevel(level.id)
@@ -409,4 +434,5 @@ proc renderBackdrop*(renderer: RendererPtr, level: Level, camX, time: float) =
   renderMidGroundSilhouettes(renderer, actColor, act, camX, theme.scene)
   renderMist(renderer, theme, theme.scene, time)
   renderNearGroundDetail(renderer, actColor, act, camX)
+  renderForegroundStrip(renderer, actColor, act, camX)
   renderWaterShimmer(renderer, theme, time)

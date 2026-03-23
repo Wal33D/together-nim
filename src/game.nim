@@ -828,7 +828,8 @@ proc update*(game: var Game, dt: float) =
       # Proximity lean toward nearest character
       if closestIdx >= 0 and closestDist < ProximityNear:
         game.characters[i].proximityTarget = closestIdx
-        let targetLean = 2.0 * (1.0 - closestDist / ProximityNear)
+        let clampedDist = max(20.0, closestDist)
+        let targetLean = 2.0 * (ProximityNear - clampedDist) / (ProximityNear - 20.0)
         game.characters[i].proximityLean += (targetLean - game.characters[i].proximityLean) * min(1.0, 3.0 * scaledDt)
         # Pupil offset toward proximity target
         let target = game.characters[closestIdx]
