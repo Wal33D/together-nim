@@ -651,7 +651,171 @@ proc renderLevelWin(renderer: RendererPtr, game: Game) =
     renderer.setDrawBlendMode(BlendMode_None)
 
 proc renderCredits(renderer: RendererPtr, game: Game) =
-  renderMenu(renderer, game)
+  ## Render the full credits sequence after completing level 30.
+  const
+    # Character parade timing.
+    CharDelay = 1.0
+    DescendDur = 1.5
+    TitleDelay = 0.5
+    TitleFadeDur = 0.8
+    # Poetry timing.
+    PoetryStart = 8.5
+    PoetryGap = 2.0
+    PoetryFadeDur = 1.2
+    # Final screen timing.
+    FinalStart = 17.0
+    FinalFadeDur = 1.5
+    PromptTime = 19.5
+    # Layout for character parade.
+    CharSize = 28
+    CharX = 240
+    CharFinalY: array[6, int] = [75, 135, 195, 255, 315, 375]
+    TitleX = 280
+    TitleH = 14
+    # Heart formation positions.
+    HeartSize = 28
+    HeartPos: array[6, tuple[x, y: int]] = [
+      (x: 338, y: 190), (x: 434, y: 190),
+      (x: 294, y: 240), (x: 478, y: 240),
+      (x: 358, y: 295), (x: 400, y: 345),
+    ]
+    # Title card name widths (character count * spacing).
+    NameLens: array[6, int] = [3, 4, 5, 4, 5, 3]       # Pip, Luca, Bruno, Cara, Felix, Ivy
+    SubLens: array[6, int] = [15, 10, 13, 14, 11, 12]   # The Curious One, etc.
+    PoetryLens: array[4, int] = [36, 43, 33, 19]
+    NameCharW = 10
+    SubCharW = 7
+    PoetryCharW = 8
+    PoetryLineH = 16
+    # TOGETHER letter colors (indices into CHAR_COLORS).
+    TogetherColorIdx: array[8, int] = [0, 1, 2, 3, 4, 5, 0, 1]
+
+  let t = game.creditsTimer
+
+  # Dark gradient background.
+  for i in 0 ..< 14:
+    let bandY = i * (DEFAULT_HEIGHT div 14)
+    let frac = i.float / 13.0
+    let r = uint8(6.0 + 6.0 * frac)
+    let g = uint8(6.0 + 8.0 * frac)
+    let b = uint8(14.0 + 10.0 * frac)
+    renderer.setDrawColor(r, g, b, 255)
+    drawFilledRect(renderer, 0, bandY.cint, DEFAULT_WIDTH.cint,
+                   (DEFAULT_HEIGHT div 14 + 1).cint)
+
+  renderer.setDrawBlendMode(BlendMode_Blend)
+
+  # Phase 1: Character parade with title cards (0 - ~8.5s).
+  if t < 9.0:
+    let phase1Fade = if t > 7.5: max(0.0, 1.0 - (t - 7.5) / 1.5) else: 1.0
+    for i in 0 ..< 6:
+      let charStart = float(i) * CharDelay
+      if t < charStart:
+        continue
+      let charColor = CHAR_COLORS[i]
+      # Descent: ease from y=-50 to final y.
+      let descProgress = min(1.0, (t - charStart) / DescendDur)
+      let eased = 1.0 - pow(1.0 - descProgress, 3.0)
+      let currentY = -50.0 + (float(CharFinalY[i]) + 50.0) * eased
+      let a = uint8(phase1Fade * 255.0)
+      # Character square.
+      renderer.setDrawColor(charColor.r, charColor.g, charColor.b, a)
+      drawFilledRect(renderer, CharX.float, currentY, CharSize.float, CharSize.float)
+      # Title card: appears after character settles.
+      let titleStart = charStart + DescendDur + TitleDelay
+      if t >= titleStart:
+        let titleFade = min(1.0, (t - titleStart) / TitleFadeDur) * phase1Fade
+        let titleY = currentY + float((CharSize - TitleH) div 2)
+        # Name bar.
+        let nameW = NameLens[i] * NameCharW
+        renderer.setDrawColor(charColor.r, charColor.g, charColor.b,
+                              uint8(titleFade * 255.0))
+        drawFilledRect(renderer, TitleX.float, titleY, nameW.float, TitleH.float)
+        # Dash separator.
+        let dashX = TitleX + nameW + 8
+        renderer.setDrawColor(charColor.r, charColor.g, charColor.b,
+                              uint8(titleFade * 120.0))
+        drawFilledRect(renderer, dashX.float, titleY + float(TitleH div 2) - 1.0,
+                       12.0, 2.0)
+        # Subtitle bar.
+        let subX = dashX + 20
+        let subW = SubLens[i] * SubCharW
+        renderer.setDrawColor(charColor.r, charColor.g, charColor.b,
+                              uint8(titleFade * 130.0))
+        drawFilledRect(renderer, subX.float, titleY, subW.float, TitleH.float)
+
+  # Phase 2: Poetry lines (8 - 17s).
+  if t >= 7.5 and t < 17.5:
+    let phase2Fade = if t < 8.5: (t - 7.5) / 1.0
+                     elif t > 16.0: max(0.0, 1.0 - (t - 16.0) / 1.5)
+                     else: 1.0
+    for i in 0 ..< 4:
+      let lineStart = PoetryStart + float(i) * PoetryGap
+      if t < lineStart:
+        continue
+      let lineFade = min(1.0, (t - lineStart) / PoetryFadeDur) * phase2Fade
+      let lineW = PoetryLens[i] * PoetryCharW
+      let lineX = (DEFAULT_WIDTH - lineW) div 2
+      let lineY = 160 + i * 60
+      renderer.setDrawColor(210, 210, 230, uint8(lineFade * 255.0))
+      drawFilledRect(renderer, lineX.cint, lineY.cint, lineW.cint,
+                     PoetryLineH.cint)
+
+  # Phase 3: TOGETHER with heart formation (16s+).
+  if t >= 16.0:
+    let phase3Fade = min(1.0, (t - 16.0) / FinalFadeDur)
+    let a = uint8(phase3Fade * 255.0)
+    # "TOGETHER" — each letter block in a character color.
+    let letterW = 20
+    let letterH = 32
+    let letterGap = 4
+    let totalW = 8 * letterW + 7 * letterGap
+    let startX = (DEFAULT_WIDTH - totalW) div 2
+    let letterY = 80
+    for i in 0 ..< 8:
+      let lx = startX + i * (letterW + letterGap)
+      let color = CHAR_COLORS[TogetherColorIdx[i]]
+      renderer.setDrawColor(color.r, color.g, color.b, a)
+      drawFilledRect(renderer, lx.cint, letterY.cint, letterW.cint, letterH.cint)
+    # Decorative lines above and below.
+    let decoW = totalW + 60
+    let decoX = (DEFAULT_WIDTH - decoW) div 2
+    renderer.setDrawColor(255, 255, 255, a div 3)
+    drawFilledRect(renderer, decoX.cint, (letterY - 12).cint, decoW.cint, 1)
+    drawFilledRect(renderer, decoX.cint, (letterY + letterH + 11).cint,
+                   decoW.cint, 1)
+    # Heart formation of character squares.
+    for i in 0 ..< 6:
+      let charColor = CHAR_COLORS[i]
+      let hx = HeartPos[i].x
+      let hy = HeartPos[i].y
+      # Soft glow behind.
+      renderer.setDrawColor(charColor.r, charColor.g, charColor.b, a div 4)
+      drawFilledRect(renderer, (hx - 4).cint, (hy - 4).cint,
+                     (HeartSize + 8).cint, (HeartSize + 8).cint)
+      # Character square.
+      renderer.setDrawColor(charColor.r, charColor.g, charColor.b, a)
+      drawFilledRect(renderer, hx.cint, hy.cint, HeartSize.cint, HeartSize.cint)
+    # "Press Enter to return to menu" prompt.
+    if t >= PromptTime:
+      let promptFade = min(1.0, (t - PromptTime) / 1.0)
+      let pulse = 0.6 + 0.4 * sin(t * PI)
+      let promptAlpha = uint8(promptFade * pulse * 180.0)
+      let promptW = 200
+      let promptH = 10
+      let promptX = (DEFAULT_WIDTH - promptW) div 2
+      let promptY = 430
+      renderer.setDrawColor(180, 180, 200, promptAlpha)
+      drawFilledRect(renderer, promptX.cint, promptY.cint, promptW.cint,
+                     promptH.cint)
+
+  # Fade from white at start (transition from level 30 finale brightness).
+  if t < 1.5:
+    let fadeAlpha = uint8(max(0.0, (1.0 - t / 1.5)) * 255.0)
+    renderer.setDrawColor(255, 255, 255, fadeAlpha)
+    drawFilledRect(renderer, 0, 0, DEFAULT_WIDTH.cint, DEFAULT_HEIGHT.cint)
+
+  renderer.setDrawBlendMode(BlendMode_None)
 
 proc renderActTitle(renderer: RendererPtr, game: Game) =
   ## Render a cinematic act title card with fade in/out.
