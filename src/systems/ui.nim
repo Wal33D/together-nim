@@ -81,12 +81,25 @@ var
   titleShimmerTimer: float = 0.0
   # Card breathing phase offsets (staggered per card).
   cardPhases: array[6, float]
+  # Menu button polish state.
+  firstLaunch: bool = true
+  warmthFlashAlpha: float = 0.0
+  slideIndicatorY: float = -1.0
 
 const
   # Level index (0-based) at which each cast member unlocks.
   CharUnlockLevels: array[6, int] = [0, 4, 5, 7, 10, 11]
+  # Character ID to color index mapping.
+  CharColorMap: array[6, string] = ["pip", "luca", "bruno", "cara", "felix", "ivy"]
   CardHoverQuotes: array[6, string] = ["What's up there?", "I was just... floating.",
     "I'll hold this.", "Watch me.", "...no rush.", "Gently, now."]
+
+proc charColorIndex(id: string): int =
+  ## Return the color index for a character ID string.
+  for i, name in CharColorMap:
+    if name == id:
+      return i
+  0
 
 proc isCharLocked(idx: int): bool =
   ## Return true when a cast member has not yet been encountered.
@@ -107,6 +120,9 @@ proc triggerMenuEntrance() =
   menuTweenPool = initTweenPool()
   menuCursor = 0
   menuHasSave = hasSaveProgress()
+  if menuHasSave:
+    firstLaunch = false
+  slideIndicatorY = -1.0
   for i in 0..<4:
     menuBtnAlphas[i] = 0.0
 
@@ -277,8 +293,11 @@ proc activateFocusedAction*(ui: UiRenderer, game: var Game) =
   case game.state
   of menu:
     playSound(soundMenuSelect)
+    warmthFlashAlpha = 1.0
     case menuCursor
-    of 0: game.startGame()
+    of 0:
+      firstLaunch = false
+      game.startGame()
     of 1:
       if menuHasSave:
         game.continueGame()
@@ -287,6 +306,7 @@ proc activateFocusedAction*(ui: UiRenderer, game: var Game) =
     else: discard
   of paused:
     playSound(soundMenuSelect)
+    warmthFlashAlpha = 1.0
     case ui.pauseSelection
     of 0:
       game.state = playing
@@ -826,6 +846,17 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
     menuColumnX = DEFAULT_WIDTH.float32 * 0.5 - menuBtnW * 0.5
     menuColumnY = 320.0'f32
 
+  # Sliding indicator lerp toward focused button Y.
+  let targetIndicatorY = layout.p(0, menuColumnY + menuCursor.float32 * (menuBtnH + menuBtnGap)).y
+  if slideIndicatorY < 0.0:
+    slideIndicatorY = targetIndicatorY
+  else:
+    slideIndicatorY = slideIndicatorY + (targetIndicatorY - slideIndicatorY) * min(1.0, game.deltaTime * 12.0)
+
+  # Warmth flash decay.
+  if warmthFlashAlpha > 0.0:
+    warmthFlashAlpha = max(0.0, warmthFlashAlpha - game.deltaTime * 10.0)
+
   for i in 0..<4:
     let alpha = menuBtnAlphas[i]
     if alpha < 0.01:
@@ -850,6 +881,24 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
     if hovered and not dimmed:
       menuCursor = i
 
+    # Focused button glow halo.
+    if focused and not dimmed:
+      let
+        glowA = uint8((0.08 + 0.04 * sin(game.menuTime * 2.0)) * 255.0)
+        glowPad = layout.px(4)
+        glowPos = vec2(pos.x - glowPad, pos.y - glowPad)
+        glowSize = vec2(size.x + glowPad * 2, size.y + glowPad * 2)
+      sk.drawRect(glowPos, glowSize, rgbx(255, 255, 255, glowA))
+
+    # "New Game" beckoning glow (first launch only).
+    if i == 0 and firstLaunch:
+      let
+        beckonA = uint8((0.06 + 0.04 * sin(game.menuTime * 3.0)) * 255.0)
+        beckonPad = layout.px(6)
+        beckonPos = vec2(pos.x - beckonPad, pos.y - beckonPad)
+        beckonSize = vec2(size.x + beckonPad * 2, size.y + beckonPad * 2)
+      sk.drawRect(beckonPos, beckonSize, rgbx(accent.r, accent.g, accent.b, beckonA))
+
     sk.drawSoftPanel(pos, size, fill, edge)
 
     let labelColor = if dimmed: rgbx(120, 130, 148, textAlpha)
@@ -858,7 +907,7 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
     drawCenteredText(sk, layout, "Body", MenuLabels[i], layout.centerX,
                      pos.y + layout.px(10), labelColor)
 
-    # Continue progress indicator.
+    # Continue progress indicator and character silhouettes.
     if i == 1 and menuHasSave and alpha > 0.5:
       let
         contLevel = savedContinueLevel()
@@ -869,9 +918,41 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
                        pos.y + size.y + layout.px(2),
                        rgbx(156, 168, 188, uint8(alpha * 200.0)))
 
+      # Character silhouettes for the saved party.
+      if contLevel >= 0 and contLevel < allLevels.len:
+        let
+          partyChars = allLevels[contLevel].characters
+          silW = layout.px(8)
+          silH = layout.px(8)
+          silGap = layout.px(4)
+          silTotalW = partyChars.len.float32 * silW + max(0, partyChars.len - 1).float32 * silGap
+          silStartX = layout.centerX - silTotalW * 0.5
+          silY = pos.y + size.y + layout.px(16)
+        for ci, charId in partyChars:
+          let
+            cIdx = charColorIndex(charId)
+            cColor = CHAR_COLORS[cIdx mod CHAR_COLORS.len]
+            silColor = rgbx(cColor.r, cColor.g, cColor.b, uint8(alpha * 220.0))
+            silX = silStartX + ci.float32 * (silW + silGap)
+          sk.drawRect(vec2(silX, silY), vec2(silW, silH), silColor)
+
     if hovered and not dimmed and window.buttonPressed[MouseLeft]:
       menuCursor = i
       ui.activateFocusedAction(game)
+
+  # Sliding selection indicator (thin accent bar on left edge).
+  let
+    indicatorAccent = MenuAccents[menuCursor]
+    indicatorH = layout.px(menuBtnH)
+    indicatorW = layout.px(3)
+    indicatorX = layout.p(menuColumnX, 0).x - indicatorW - layout.px(4)
+  sk.drawRect(vec2(indicatorX, slideIndicatorY), vec2(indicatorW, indicatorH), indicatorAccent)
+
+  # Screen-wide warmth flash.
+  if warmthFlashAlpha > 0.01:
+    let flashA = uint8(warmthFlashAlpha * 28.0)
+    sk.drawRect(vec2(0, 0), vec2(layout.frameSize.x.float32, layout.frameSize.y.float32),
+                rgbx(255, 240, 220, flashA))
 
   sk.drawSoftPanel(ribbonPos, ribbonSize, rgbx(10, 12, 18, 110), rgbx(52, 62, 82, 120))
   for i in 0 ..< castNames.len:
