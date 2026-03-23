@@ -79,6 +79,17 @@ var
   titleGlowHue: float = 0.0
   titleShimmerX: float = -1.0
   titleShimmerTimer: float = 0.0
+  # Card breathing phase offsets (staggered per card).
+  cardPhases: array[6, float]
+
+const
+  # Level index (0-based) at which each cast member unlocks.
+  CharUnlockLevels: array[6, int] = [0, 4, 5, 7, 10, 11]
+
+proc isCharLocked(idx: int): bool =
+  ## Return true when a cast member has not yet been encountered.
+  let progress = savedContinueLevel()
+  progress < CharUnlockLevels[idx]
 
 proc triggerMenuEntrance() =
   ## Reset animation state and start the menu entrance sequence.
@@ -86,6 +97,7 @@ proc triggerMenuEntrance() =
   for i in 0..<6:
     menuCardOffsets[i] = 200.0
     menuCardHoverAlphas[i] = 0.0
+    cardPhases[i] = float(i) * PI / 3.0
   menuButtonScale = 0.0
   btnScale = 1.0
   btnHovered = false
@@ -587,11 +599,12 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
       clamp(pulsedColor.b * 255.0, 0.0, 255.0).uint8,
       255'u8)
 
-    # Scale breathing — disabled for selected card.
+    # Scale breathing — 2s sine cycle, disabled for selected card.
+    locked = isCharLocked(idx)
     breathe =
       if selected: 1.0'f32
       else: 1.0'f32 + 0.02'f32 * sin(
-        time.float32 * PI.float32 / 2.0'f32 + idx.float32 * 0.33'f32)
+        time.float32 * PI.float32 + cardPhases[idx].float32)
 
     posBase = layout.p(x, y)
     baseSize = layout.sz(96, 40)
@@ -603,6 +616,20 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
     size = vec2(scaledW, scaledH)
     cardRect = rect(pos.x, pos.y, size.x, size.y)
     hovered = window.mousePos.vec2.overlaps(cardRect)
+
+  if locked:
+    # Dark silhouette card for locked characters.
+    let
+      silFill = rgbx(10, 12, 18, 180)
+      silBorder = rgbx(40, 44, 56, 160)
+    sk.drawSoftPanel(pos, size, silFill, silBorder)
+    sk.drawRect(pos + layout.d(12, 13), layout.sz(14, 14), rgbx(40, 44, 56, 200))
+    drawCenteredText(sk, layout, "Body", "?",
+                     pos.x + size.x * 0.5, pos.y + layout.px(8),
+                     rgbx(80, 88, 104, 255))
+    return
+
+  let
     fill = if hovered or selected: rgbx(18, 22, 30, 210) else: rgbx(12, 15, 22, 146)
     border =
       if hovered: bright(accent, 20)
