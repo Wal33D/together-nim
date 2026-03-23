@@ -131,8 +131,20 @@ proc applySettingsChange(window: Window, game: var Game,
     setVSync(game.vsyncEnabled)
     saveVsync(game.vsyncEnabled)
     playSound(soundMenuHover)
+  of 3:
+    discard  # Volume is handled directly by adjustVolume.
   else:
     discard
+
+const
+  VolumeStep = 0.1
+
+proc adjustVolume(delta: float) =
+  ## Nudge master volume by delta, clamp, persist, and play feedback.
+  let vol = clamp(getMasterVolume() + delta, 0.0, 1.0)
+  setMasterVolume(vol)
+  saveMasterVolume(vol)
+  playSound(soundMenuHover)
 
 proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer,
                           windowMode: var WindowModeState) =
@@ -178,6 +190,8 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer,
         applySettingsChange(window, game, windowMode)
       of 2:
         applySettingsChange(window, game, windowMode)
+      of 3:
+        adjustVolume(-VolumeStep)
       else: discard
     if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD]:
       case game.settingsCursor
@@ -188,9 +202,11 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer,
         applySettingsChange(window, game, windowMode)
       of 2:
         applySettingsChange(window, game, windowMode)
+      of 3:
+        adjustVolume(VolumeStep)
       else: discard
     if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
-      if game.settingsCursor == 3:
+      if game.settingsCursor == 4:
         # Back.
         game.state = game.previousState
         playSound(soundMenuBack)
@@ -273,6 +289,7 @@ proc main() =
     setVSync(false)
 
   initAudio()
+  setMasterVolume(savedData.masterVolume)
   openFirstController()
 
   let renderer = newRenderer()

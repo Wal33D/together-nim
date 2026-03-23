@@ -10,10 +10,12 @@ type
     fullscreen*: bool
     vsync*: bool
     windowPreset*: int
+    masterVolume*: float
     levelStars*: Table[int, array[3, bool]]
 
 proc defaultSave*(): SaveData =
   SaveData(fullscreen: false, vsync: true, windowPreset: 1,
+           masterVolume: 1.0,
            levelStars: initTable[int, array[3, bool]]())
 
 proc writeSave*(data: SaveData) =
@@ -31,6 +33,7 @@ proc loadSave*(): SaveData =
       if result.windowPreset == 0 and not result.fullscreen:
         result.windowPreset = 1
         result.vsync = true
+        result.masterVolume = 1.0
     except CatchableError:
       discard
 
@@ -47,6 +50,12 @@ proc saveVsync*(vsync: bool) =
 proc saveWindowPreset*(preset: int) =
   var data = loadSave()
   data.windowPreset = preset
+  writeSave(data)
+
+proc saveMasterVolume*(vol: float) =
+  ## Persist the master volume setting.
+  var data = loadSave()
+  data.masterVolume = clamp(vol, 0.0, 1.0)
   writeSave(data)
 
 proc hasSaveProgress*(): bool =

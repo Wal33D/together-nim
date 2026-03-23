@@ -29,3 +29,7 @@ suite "audio system":
     playSound(soundLevelComplete)
     playSound(soundCharSwitch)
     playSound(soundExitReached)
+
+  test "setMasterVolume and getMasterVolume stubs work":
+    setMasterVolume(0.5)
+    check getMasterVolume() == 1.0  # Stub always returns 1.0.
