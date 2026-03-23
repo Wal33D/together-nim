@@ -255,6 +255,26 @@ proc emitSwitchRing*(system: var ParticleSystem, x, y, w, h: float, color: Color
     color: color
   ))
 
+proc emitPlatformDust*(system: var ParticleSystem, x, y, vx: float) =
+  ## One or two dust motes trailing behind a moving platform.
+  const
+    DustColor: Color = (r: 200'u8, g: 195'u8, b: 185'u8)
+    DustLife = 0.25
+  for i in 0..<2:
+    if system.particles.len >= MAX_PARTICLES:
+      break
+    pushParticle(system, Particle(
+      x: x + randRange(-6.0, 6.0),
+      y: y + randRange(-3.0, 3.0),
+      vx: -vx * 0.3 + randRange(-12.0, 12.0),
+      vy: randRange(-8.0, 8.0),
+      life: DustLife,
+      maxLife: DustLife,
+      color: DustColor,
+      size: randRange(2.0, 3.5),
+      gravityScale: 0.1
+    ))
+
 proc emitSparkle*(system: var ParticleSystem, x, y: float, color: Color) =
   ## Emit a single small sparkle particle with a gentle upward drift.
   if system.particles.len >= MAX_PARTICLES:
