@@ -75,6 +75,10 @@ var
   prevActiveCharIdx: int = -1
   prevLevel: int = -1
   prevNarrationText: string = ""
+  # Title glow and shimmer state.
+  titleGlowHue: float = 0.0
+  titleShimmerX: float = -1.0
+  titleShimmerTimer: float = 0.0
 
 proc triggerMenuEntrance() =
   ## Reset animation state and start the menu entrance sequence.
@@ -671,7 +675,63 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
 
   sk.drawSoftPanel(heroPos, heroSize, rgbx(10, 12, 18, 184), muted(heroAccent, 185))
   let titleAlpha = clamp(menuTitleAlpha * 255.0, 0.0, 255.0).uint8
+
+  # Update title glow and shimmer timing.
+  const
+    GlowCycleSec = 8.0
+    ShimmerInterval = 4.5
+    ShimmerDuration = 0.8
+  titleGlowHue = (game.elapsedTime / GlowCycleSec) mod 1.0
+  titleShimmerTimer += game.deltaTime
+  if titleShimmerTimer >= ShimmerInterval:
+    titleShimmerTimer -= ShimmerInterval
+    titleShimmerX = 0.0
+  if titleShimmerX >= 0.0:
+    titleShimmerX += game.deltaTime / ShimmerDuration
+    if titleShimmerX > 1.0:
+      titleShimmerX = -1.0
+
+  # Color-cycling glow halo behind the title.
+  if titleAlpha > 0:
+    let
+      titleSize = sk.uiTextSize(layout, "Display", "TOGETHER")
+      titleX = heroCenter - titleSize.x * 0.5
+      titleY = heroPos.y + layout.px(30)
+      glowColor = hsl(titleGlowHue * 360.0, 70.0, 60.0).color
+      glowR = clamp(glowColor.r * 255.0, 0.0, 255.0).uint8
+      glowG = clamp(glowColor.g * 255.0, 0.0, 255.0).uint8
+      glowB = clamp(glowColor.b * 255.0, 0.0, 255.0).uint8
+      glowBase = float(titleAlpha) / 255.0
+    # Draw concentric glow layers from outer to inner.
+    for layer in countdown(3, 0):
+      let
+        spread = layout.px(float32(layer + 1) * 8.0)
+        layerA = uint8(glowBase * (22.0 - float(layer) * 4.0))
+        gp = vec2(titleX - spread, titleY - spread * 0.5)
+        gs = vec2(titleSize.x + spread * 2.0, titleSize.y + spread)
+      sk.drawRect(gp, gs, rgbx(glowR, glowG, glowB, layerA))
+
   drawCenteredText(sk, layout, "Display", "TOGETHER", heroCenter, heroPos.y + layout.px(30), rgbx(246, 248, 251, titleAlpha))
+
+  # Shimmer sweep across the title.
+  if titleShimmerX >= 0.0 and titleAlpha > 0:
+    let
+      titleSize = sk.uiTextSize(layout, "Display", "TOGETHER")
+      titleX = heroCenter - titleSize.x * 0.5
+      titleY = heroPos.y + layout.px(30)
+      bandW = layout.px(48.0)
+      bandCenter = titleX + titleShimmerX.float32 * (titleSize.x + bandW) - bandW * 0.5
+      shimmerA = uint8(float(titleAlpha) / 255.0 * 64.0)
+    # Draw the shimmer as a narrow bright band clamped to title width.
+    for i in 0..<3:
+      let
+        offset = float32(i - 1) * bandW * 0.4
+        bx = max(titleX, bandCenter + offset - bandW * 0.5)
+        bxEnd = min(titleX + titleSize.x, bandCenter + offset + bandW * 0.5)
+        bw = bxEnd - bx
+        ba = uint8(float(shimmerA) * (1.0 - float(abs(i - 1)) * 0.5))
+      if bw > 0.0:
+        sk.drawRect(vec2(bx, titleY), vec2(bw, titleSize.y), rgbx(255, 255, 255, ba))
   drawCenteredText(sk, layout, "Small", tagline,
                    heroCenter, heroPos.y + layout.px(84), rgbx(160, 171, 192, 255))
   sk.drawRect(vec2(heroCenter - layout.px(16), heroPos.y + layout.px(112)), layout.sz(32, 32), heroAccent)
