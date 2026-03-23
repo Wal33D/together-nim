@@ -119,6 +119,7 @@ proc newCharacter*(id: string): Character =
     result.width = 24; result.height = 24
     result.colorIndex = 0; result.color = (r: 128'u8, g: 128'u8, b: 128'u8)
     result.ability = doubleJump
+  result.idleFidgetTimer = float(result.colorIndex) * 0.5
 
 proc moveSpeed*(c: Character): float =
   case c.id
