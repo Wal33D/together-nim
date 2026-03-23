@@ -10,7 +10,8 @@ type
   SoundKind* = enum
     soundJump, soundLand, soundDeath, soundLevelComplete,
     soundCharSwitch, soundExitReached,
-    soundMenuHover, soundMenuSelect, soundMenuBack, soundTransitionSwoosh
+    soundMenuHover, soundMenuSelect, soundMenuBack, soundTransitionSwoosh,
+    soundReunion, soundSeparation
 
   MusicStep* = object
     freqStart*, freqEnd*: float
@@ -170,12 +171,14 @@ when defined(withAudio):
       currentAmp: float
       vibratoPhase: float
       intermittentPhase: float
+      wasNear: bool
 
   const
     CrossfadeDuration = 2.5
     DefaultPaletteRoot = ActPalettes[0].baseFreqs[0]
     VibratoRate = 5.0
     VibratoDepth = 2.0
+    ProximityThreshold = 120.0
 
   var
     gInstances: array[MAX_INSTANCES, SoundInstance]
@@ -307,9 +310,19 @@ when defined(withAudio):
 
   proc setCharacterDistance*(charIdx: int, distToNearest: float) =
     ## Set the target amplitude for a character oscillator based on proximity.
+    ## Plays reunion chime or separation sigh on threshold crossings.
     if not gAudioOpen: return
     if charIdx < 0 or charIdx > 5: return
     discard pthread_mutex_lock(addr gAudioMutex)
+    let isNear = distToNearest <= ProximityThreshold
+    let wasNear = gCharOscillators[charIdx].wasNear
+    var triggerReunion = false
+    var triggerSeparation = false
+    if isNear and not wasNear:
+      triggerReunion = true
+    elif not isNear and wasNear:
+      triggerSeparation = true
+    gCharOscillators[charIdx].wasNear = isNear
     let ampMul = gCharOscActConfig.ampMultiplier
     let cycleSec = gCharOscActConfig.onDuration + gCharOscActConfig.offDuration
     if distToNearest > 200.0:
@@ -325,6 +338,11 @@ when defined(withAudio):
       gCharOscillators[charIdx].targetAmp =
         (0.03 + 0.07 * (1.0 - distToNearest / 200.0)) * ampMul
     discard pthread_mutex_unlock(addr gAudioMutex)
+    # Fire threshold-crossing sounds outside the lock to avoid nesting.
+    if triggerReunion:
+      playSound(soundReunion)
+    elif triggerSeparation:
+      playSound(soundSeparation)
 
   proc aqCallback(inUserData: pointer, inAQ: AudioQueueRef,
       inBuffer: AudioQueueBufferRef) {.cdecl.} =
@@ -502,6 +520,14 @@ when defined(withAudio):
     of soundTransitionSwoosh:
       # Filtered noise swoosh: lowpass sweep 800→200 Hz, 200ms, decay envelope
       addNote(800, 200, 200, 0.35, envDecay, wfNoise)
+    of soundReunion:
+      # Warm ascending chime: two gentle tones that bloom together.
+      addNote(392, 523.3, 120, 0.25, envRampUp)
+      addNote(523.3, 659.3, 150, 0.20, envDecay)
+    of soundSeparation:
+      # Soft descending sigh: a falling tone that fades away.
+      addNote(440, 330, 180, 0.20, envDecay)
+      addNote(330, 220, 140, 0.12, envRampDown)
 
     inst.totalSamples = 0
     for i in 0..<inst.noteCount:
