@@ -1040,7 +1040,7 @@ proc update*(game: var Game, dt: float) =
             if game.earnedStars[si]:
               saveData.levelStars[game.currentLevel][si] = true
           writeSave(saveData)
-          playSound(soundLevelComplete)
+          playLevelCompleteFanfare(actForLevel(game.currentLevel))
 
       # Update camera to follow active character
       if game.activeCharacterIndex < game.characters.len:
