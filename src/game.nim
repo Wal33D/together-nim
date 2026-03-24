@@ -854,6 +854,8 @@ proc update*(game: var Game, dt: float) =
   of menu:
     game.menuTime += scaledDt
     game.menuAtmosphere.update(scaledDt)
+    game.particles.emitMenuAmbient(DEFAULT_WIDTH.float, DEFAULT_HEIGHT.float)
+    game.particles.update(scaledDt)
     game.updateMenuBgChars(scaledDt)
   of playing:
     # Intro sequence for first-meeting characters.
