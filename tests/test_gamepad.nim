@@ -267,3 +267,25 @@ suite "gamepad system":
     check padDownPressed == false
     check padLeftPressed == false
     check padRightPressed == false
+
+suite "normalizeAxis":
+  test "minimum input maps to -32768":
+    check normalizeAxis(0, 0, 255) == -32768'i16
+
+  test "maximum input maps to 32767":
+    check normalizeAxis(255, 0, 255) == 32767'i16
+
+  test "midpoint maps near zero":
+    let mid = normalizeAxis(128, 0, 255)
+    check mid > -512'i16
+    check mid < 512'i16
+
+  test "zero span returns zero":
+    check normalizeAxis(5, 5, 5) == 0'i16
+
+  test "negative span returns zero":
+    check normalizeAxis(5, 10, 5) == 0'i16
+
+  test "non-zero-based range normalizes correctly":
+    check normalizeAxis(100, 100, 200) == -32768'i16
+    check normalizeAxis(200, 100, 200) == 32767'i16

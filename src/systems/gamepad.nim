@@ -430,7 +430,7 @@ var
   hidManager: IOHIDManagerRef = nil
   hidDevice: IOHIDDeviceRef = nil
 
-proc normalizeAxis(value: int, logMin: int, logMax: int): int16 =
+proc normalizeAxis*(value: int, logMin: int, logMax: int): int16 =
   ## Normalize a HID axis value from [logMin, logMax] to -32768..32767.
   let span = logMax - logMin
   if span <= 0: return 0'i16
