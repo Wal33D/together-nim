@@ -75,6 +75,18 @@ proc renderMenu(renderer: RendererPtr, game: Game) =
     renderer.setDrawColor(p.color.r, p.color.g, p.color.b, p.alpha)
     let sz = max(1, p.size.cint)
     drawFilledRect(renderer, p.x.cint, p.y.cint, sz, sz)
+
+  # Menu ambient particles from the particle system.
+  for p in game.particles.particles:
+    if not p.ambient:
+      continue
+    let fadeWindow = if p.fadeTime > 0.0: p.fadeTime else: p.maxLife
+    let lifeRatio = if fadeWindow > 0.0: (if p.life < fadeWindow: min(1.0, p.life / fadeWindow) else: 1.0) else: 0.0
+    let alpha = uint8(p.baseAlpha * lifeRatio * 255.0)
+    let sz = max(1, p.size.cint)
+    renderer.setDrawColor(p.color.r, p.color.g, p.color.b, alpha)
+    drawFilledRect(renderer, p.x.cint, p.y.cint, sz, sz)
+
   renderer.setDrawBlendMode(BlendMode_None)
 
 proc renderAtmosphereOverlay(renderer: RendererPtr, atm: Atmosphere) =

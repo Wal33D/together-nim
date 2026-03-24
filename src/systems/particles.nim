@@ -18,6 +18,9 @@ type
     homing*: bool        ## if true, velocity converges toward (targetX, targetY)
     targetX*: float
     targetY*: float
+    ambient*: bool       ## Menu ambient particle, not cleared by level transitions.
+    phase*: float        ## Sine wave phase offset for ambient X oscillation.
+    baseAlpha*: float    ## Fixed alpha ceiling (0.0 = use default 220/255).
 
   RingParticle* = object
     x*, y*: float
@@ -566,8 +569,12 @@ proc update*(system: var ParticleSystem, dt: float) =
         p.vy = (p.targetY - p.y) * strength
       p.x += p.vx * dt
       p.y += p.vy * dt
-      p.vy += 280.0 * p.gravityScale * dt  # gentle downward gravity
-      p.vx *= pow(0.88, dt * 60.0)  # frame-rate-independent friction
+      if p.ambient:
+        let elapsed = p.maxLife - p.life
+        p.x += sin(elapsed * 1.5 + p.phase) * 15.0 * dt
+      else:
+        p.vy += 280.0 * p.gravityScale * dt  # gentle downward gravity
+        p.vx *= pow(0.88, dt * 60.0)  # frame-rate-independent friction
       system.particles[i] = p
       inc i
   system.updateRingParticles(dt)
@@ -587,3 +594,36 @@ proc update*(system: var ParticleSystem, dt: float) =
       cp.angle += cp.angularVelocity * dt
       system.confettiParticles[ci] = cp
       inc ci
+
+const
+  MenuAmbientMax = 15
+  MenuAmbientColors: array[3, Color] = [
+    (r: 255'u8, g: 215'u8, b: 100'u8),  # Soft gold.
+    (r: 255'u8, g: 180'u8, b: 180'u8),  # Pale pink.
+    (r: 150'u8, g: 230'u8, b: 220'u8),  # Light teal.
+  ]
+
+proc emitMenuAmbient*(system: var ParticleSystem, screenW, screenH: float) =
+  ## Emit one ambient particle if fewer than 15 are alive.
+  var count = 0
+  for p in system.particles:
+    if p.ambient:
+      inc count
+  if count >= MenuAmbientMax:
+    return
+  let color = MenuAmbientColors[rand(MenuAmbientColors.len - 1)]
+  let life = 4.0 + rand(2.0)
+  pushParticle(system, Particle(
+    x: rand(screenW),
+    y: screenH + randRange(0.0, 10.0),
+    vx: 0.0,
+    vy: -(10.0 + rand(10.0)),
+    life: life,
+    maxLife: life,
+    color: color,
+    size: randRange(2.0, 3.0),
+    gravityScale: 0.0,
+    ambient: true,
+    phase: rand(2.0 * PI),
+    baseAlpha: 0.2 + rand(0.2),
+  ))
