@@ -613,6 +613,10 @@ proc showActTitle(game: var Game, levelIdx: int) =
   game.state = actTitle
   game.actTitleTimer = 0.0
   game.actTitleTarget = levelIdx
+  let ai = actForLevel(levelIdx)
+  if ai >= 0:
+    fadeOutAmbient(0.3)
+    playActTransitionStinger(ai)
 
 proc checkScriptedMoments*(game: var Game) =
   ## Check and trigger scripted emotional moments after physics each frame.
@@ -1433,7 +1437,14 @@ proc update*(game: var Game, dt: float) =
                    level.levelHeight, scaledDt)
 
   of actTitle:
+    let prevT = game.actTitleTimer
     game.actTitleTimer += scaledDt
+    # At the 0.8s mark the stinger completes; resume ambient with new palette.
+    if prevT < 0.8 and game.actTitleTimer >= 0.8:
+      let ai = actForLevel(game.actTitleTarget)
+      if ai >= 0:
+        setActPalette(ActPalettes[clamp(ai, 0, ActPalettes.high)])
+        fadeInAmbient(0.5)
     if game.actTitleTimer >= ActTitleDuration:
       game.loadLevel(game.actTitleTarget)
       game.state = playing

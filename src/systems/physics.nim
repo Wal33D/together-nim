@@ -277,6 +277,37 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
 
     characters[i] = c
 
+  # Wall-float relay: Luca's float slows Cara's wall-slide when aligned.
+  for i in 0..<characters.len:
+    characters[i].wallFloatRelayActive = false
+    characters[i].wallFloatRelayPartner = -1
+  for i in 0..<characters.len:
+    if characters[i].ability != wallJump or not characters[i].wallTouching:
+      continue
+    if characters[i].vy <= 0.0:
+      continue
+    if characters[i].isDying() or characters[i].isRespawning():
+      continue
+    # Cara is wall-sliding and falling. Look for Luca below within horizontal range.
+    for j in 0..<characters.len:
+      if characters[j].ability != floatAbility:
+        continue
+      if characters[j].isDying() or characters[j].isRespawning():
+        continue
+      let horizDist = abs(characters[i].x - characters[j].x)
+      if horizDist > WallFloatRelayMaxHorizDist:
+        continue
+      if characters[j].y <= characters[i].y:
+        continue
+      # Relay active: cap Cara's wall-slide speed.
+      if characters[i].vy > WallFloatRelaySpeedCap:
+        characters[i].vy = WallFloatRelaySpeedCap
+      characters[i].wallFloatRelayActive = true
+      characters[i].wallFloatRelayPartner = j
+      characters[j].wallFloatRelayActive = true
+      characters[j].wallFloatRelayPartner = i
+      break
+
   # Character-character collision pass
   for i in 0..<characters.len:
     for j in (i + 1)..<characters.len:
