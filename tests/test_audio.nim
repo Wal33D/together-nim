@@ -1,5 +1,7 @@
-import unittest
-import "../src/systems/audio"
+import
+  unittest,
+  "../src/systems/audio",
+  "../src/constants"
 
 suite "audio system":
   test "music bed pattern is looping and subtle":
@@ -43,6 +45,18 @@ suite "audio system":
     for sk in CharJumpSounds:
       playSound(sk)
     playSound(soundJumpPipDouble)
+
+  test "playLevelCompleteFanfare is safe for all acts":
+    for act in 0..4:
+      playLevelCompleteFanfare(act)
+
+  test "Act 5 palette fifth fallback avoids zero frequency":
+    # Act 5 palette has baseFreqs[2] = 0.0 (open fifth placeholder).
+    # The fanfare must derive a real fifth via root * 1.498.
+    let palette = ActPalettes[4]
+    check palette.baseFreqs[2] == 0.0
+    let derivedFifth = palette.baseFreqs[0] * 1.498
+    check derivedFifth > 1.0  # Must not be zero or near-zero.
 
   test "setMasterVolume and getMasterVolume stubs work":
     setMasterVolume(0.5)

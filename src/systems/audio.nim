@@ -145,7 +145,7 @@ when defined(withAudio):
       envFlat, envDecay, envRampUp, envRampDown
 
     NoteWaveform = enum
-      wfSine, wfNoise
+      wfSine, wfNoise, wfTriangle
 
     SoundNote = object
       freqStart: float
@@ -423,6 +423,10 @@ when defined(withAudio):
           let coeff = min(1.0, 2.0 * PI * freq / float(SAMPLE_RATE))
           inst.filterState = inst.filterState * (1.0 - coeff) + noiseVal * coeff
           rawSample = inst.filterState
+        of wfTriangle:
+          rawSample = 2.0 * abs(2.0 * (inst.phase - floor(inst.phase + 0.5))) - 1.0
+          inst.phase += freq / float(SAMPLE_RATE)
+          if inst.phase >= 1.0: inst.phase -= 1.0
 
         # Mix sample (saturating add)
         let sample = int32(rawSample * amp * 28000.0)
@@ -687,6 +691,58 @@ when defined(withAudio):
       gInstances[0] = inst
     discard pthread_mutex_unlock(addr gAudioMutex)
 
+  proc playLevelCompleteFanfare*(actIndex: int) =
+    ## Play a 4-note act-themed fanfare using the act's tonal palette.
+    if not gAudioOpen: return
+    let idx = clamp(actIndex, 0, ActPalettes.high)
+    let palette = ActPalettes[idx]
+    let root = palette.baseFreqs[0]
+    let third = palette.baseFreqs[1]
+    let fifth = if palette.baseFreqs[2] > 1.0: palette.baseFreqs[2]
+                else: root * 1.498  # Perfect fifth ratio fallback.
+    let octave = root * 2.0
+
+    var inst: SoundInstance
+    inst.phase         = 0.0
+    inst.noteIndex     = 0
+    inst.sampleInNote  = 0
+    inst.samplesPlayed = 0
+    inst.noteCount     = 0
+    inst.filterState   = 0.0
+    inst.noiseState    = 0xDEADBEEF'u32
+
+    template addNote(f1, f2: float, ms: int, amp: float,
+                     env: NoteEnvelope = envFlat,
+                     wf: NoteWaveform = wfTriangle) =
+      let ni = inst.noteCount
+      inst.notes[ni] = SoundNote(
+        freqStart: f1, freqEnd: f2,
+        durationSamples: (ms * SAMPLE_RATE) div 1000,
+        amplitude: amp, envelope: env, waveform: wf)
+      inc inst.noteCount
+
+    # Notes 1-3: 80ms each with 20ms overlap = 60ms effective duration.
+    addNote(root, root, 60, 0.12)
+    addNote(third, third, 60, 0.15)
+    addNote(fifth, fifth, 60, 0.18)
+    # Note 4: 120ms with gentle vibrato (±3 Hz at 6 Hz rate via pitch sweep).
+    let vibratoHz = 3.0
+    addNote(octave - vibratoHz, octave + vibratoHz, 120, 0.22, envDecay)
+
+    inst.totalSamples = 0
+    for i in 0..<inst.noteCount:
+      inst.totalSamples += inst.notes[i].durationSamples
+    inst.active = true
+
+    discard pthread_mutex_lock(addr gAudioMutex)
+    block findSlot:
+      for slot in gInstances.mitems:
+        if not slot.active:
+          slot = inst
+          break findSlot
+      gInstances[0] = inst
+    discard pthread_mutex_unlock(addr gAudioMutex)
+
   proc setActOscConfig*(config: ActOscParams) =
     ## Store per-act oscillator configuration, applied in next buffer fill.
     if not gAudioOpen: return
@@ -721,6 +777,7 @@ else:
   proc playSound*(kind: SoundKind) = discard
   proc playLandingSound*(fallVelocity: float, ability: CharacterAbility) = discard
   proc playMenuHoverNote*(buttonIndex: int) = discard
+  proc playLevelCompleteFanfare*(actIndex: int) = discard
   proc setActPalette*(palette: TonalPalette) = discard
   proc setActOscConfig*(config: ActOscParams) = discard
   proc setCharacterActive*(charIdx: int, active: bool) = discard

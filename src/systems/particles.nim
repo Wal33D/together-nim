@@ -24,6 +24,8 @@ type
     baseW*, baseH*: float
     life*, maxLife*: float
     color*: Color
+    scaleRange*: float   ## How much the ring grows: final scale = 1.0 + scaleRange
+    startAlpha*: float   ## Initial alpha (0.0–1.0)
 
   ConfettiParticle* = object
     x*, y*: float
@@ -347,7 +349,25 @@ proc emitSwitchRing*(system: var ParticleSystem, x, y, w, h: float, color: Color
     baseH: h,
     life: RingLife,
     maxLife: RingLife,
-    color: color
+    color: color,
+    scaleRange: 1.0,
+    startAlpha: 1.0
+  ))
+
+const DoubleJumpRingLife = 0.25
+
+proc emitDoubleJumpRing*(system: var ParticleSystem, x, y: float, size: float, color: Color) =
+  ## Spawn an expanding ring at Pip's feet on double-jump.
+  system.ringParticles.add(RingParticle(
+    x: x,
+    y: y,
+    baseW: size,
+    baseH: size,
+    life: DoubleJumpRingLife,
+    maxLife: DoubleJumpRingLife,
+    color: color,
+    scaleRange: 2.0,
+    startAlpha: 0.6
   ))
 
 proc emitPlatformDust*(system: var ParticleSystem, x, y, vx: float) =
@@ -474,6 +494,32 @@ proc emitWinSparkle*(system: var ParticleSystem) =
     maxLife: life,
     fadeTime: 0.3,
     gravityScale: -0.1,
+  ))
+
+const
+  GlideShimmerLife = 0.6
+  GlideShimmerDriftY = -20.0
+  GlideShimmerSwayAmplitude = 15.0
+  GlideShimmerWhiteMix = 0.3
+  GlideShimmerInterval* = 0.08
+
+proc emitGlideShimmer*(system: var ParticleSystem, x, y: float, color: Color, time: float) =
+  ## Emit a single gentle shimmer particle for Luca's glide trail.
+  if system.particles.len >= MAX_PARTICLES:
+    return
+  let tinted = blendWithWhite(color, GlideShimmerWhiteMix)
+  let size = randRange(2.0, 3.0)
+  let vx = sin(time * 2.0 * PI / 2.0) * GlideShimmerSwayAmplitude
+  pushParticle(system, Particle(
+    x: x,
+    y: y,
+    vx: vx,
+    vy: GlideShimmerDriftY,
+    life: GlideShimmerLife,
+    maxLife: GlideShimmerLife,
+    color: tinted,
+    size: size,
+    gravityScale: 0.0
   ))
 
 proc updateRingParticles*(system: var ParticleSystem, dt: float) =

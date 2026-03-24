@@ -93,6 +93,8 @@ type
     comboActive*: bool
     comboCooldown*: float
     comboReadyTimer*: float
+    charFlashTimers*: array[6, float]
+    glideShimmerTimer*: float
 
   ThoughtEntry = object
     pair: string
@@ -272,12 +274,17 @@ proc findCharacterIndex(game: Game, characterId: string): int =
       return i
   -1
 
+const CharFlashDuration = 0.15
+
 proc emitJumpParticles(game: var Game, idx: int) =
   let c = game.characters[idx]
   let charColor = CHAR_COLORS[c.colorIndex mod 6]
   if c.ability == doubleJump and c.jumpCount >= 2:
     game.particles.emitDoubleJump(c.characterFeetX(), c.characterFeetY(),
                                   charColor)
+    game.particles.emitDoubleJumpRing(c.characterFeetX(), c.characterFeetY(),
+                                      float(CHAR_WIDTH), charColor)
+    game.charFlashTimers[idx mod 6] = CharFlashDuration
   else:
     game.particles.emitJump(c.characterFeetX(), c.characterFeetY(), charColor)
 
@@ -912,6 +919,20 @@ proc update*(game: var Game, dt: float) =
           game.particles.emitWallSpark(sparkX, c.y, float(c.height), wallOnRight)
         game.characters[i] = c
 
+      # Luca glide shimmer trail — emit while airborne, falling, and jump held
+      block glideShimmer:
+        for i in 0..<game.characters.len:
+          let c = game.characters[i]
+          if c.ability == floatAbility and not c.grounded and c.vy > 0.0 and game.jumpPressed:
+            game.glideShimmerTimer -= scaledDt
+            if game.glideShimmerTimer <= 0.0:
+              let shimmerX = c.x + float(c.width) / 2.0
+              let shimmerY = c.y
+              game.particles.emitGlideShimmer(shimmerX, shimmerY, c.color, game.elapsedTime)
+              game.glideShimmerTimer = GlideShimmerInterval
+            break glideShimmer
+        game.glideShimmerTimer = 0.0
+
       # Button activation shimmer and rumble — emit on false→true edge
       for b in game.currentLevelState.buttons:
         if b.active and not b.prevActive:
@@ -1042,7 +1063,7 @@ proc update*(game: var Game, dt: float) =
             if game.earnedStars[si]:
               saveData.levelStars[game.currentLevel][si] = true
           writeSave(saveData)
-          playSound(soundLevelComplete)
+          playLevelCompleteFanfare(actForLevel(game.currentLevel))
 
       # Update camera to follow active character
       if game.activeCharacterIndex < game.characters.len:
@@ -1315,6 +1336,11 @@ proc update*(game: var Game, dt: float) =
     # Character switch dim timer
     if game.charDimTimer > 0.0:
       game.charDimTimer = max(0.0, game.charDimTimer - scaledDt)
+
+    # Character flash timers (double-jump body flash)
+    for fi in 0 ..< game.charFlashTimers.len:
+      if game.charFlashTimers[fi] > 0.0:
+        game.charFlashTimers[fi] = max(0.0, game.charFlashTimers[fi] - scaledDt)
 
   of levelWin:
     let isFinale = game.currentLevel == FinalLevel

@@ -539,6 +539,24 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
       else:
         drawFilledRect(renderer, dx, dy, dw, dh)
 
+    # Double-jump body flash overlay
+    const CharFlashFadeThreshold = 0.05
+    block:
+      let flashTimer = game.charFlashTimers[i mod 6]
+      if flashTimer > 0.0:
+        var flashAlpha: float
+        if flashTimer > CharFlashFadeThreshold:
+          flashAlpha = 1.0
+        else:
+          flashAlpha = flashTimer / CharFlashFadeThreshold
+        renderer.setDrawBlendMode(BlendMode_Blend)
+        renderer.setDrawColor(255, 255, 255, uint8(flashAlpha * 255.0))
+        if useRotation:
+          drawRotatedFilledRectBottom(renderer, dx.float, dy.float, dw.float, dh.float, ch.rotation)
+        else:
+          drawFilledRect(renderer, dx, dy, dw, dh)
+        renderer.setDrawBlendMode(BlendMode_None)
+
     # Skip decorations during death/respawn animation
     if ch.isDying() or ch.isRespawning():
       continue
@@ -640,14 +658,14 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
     renderer.setDrawBlendMode(BlendMode_Blend)
     for ring in game.particles.ringParticles:
       let progress = 1.0 - ring.life / ring.maxLife
-      let scale = 1.0 + progress
+      let scale = 1.0 + ring.scaleRange * progress
       let w = ring.baseW * scale
       let h = ring.baseH * scale
       let rx = (ring.x - w * 0.5).cint - camX
       let ry = (ring.y - h * 0.5).cint - camY
       let rw = w.cint
       let rh = h.cint
-      let alpha = uint8(max(0.0, min(255.0, (ring.life / ring.maxLife) * 255.0)))
+      let alpha = uint8(max(0.0, min(255.0, (ring.life / ring.maxLife) * ring.startAlpha * 255.0)))
       renderer.setDrawColor(ring.color.r, ring.color.g, ring.color.b, alpha)
       drawOutlineRect(renderer, rx, ry, rw, rh)
     renderer.setDrawBlendMode(BlendMode_None)
