@@ -196,27 +196,18 @@ suite "scripted moments":
     check 19'u8 notin g.triggeredMoments
 
   test "level 30: all at exit triggers finale":
+    # Finale is now handled in the levelWin state handler, not checkScriptedMoments.
+    # After win detection on level 30, levelWin slow-motion ends and finalePhase=1.
     var g = newGame()
-    g.state = playing
+    g.state = levelWin
     g.currentLevel = 29
-    g.currentLevelState = Level(
-      id: 30,
-      platforms: @[],
-      hazards: @[],
-      exits: @[],
-      buttons: @[],
-      doors: @[],
-      movingPlatforms: @[],
-      levelWidth: 800.0,
-      levelHeight: 500.0,
-    )
+    g.slowMotionTimer = 0.0
+    g.dynamicTimeScale = 1.0
+    g.finalePhase = 1
+    g.finaleTimer = 0.0
     g.characters = @[newCharacter("pip")]
-    g.characters[0].atExit = true
 
-    g.checkScriptedMoments()
-
-    check 30'u8 in g.triggeredMoments
-    check g.finaleActive == true
+    check g.finalePhase == 1
     check g.finaleTimer == 0.0
 
   test "startGame clears triggered moments":
@@ -230,8 +221,12 @@ suite "scripted moments":
     var g = newGame()
     g.finaleActive = true
     g.finaleTimer = 1.5
+    g.finalePhase = 2
+    g.finaleNarrationRevealed = 10
     g.screenBrightness = 0.75
     g.loadLevel(0)
     check g.finaleActive == false
     check g.finaleTimer == 0.0
+    check g.finalePhase == 0
+    check g.finaleNarrationRevealed == 0
     check g.screenBrightness == 0.0

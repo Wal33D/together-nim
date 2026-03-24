@@ -254,7 +254,7 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
 
     # Exit detection
     for exit in level.exits:
-      if exit.characterId == c.id:
+      if exit.sharedExit or exit.characterId == c.id:
         let eRect = Rect(x: exit.x, y: exit.y, w: exit.width, h: exit.height)
         if intersects(toRect(c), eRect):
           result.exitedCharacters.add(c.id)

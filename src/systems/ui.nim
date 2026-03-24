@@ -1511,7 +1511,19 @@ proc renderOverlay*(ui: UiRenderer, window: Window, game: var Game,
     sk.renderGameplayHud(layout, game)
     sk.drawRect(vec2(0, 0), vec2(frameSize.x.float32, frameSize.y.float32),
                 rgbx(4, 4, 6, 72))
-    ui.renderWinModal(sk, window, layout, game)
+    if game.currentLevel == FinalLevel and game.finalePhase >= 2:
+      # Dark overlay for finale narration.
+      sk.drawRect(vec2(0, 0), vec2(frameSize.x.float32, frameSize.y.float32),
+                  rgbx(0, 0, 0, 180))
+      if game.finaleNarrationRevealed > 0:
+        let displayText = FinaleNarrationText[0..<min(game.finaleNarrationRevealed, FinaleNarrationText.len)]
+        let textY = layout.frameSize.y.float32 * 0.33
+        let maxW = DEFAULT_WIDTH.float32 * layout.scale * 0.7
+        let textX = layout.centerX - maxW * 0.5
+        discard sk.drawUiText(layout, "Body", displayText, vec2(textX, textY),
+                              rgbx(228, 233, 241, 255), maxW, wordWrap = true)
+    else:
+      ui.renderWinModal(sk, window, layout, game)
   of credits:
     sk.drawRect(vec2(0, 0), vec2(frameSize.x.float32, frameSize.y.float32),
                 rgbx(0, 0, 0, 34))

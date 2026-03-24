@@ -669,7 +669,10 @@ proc renderPaused(renderer: RendererPtr, game: Game) =
 proc renderLevelWin(renderer: RendererPtr, game: Game) =
   renderGameplay(renderer, game)
   renderer.setDrawBlendMode(BlendMode_Blend)
-  renderer.setDrawColor(0, 0, 0, 120)
+  if game.currentLevel == FinalLevel and game.finalePhase >= 2:
+    renderer.setDrawColor(0, 0, 0, 200)
+  else:
+    renderer.setDrawColor(0, 0, 0, 120)
   drawFilledRect(renderer, 0, 0, DEFAULT_WIDTH.cint, DEFAULT_HEIGHT.cint)
   renderer.setDrawBlendMode(BlendMode_None)
 
@@ -807,9 +810,11 @@ proc renderCredits(renderer: RendererPtr, game: Game) =
       drawFilledRect(renderer, lineX.cint, lineY.cint, lineW.cint,
                      PoetryLineH.cint)
 
-  # Phase 3: TOGETHER with heart formation (16s+).
-  if t >= 16.0:
-    let phase3Fade = min(1.0, (t - 16.0) / FinalFadeDur)
+  # Phase 3: TOGETHER with heart formation (16s - 22s).
+  if t >= 16.0 and t < 23.0:
+    let phase3Fade = if t < 17.5: min(1.0, (t - 16.0) / FinalFadeDur)
+                     elif t > 21.0: max(0.0, 1.0 - (t - 21.0) / 2.0)
+                     else: 1.0
     let a = uint8(phase3Fade * 255.0)
     # "TOGETHER" — each letter block in a character color.
     let letterW = 20
@@ -842,15 +847,43 @@ proc renderCredits(renderer: RendererPtr, game: Game) =
       # Character square.
       renderer.setDrawColor(charColor.r, charColor.g, charColor.b, a)
       drawFilledRect(renderer, hx.cint, hy.cint, HeartSize.cint, HeartSize.cint)
-    # "Press Enter to return to menu" prompt.
-    if t >= PromptTime:
-      let promptFade = min(1.0, (t - PromptTime) / 1.0)
+
+  # Phase 4: All 6 characters side by side with "Thank you for playing." (22s+).
+  if t >= 22.0:
+    let phase4Fade = min(1.0, (t - 22.0) / 1.5)
+    let a = uint8(phase4Fade * 255.0)
+    # "Thank you for playing." text bar.
+    let thankW = 180
+    let thankH = 12
+    let thankX = (DEFAULT_WIDTH - thankW) div 2
+    let thankY = 180
+    renderer.setDrawColor(228, 233, 241, a)
+    drawFilledRect(renderer, thankX.cint, thankY.cint, thankW.cint, thankH.cint)
+    # 6 characters side by side in center.
+    let charSize = 28
+    let charGap = 12
+    let totalCharW = 6 * charSize + 5 * charGap
+    let charStartX = (DEFAULT_WIDTH - totalCharW) div 2
+    let charY = 230
+    for i in 0 ..< 6:
+      let cx = charStartX + i * (charSize + charGap)
+      let charColor = CHAR_COLORS[i]
+      # Glow behind.
+      renderer.setDrawColor(charColor.r, charColor.g, charColor.b, a div 4)
+      drawFilledRect(renderer, (cx - 4).cint, (charY - 4).cint,
+                     (charSize + 8).cint, (charSize + 8).cint)
+      # Character square.
+      renderer.setDrawColor(charColor.r, charColor.g, charColor.b, a)
+      drawFilledRect(renderer, cx.cint, charY.cint, charSize.cint, charSize.cint)
+    # "Any key to return" prompt.
+    if t >= 24.0:
+      let promptFade = min(1.0, (t - 24.0) / 1.0)
       let pulse = 0.6 + 0.4 * sin(t * PI)
       let promptAlpha = uint8(promptFade * pulse * 180.0)
-      let promptW = 200
+      let promptW = 160
       let promptH = 10
       let promptX = (DEFAULT_WIDTH - promptW) div 2
-      let promptY = 430
+      let promptY = 310
       renderer.setDrawColor(180, 180, 200, promptAlpha)
       drawFilledRect(renderer, promptX.cint, promptY.cint, promptW.cint,
                      promptH.cint)

@@ -53,6 +53,8 @@ type
     triggeredMoments*: set[uint8]
     finaleTimer*: float
     finaleActive*: bool
+    finalePhase*: int              # 0=inactive, 1=extra hold, 2=narration, 3=post-narration, 4=warm fade
+    finaleNarrationRevealed*: int
     screenBrightness*: float
     screenEffects*: ScreenEffects
     prevFullGroup*: bool
@@ -149,6 +151,8 @@ const
   ProximityGlowRange* = 120.0
 
   FinalLevel* = 29
+  FinaleNarrationText* = "They were different shapes. Different sizes. Different colors. But they had found each other in the dark, and the dark wasn't dark anymore. Together, they were home."
+  FinaleNarrationSpeed = 20.0  # chars per second
 
   ActTitleFadeIn* = 1.0
   ActTitleHold* = 2.0
@@ -293,7 +297,7 @@ proc emitRespawnParticles(game: var Game, idx: int) =
 proc emitExitParticles(game: var Game, idx: int) =
   let c = game.characters[idx]
   for e in game.currentLevelState.exits:
-    if e.characterId == c.id:
+    if e.sharedExit or e.characterId == c.id:
       game.particles.emitExit(e.x + e.width * 0.5, e.y + e.height * 0.5,
                               CHAR_COLORS[c.colorIndex mod 6])
       break
@@ -486,6 +490,8 @@ proc loadLevel*(game: var Game, idx: int) =
   game.narrationActive = level.narration.len > 0
   game.finaleActive = false
   game.finaleTimer = 0.0
+  game.finalePhase = 0
+  game.finaleNarrationRevealed = 0
   game.screenBrightness = 0.0
   game.levelWinTimer = 0.0
   game.dynamicTimeScale = 1.0
@@ -620,18 +626,7 @@ proc checkScriptedMoments*(game: var Game) =
         game.narrationTimer = 0.0
         game.narrationActive = true
 
-  # Level 30: Finale — all at exit, hold with screen brightening.
-  if levelNum == 30 and 30'u8 notin game.triggeredMoments:
-    if game.characters.len > 0:
-      var allAtExit = true
-      for c in game.characters:
-        if not c.atExit:
-          allAtExit = false
-          break
-      if allAtExit:
-        game.triggeredMoments.incl(30'u8)
-        game.finaleActive = true
-        game.finaleTimer = 0.0
+  # Level 30 finale is now handled in the levelWin state handler.
 
 proc startGame*(game: var Game) =
   game.triggeredMoments = {}
@@ -734,8 +729,7 @@ proc handleKey*(game: var Game, button: windy.Button) =
   of levelWin:
     discard
   of credits:
-    if button == KeyEnter:
-      game.state = menu
+    game.state = menu
   of actTitle:
     discard
   of settings:
@@ -963,14 +957,6 @@ proc update*(game: var Game, dt: float) =
       # Scripted emotional moments
       checkScriptedMoments(game)
 
-      # Finale hold and brighten for level 30
-      if game.finaleActive:
-        game.finaleTimer += scaledDt
-        game.screenBrightness = min(1.0, game.finaleTimer / 2.0)
-        if game.finaleTimer >= 2.0:
-          game.finaleActive = false
-          game.enterWon()
-
       # Check win — all characters at their exits
       if game.characters.len > 0:
         var allAtExit = true
@@ -978,7 +964,7 @@ proc update*(game: var Game, dt: float) =
           if not c.atExit:
             allAtExit = false
             break
-        if allAtExit and game.state == playing and not game.finaleActive:
+        if allAtExit and game.state == playing:
           game.accentLevelComplete()
           game.state = levelWin
           game.levelWinTimer = 0.0
@@ -1276,6 +1262,7 @@ proc update*(game: var Game, dt: float) =
       game.charDimTimer = max(0.0, game.charDimTimer - scaledDt)
 
   of levelWin:
+    let isFinale = game.currentLevel == FinalLevel
     # Tick slow-motion beat using real time.
     if game.slowMotionTimer > 0.0:
       game.slowMotionTimer = max(0.0, game.slowMotionTimer - baseDt)
@@ -1283,15 +1270,58 @@ proc update*(game: var Game, dt: float) =
         game.dynamicTimeScale = 1.0
         for i in 0 ..< game.characters.len:
           game.characters[i].celebrateTimer = float(i) * 0.1 + 0.001
+          if isFinale:
+            game.characters[i].celebrateSquash = 0.65
         game.emitCompletionParticles()
         let flashWhite: Color = (r: 255'u8, g: 255'u8, b: 255'u8)
         game.screenEffects.triggerFlash(flashWhite, 0.5)
         playSound(soundTransitionSwoosh)
-        transitionColor = CHAR_COLORS[
-            game.characters[game.activeCharacterIndex].colorIndex mod 6]
-        discard startTween(transitionPool, 0.0, 1.0, 0.4, easeOutCubic,
-            proc(v: float) = transitionAlpha = v,
-            proc() = transitionPendingNextLevel = true)
+        if isFinale:
+          # Begin finale sequence: extra 2s hold with bounces.
+          game.finalePhase = 1
+          game.finaleTimer = 0.0
+        else:
+          transitionColor = CHAR_COLORS[
+              game.characters[game.activeCharacterIndex].colorIndex mod 6]
+          discard startTween(transitionPool, 0.0, 1.0, 0.4, easeOutCubic,
+              proc(v: float) = transitionAlpha = v,
+              proc() = transitionPendingNextLevel = true)
+
+    # Finale sequence phases for level 30.
+    if isFinale and game.finalePhase > 0:
+      game.finaleTimer += scaledDt
+      case game.finalePhase
+      of 1:
+        # Extra hold with happy bounces (2s).
+        if game.finaleTimer >= 2.0:
+          game.finalePhase = 2
+          game.finaleTimer = 0.0
+          game.finaleNarrationRevealed = 0
+      of 2:
+        # Typewriter narration at 20 chars/sec.
+        let target = int(game.finaleTimer * FinaleNarrationSpeed)
+        game.finaleNarrationRevealed = min(target, FinaleNarrationText.len)
+        if game.finaleNarrationRevealed >= FinaleNarrationText.len:
+          game.finalePhase = 3
+          game.finaleTimer = 0.0
+      of 3:
+        # Post-narration hold (1s).
+        if game.finaleTimer >= 1.0:
+          game.finalePhase = 4
+          game.finaleTimer = 0.0
+          # Warm white fade over 2s.
+          transitionColor = (r: 255'u8, g: 250'u8, b: 240'u8)
+          discard startTween(transitionPool, 0.0, 1.0, 2.0, easeOutCubic,
+              proc(v: float) = transitionAlpha = v,
+              proc() =
+                transitionPendingNextLevel = false)
+      of 4:
+        # Fading to warm white (2s tween running).
+        if game.finaleTimer >= 2.0:
+          game.finalePhase = 0
+          game.enterCredits()
+      else:
+        discard
 
     game.levelWinTimer += scaledDt
     for i in 0 ..< game.characters.len:
