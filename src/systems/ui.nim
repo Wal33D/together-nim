@@ -43,6 +43,7 @@ var
   menuCursor: int = 0
   menuBtnAlphas: array[5, float]
   menuHasSave: bool = false
+  progressStripAlpha: float = 0.0
   menuTweenPool: TweenPool = initTweenPool()
   btnScale: float = 1.0
   btnHovered: bool = false
@@ -118,6 +119,7 @@ proc triggerMenuEntrance() =
   if menuHasSave:
     firstLaunch = false
   slideIndicatorY = -1.0
+  progressStripAlpha = 0.0
   for i in 0..<5:
     menuBtnAlphas[i] = 0.0
 
@@ -136,6 +138,11 @@ proc triggerMenuEntrance() =
     discard startTween(menuTweenPool, 0.0, 1.0, 0.25, easeOutCubic,
       proc(v: float) = menuBtnAlphas[idx] = v,
       delay = buttonDelay + float(idx) * 0.06)
+
+  # Progress strip fades in 0.2 s after buttons appear.
+  discard startTween(menuTweenPool, 0.0, 1.0, 0.2, easeOutCubic,
+    proc(v: float) = progressStripAlpha = v,
+    delay = buttonDelay + 4.0 * 0.06 + 0.25)
 
 proc triggerPauseEnter() =
   ## Start the pause menu entrance animation.
@@ -912,51 +919,57 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
     drawCenteredText(sk, layout, "Body", MenuLabels[i], layout.centerX,
                      pos.y + layout.px(8), labelColor)
 
-    # Continue progress indicator: act-colored block cells and character silhouettes.
-    if i == 1 and menuHasSave and alpha > 0.5:
+    # Continue progress indicator: act-colored block strip.
+    if i == 1 and menuHasSave and progressStripAlpha > 0.01:
       let
-        contLevel = savedContinueLevel()
-        cellW = layout.px(5)
-        cellH = layout.px(4)
-        cellGap = layout.px(1)
-        actGap = layout.px(3)
-      # Total width: sum of all cells + inner gaps + act separators.
+        sa = progressStripAlpha
+        cellSz = layout.px(8)
+        cellGap = layout.px(2)
+        actGap = layout.px(6)
+      # Total width: 30 cells (6 per act × 5 acts).
       var totalW: float32 = 0
       for ai, act in Acts:
         let count = act.endLevel - act.startLevel + 1
-        totalW += count.float32 * cellW + max(0, count - 1).float32 * cellGap
+        totalW += count.float32 * cellSz + max(0, count - 1).float32 * cellGap
         if ai < Acts.len - 1:
           totalW += actGap
       let
         cellStartX = layout.centerX - totalW * 0.5
-        cellY = pos.y + size.y + layout.px(3)
+        cellY = pos.y + size.y + layout.px(5)
       var cx = cellStartX
       for ai, act in Acts:
         let
           tc = act.themeColor
           count = act.endLevel - act.startLevel + 1
+          chromaTc = chroma.color(tc.r.float32 / 255.0,
+                                  tc.g.float32 / 255.0,
+                                  tc.b.float32 / 255.0)
+          darkTc = chroma.darken(chromaTc, 0.4)
         for li in 0 ..< count:
           let levelIdx = act.startLevel - 1 + li
-          if levelIdx == contLevel:
-            # Current level: outlined.
-            let borderA = uint8(alpha * 220.0)
-            let borderC = rgbx(tc.r, tc.g, tc.b, borderA)
-            sk.drawRect(vec2(cx, cellY), vec2(cellW, 1), borderC)
-            sk.drawRect(vec2(cx, cellY + cellH - 1), vec2(cellW, 1), borderC)
-            sk.drawRect(vec2(cx, cellY), vec2(1, cellH), borderC)
-            sk.drawRect(vec2(cx + cellW - 1, cellY), vec2(1, cellH), borderC)
-          elif levelCompleted(levelIdx):
-            # Completed: filled.
-            sk.drawRect(vec2(cx, cellY), vec2(cellW, cellH),
-                        rgbx(tc.r, tc.g, tc.b, uint8(alpha * 230.0)))
+          if levelCompleted(levelIdx):
+            # Filled: act color, full alpha.
+            sk.drawRect(vec2(cx, cellY), vec2(cellSz, cellSz),
+                        rgbx(tc.r, tc.g, tc.b, uint8(sa * 255.0)))
+          elif levelAvailable(levelIdx):
+            # Outlined: act color border, transparent fill.
+            let borderC = rgbx(tc.r, tc.g, tc.b, uint8(sa * 220.0))
+            sk.drawRect(vec2(cx, cellY), vec2(cellSz, 1), borderC)
+            sk.drawRect(vec2(cx, cellY + cellSz - 1), vec2(cellSz, 1), borderC)
+            sk.drawRect(vec2(cx, cellY), vec2(1, cellSz), borderC)
+            sk.drawRect(vec2(cx + cellSz - 1, cellY), vec2(1, cellSz), borderC)
           else:
-            # Locked/future: dim.
-            sk.drawRect(vec2(cx, cellY), vec2(cellW, cellH),
-                        rgbx(tc.r, tc.g, tc.b, uint8(alpha * 50.0)))
-          cx += cellW + cellGap
+            # Locked: darkened act color at 25% alpha.
+            let dr = uint8(darkTc.r * 255.0)
+            let dg = uint8(darkTc.g * 255.0)
+            let db = uint8(darkTc.b * 255.0)
+            sk.drawRect(vec2(cx, cellY), vec2(cellSz, cellSz),
+                        rgbx(dr, dg, db, uint8(sa * 64.0)))
+          cx += cellSz + cellGap
         cx += actGap - cellGap
 
       # Character silhouettes for the saved party.
+      let contLevel = savedContinueLevel()
       if contLevel >= 0 and contLevel < allLevels.len:
         let
           partyChars = allLevels[contLevel].characters
@@ -965,7 +978,7 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
           silGap = layout.px(3)
           silTotalW = partyChars.len.float32 * silW + max(0, partyChars.len - 1).float32 * silGap
           silStartX = layout.centerX - silTotalW * 0.5
-          silY = pos.y + size.y + layout.px(12)
+          silY = pos.y + size.y + layout.px(16)
         for ci, charId in partyChars:
           let
             cIdx = charColorIndex(charId)
