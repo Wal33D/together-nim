@@ -59,6 +59,19 @@ var
   hidDpadDown: bool = false
   hidLeftX: int16 = 0
 
+  ## Per-frame one-shot press flags (set on rising edge, cleared each frame).
+  padUpPressed*: bool = false
+  padDownPressed*: bool = false
+  padLeftPressed*: bool = false
+  padRightPressed*: bool = false
+
+proc clearPadPressed*() =
+  ## Clear all per-frame one-shot pad flags. Call once per frame before polling.
+  padUpPressed = false
+  padDownPressed = false
+  padLeftPressed = false
+  padRightPressed = false
+
 proc resetControllerState() =
   dpadLeftHeld = false
   dpadRightHeld = false
@@ -87,6 +100,10 @@ proc resetControllerState() =
   hidDpadUp = false
   hidDpadDown = false
   hidLeftX = 0
+  padUpPressed = false
+  padDownPressed = false
+  padLeftPressed = false
+  padRightPressed = false
 
 proc syncDirectionalHeldState(game: var Game) =
   game.leftHeld = dpadLeftHeld or stickLeftHeld
@@ -258,18 +275,22 @@ proc applyControllerSnapshot*(
 
   if dpadLeftPressed != prevDpadLeft:
     handleControllerButton(game, ButtonDpadLeft, dpadLeftPressed)
+    if dpadLeftPressed: padLeftPressed = true
     prevDpadLeft = dpadLeftPressed
 
   if dpadRightPressed != prevDpadRight:
     handleControllerButton(game, ButtonDpadRight, dpadRightPressed)
+    if dpadRightPressed: padRightPressed = true
     prevDpadRight = dpadRightPressed
 
   if dpadUpPressed != prevDpadUp:
     handleControllerButton(game, ButtonDpadUp, dpadUpPressed)
+    if dpadUpPressed: padUpPressed = true
     prevDpadUp = dpadUpPressed
 
   if dpadDownPressed != prevDpadDown:
     handleControllerButton(game, ButtonDpadDown, dpadDownPressed)
+    if dpadDownPressed: padDownPressed = true
     prevDpadDown = dpadDownPressed
 
   let newStickLeft = leftX < -AxisDeadzone
@@ -529,6 +550,7 @@ proc closeController*() =
 
 proc pollControllerInput*(game: var Game) =
   ## Process pending HID events and apply current controller state to the game.
+  clearPadPressed()
   if hidManager == nil: return
   discard CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.0, 0)
   if not controllerConnected: return

@@ -150,13 +150,13 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer,
                           windowMode: var WindowModeState) =
   case game.state
   of menu:
-    if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA]:
+    if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA] or padLeftPressed:
       ui.cycleMenuSpotlight(-1)
-    if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD]:
+    if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD] or padRightPressed:
       ui.cycleMenuSpotlight(1)
-    if window.buttonPressed[KeyUp] or window.buttonPressed[KeyW]:
+    if window.buttonPressed[KeyUp] or window.buttonPressed[KeyW] or padUpPressed:
       cycleMenuCursor(-1)
-    if window.buttonPressed[KeyDown] or window.buttonPressed[KeyS]:
+    if window.buttonPressed[KeyDown] or window.buttonPressed[KeyS] or padDownPressed:
       cycleMenuCursor(1)
     if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
       ui.activateFocusedAction(game)
@@ -166,10 +166,12 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer,
     return
   of paused:
     if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA] or
-       window.buttonPressed[KeyUp] or window.buttonPressed[KeyW]:
+       window.buttonPressed[KeyUp] or window.buttonPressed[KeyW] or
+       padLeftPressed or padUpPressed:
       ui.cyclePauseSelection(-1)
     if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD] or
-       window.buttonPressed[KeyDown] or window.buttonPressed[KeyS]:
+       window.buttonPressed[KeyDown] or window.buttonPressed[KeyS] or
+       padRightPressed or padDownPressed:
       ui.cyclePauseSelection(1)
     if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
       ui.activateFocusedAction(game)
@@ -177,11 +179,11 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer,
       game.handleKey(KeyEscape)
     return
   of settings:
-    if window.buttonPressed[KeyUp] or window.buttonPressed[KeyW]:
+    if window.buttonPressed[KeyUp] or window.buttonPressed[KeyW] or padUpPressed:
       game.cycleSettingsCursor(-1)
-    if window.buttonPressed[KeyDown] or window.buttonPressed[KeyS]:
+    if window.buttonPressed[KeyDown] or window.buttonPressed[KeyS] or padDownPressed:
       game.cycleSettingsCursor(1)
-    if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA]:
+    if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA] or padLeftPressed:
       case game.settingsCursor
       of 0:
         game.settingsWindowPreset = (game.settingsWindowPreset - 1 + WindowPresets.len) mod WindowPresets.len
@@ -193,7 +195,7 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer,
       of 3:
         adjustVolume(-VolumeStep)
       else: discard
-    if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD]:
+    if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD] or padRightPressed:
       case game.settingsCursor
       of 0:
         game.settingsWindowPreset = (game.settingsWindowPreset + 1) mod WindowPresets.len
@@ -217,16 +219,16 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer,
       playSound(soundMenuBack)
     return
   of levelSelect:
-    if window.buttonPressed[KeyUp] or window.buttonPressed[KeyW]:
+    if window.buttonPressed[KeyUp] or window.buttonPressed[KeyW] or padUpPressed:
       game.levelSelectRow = (game.levelSelectRow - 1 + 5) mod 5
       playSound(soundMenuHover)
-    if window.buttonPressed[KeyDown] or window.buttonPressed[KeyS]:
+    if window.buttonPressed[KeyDown] or window.buttonPressed[KeyS] or padDownPressed:
       game.levelSelectRow = (game.levelSelectRow + 1) mod 5
       playSound(soundMenuHover)
-    if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA]:
+    if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA] or padLeftPressed:
       game.levelSelectCol = (game.levelSelectCol - 1 + 6) mod 6
       playSound(soundMenuHover)
-    if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD]:
+    if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD] or padRightPressed:
       game.levelSelectCol = (game.levelSelectCol + 1) mod 6
       playSound(soundMenuHover)
     if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
