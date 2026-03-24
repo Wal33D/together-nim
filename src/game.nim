@@ -68,6 +68,9 @@ type
     creditsTimer*: float
     dynamicTimeScale*: float
     slowMotionTimer*: float
+    levelSelectRow*: int
+    levelSelectCol*: int
+    levelSelectRejectTimer*: float
 
 const
   ProximityNear* = 80.0
@@ -547,6 +550,25 @@ proc openSettings*(game: var Game) =
   game.settingsCursor = 0
   game.state = settings
 
+proc launchSelectedLevel*(game: var Game) =
+  ## Launch the level at the current cursor position, or reject if locked.
+  let
+    LevelsPerAct = 6
+    levelIdx = game.levelSelectRow * LevelsPerAct + game.levelSelectCol
+  if levelIdx < 0 or levelIdx >= allLevels.len:
+    return
+  if not levelAvailable(levelIdx):
+    game.levelSelectRejectTimer = 0.25
+    playSound(soundMenuBack)
+    return
+  game.triggeredMoments = {}
+  if isFirstLevelOfAct(levelIdx):
+    game.showActTitle(levelIdx)
+  else:
+    game.state = playing
+    game.loadLevel(levelIdx)
+  playSound(soundMenuSelect)
+
 proc handleKey*(game: var Game, button: windy.Button) =
   case game.state
   of menu:
@@ -1024,6 +1046,10 @@ proc update*(game: var Game, dt: float) =
 
   of credits:
     game.creditsTimer += scaledDt
+
+  of levelSelect:
+    if game.levelSelectRejectTimer > 0:
+      game.levelSelectRejectTimer = max(0.0, game.levelSelectRejectTimer - scaledDt)
 
   else:
     discard

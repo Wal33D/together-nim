@@ -78,3 +78,7 @@ proc savedContinueLevel*(): int =
   for level in data.levelStars.keys:
     if level >= result:
       result = level + 1
+
+proc levelAvailable*(levelIdx: int): bool =
+  ## Return true when the level is completed or is the next playable level.
+  levelCompleted(levelIdx) or levelIdx == savedContinueLevel()

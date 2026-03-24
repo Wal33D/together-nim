@@ -217,6 +217,20 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer,
       playSound(soundMenuBack)
     return
   of levelSelect:
+    if window.buttonPressed[KeyUp] or window.buttonPressed[KeyW]:
+      game.levelSelectRow = (game.levelSelectRow - 1 + 5) mod 5
+      playSound(soundMenuHover)
+    if window.buttonPressed[KeyDown] or window.buttonPressed[KeyS]:
+      game.levelSelectRow = (game.levelSelectRow + 1) mod 5
+      playSound(soundMenuHover)
+    if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA]:
+      game.levelSelectCol = (game.levelSelectCol - 1 + 6) mod 6
+      playSound(soundMenuHover)
+    if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD]:
+      game.levelSelectCol = (game.levelSelectCol + 1) mod 6
+      playSound(soundMenuHover)
+    if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
+      game.launchSelectedLevel()
     if window.buttonPressed[KeyEscape]:
       game.state = menu
       playSound(soundMenuBack)

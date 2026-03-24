@@ -1293,6 +1293,25 @@ proc renderLevelSelect(ui: UiRenderer, sk: Silky, window: Window,
         let checkSize = vec2(layout.px(8), layout.px(3))
         sk.drawRect(checkPos, checkSize, rgbx(180, 255, 180, 200))
 
+      # Cursor highlight.
+      if ai == game.levelSelectRow and li == game.levelSelectCol:
+        let bw = layout.px(2)
+        # Top edge.
+        sk.drawRect(cellPos, vec2(cellSize.x, bw), rgbx(255, 255, 255, 220))
+        # Bottom edge.
+        sk.drawRect(vec2(cellPos.x, cellPos.y + cellSize.y - bw),
+                     vec2(cellSize.x, bw), rgbx(255, 255, 255, 220))
+        # Left edge.
+        sk.drawRect(cellPos, vec2(bw, cellSize.y), rgbx(255, 255, 255, 220))
+        # Right edge.
+        sk.drawRect(vec2(cellPos.x + cellSize.x - bw, cellPos.y),
+                     vec2(bw, cellSize.y), rgbx(255, 255, 255, 220))
+
+        # Rejection flash overlay.
+        if game.levelSelectRejectTimer > 0:
+          let flashAlpha = uint8(game.levelSelectRejectTimer / 0.25 * 180)
+          sk.drawRect(cellPos, cellSize, rgbx(255, 60, 60, flashAlpha))
+
 proc renderOverlay*(ui: UiRenderer, window: Window, game: var Game,
                     frameSize: IVec2) =
   let layout = initLayout(frameSize)
