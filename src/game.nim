@@ -198,10 +198,11 @@ proc emitExitParticles(game: var Game, idx: int) =
       break
 
 proc emitCompletionParticles(game: var Game) =
-  let completionColor: Color = (r: 248'u8, g: 232'u8, b: 178'u8)
   for c in game.characters:
-    game.particles.emitCompletion(c.characterCenterX(), c.characterCenterY(),
-                                  completionColor)
+    let topX = c.characterCenterX()
+    let topY = c.drawY()
+    game.particles.emitConfetti(topX, topY,
+                                CHAR_COLORS[c.colorIndex mod 6])
 
 proc emitSwitchParticles(game: var Game, idx: int) =
   ## Emit a white ring on the newly active character.

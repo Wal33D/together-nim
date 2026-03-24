@@ -338,6 +338,18 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
 
   renderParticleSystem(renderer, game.particles, camX, camY)
 
+  # Tumbling confetti rectangles.
+  if game.particles.confettiParticles.len > 0:
+    renderer.setDrawBlendMode(BlendMode_Blend)
+    for cp in game.particles.confettiParticles:
+      let lifeRatio = max(0.0, min(1.0, cp.life / cp.maxLife))
+      let alpha = uint8(lifeRatio * 220.0)
+      let cx = cp.x - float(camX)
+      let cy = cp.y - float(camY)
+      renderer.setDrawColor(cp.color.r, cp.color.g, cp.color.b, alpha)
+      drawRotatedFilledRect(renderer, cx, cy, cp.w, cp.h, cp.angle)
+    renderer.setDrawBlendMode(BlendMode_None)
+
   # Connection lines between nearby characters
   if game.characters.len > 1:
     renderer.setDrawBlendMode(BlendMode_Blend)
