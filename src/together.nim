@@ -166,12 +166,10 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer,
     return
   of paused:
     if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA] or
-       window.buttonPressed[KeyUp] or window.buttonPressed[KeyW] or
-       padLeftPressed or padUpPressed:
+       window.buttonPressed[KeyUp] or window.buttonPressed[KeyW]:
       ui.cyclePauseSelection(-1)
     if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD] or
-       window.buttonPressed[KeyDown] or window.buttonPressed[KeyS] or
-       padRightPressed or padDownPressed:
+       window.buttonPressed[KeyDown] or window.buttonPressed[KeyS]:
       ui.cyclePauseSelection(1)
     if window.buttonPressed[KeyEnter] or window.buttonPressed[KeySpace]:
       ui.activateFocusedAction(game)
@@ -179,11 +177,11 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer,
       game.handleKey(KeyEscape)
     return
   of settings:
-    if window.buttonPressed[KeyUp] or window.buttonPressed[KeyW] or padUpPressed:
+    if window.buttonPressed[KeyUp] or window.buttonPressed[KeyW]:
       game.cycleSettingsCursor(-1)
-    if window.buttonPressed[KeyDown] or window.buttonPressed[KeyS] or padDownPressed:
+    if window.buttonPressed[KeyDown] or window.buttonPressed[KeyS]:
       game.cycleSettingsCursor(1)
-    if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA] or padLeftPressed:
+    if window.buttonPressed[KeyLeft] or window.buttonPressed[KeyA]:
       case game.settingsCursor
       of 0:
         game.settingsWindowPreset = (game.settingsWindowPreset - 1 + WindowPresets.len) mod WindowPresets.len
@@ -195,7 +193,7 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer,
       of 3:
         adjustVolume(-VolumeStep)
       else: discard
-    if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD] or padRightPressed:
+    if window.buttonPressed[KeyRight] or window.buttonPressed[KeyD]:
       case game.settingsCursor
       of 0:
         game.settingsWindowPreset = (game.settingsWindowPreset + 1) mod WindowPresets.len
@@ -343,6 +341,54 @@ proc main() =
 
     handleKeyboardInput(window, g, ui, windowMode)
     pollControllerInput(g)
+
+    if controllerConnected:
+      case g.state
+      of settings:
+        if padUpPressed:
+          g.cycleSettingsCursor(-1)
+        if padDownPressed:
+          g.cycleSettingsCursor(1)
+        if padLeftPressed:
+          case g.settingsCursor
+          of 0:
+            g.settingsWindowPreset =
+              (g.settingsWindowPreset - 1 + WindowPresets.len) mod WindowPresets.len
+            applySettingsChange(window, g, windowMode)
+          of 1, 2:
+            applySettingsChange(window, g, windowMode)
+          of 3:
+            adjustVolume(-VolumeStep)
+          else: discard
+        if padRightPressed:
+          case g.settingsCursor
+          of 0:
+            g.settingsWindowPreset =
+              (g.settingsWindowPreset + 1) mod WindowPresets.len
+            applySettingsChange(window, g, windowMode)
+          of 1, 2:
+            applySettingsChange(window, g, windowMode)
+          of 3:
+            adjustVolume(VolumeStep)
+          else: discard
+        if padConfirmPressed:
+          if g.settingsCursor == 4:
+            g.state = g.previousState
+            playSound(soundMenuBack)
+          elif g.settingsCursor >= 0 and g.settingsCursor <= 2:
+            applySettingsChange(window, g, windowMode)
+        if padBackPressed:
+          g.state = g.previousState
+          playSound(soundMenuBack)
+      of paused:
+        if padUpPressed:
+          ui.cyclePauseSelection(-1)
+        if padDownPressed:
+          ui.cyclePauseSelection(1)
+        if padConfirmPressed:
+          ui.activateFocusedAction(g)
+      else:
+        discard
 
     if g.pendingSettingsApply:
       g.pendingSettingsApply = false

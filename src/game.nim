@@ -81,6 +81,11 @@ type
     storyBeatRevealed*: int
     storyBeatTimer*: float
     charactersMet*: set[uint8]
+    gameFrozen*: bool
+    introTimer*: float
+    introCharacterIdx*: int
+    introQueue*: seq[int]
+    introPhase*: int                  # 0=pre-delay, 1=showing, 2=post-narration
 
 const
   ProximityNear* = 80.0
@@ -379,7 +384,20 @@ proc loadLevel*(game: var Game, idx: int) =
   game.particles = ParticleSystem(particles: @[])
   game.exitEmitTimers = newSeq[float](level.exits.len)
 
+  # Detect new characters before updating charactersMet.
+  let oldMet = game.charactersMet
   game.updateCharactersMet()
+  game.introQueue = @[]
+  for i, c in game.characters:
+    let ci = uint8(c.colorIndex)
+    if ci notin oldMet and ci in game.charactersMet:
+      let narr = introNarration(c.id)
+      if narr.len > 0:
+        game.introQueue.add(i)
+  game.introTimer = 0.0
+  game.introPhase = 0
+  game.introCharacterIdx = -1
+  game.gameFrozen = false
 
   # Narration
   game.narrationText = level.narration
@@ -669,21 +687,67 @@ proc update*(game: var Game, dt: float) =
     game.menuTime += scaledDt
     game.menuAtmosphere.update(scaledDt)
   of playing:
-    # Apply movement to active character (blocked during death/respawn)
-    if game.activeCharacterIndex < game.characters.len:
-      let ac = game.characters[game.activeCharacterIndex]
-      if ac.isDying() or ac.isRespawning():
-        game.characters[game.activeCharacterIndex].inputDir = 0
-      else:
-        var dir = 0
-        if game.leftHeld: dir -= 1
-        if game.rightHeld: dir += 1
-        game.characters[game.activeCharacterIndex].inputDir = dir
-        if dir > 0: game.characters[game.activeCharacterIndex].facingRight = true
-        elif dir < 0: game.characters[game.activeCharacterIndex].facingRight = false
+    # Intro sequence for first-meeting characters.
+    if game.introQueue.len > 0:
+      game.introTimer += scaledDt
+      case game.introPhase
+      of 0:
+        # Pre-delay: 2s for first intro, 1s gap for subsequent.
+        let delay = if game.introCharacterIdx < 0: 2.0 else: 1.0
+        if game.introTimer >= delay:
+          game.introCharacterIdx = game.introQueue[0]
+          game.gameFrozen = true
+          game.introPhase = 1
+          game.introTimer = 0.0
+          # Snap camera to the new character.
+          game.queueCameraSnapToCharacter(game.introCharacterIdx)
+          # Start narration.
+          let charId = game.characters[game.introCharacterIdx].id
+          game.narrationText = introNarration(charId)
+          game.narrationRevealed = 0
+          game.narrationTimer = 0.0
+          game.narrationActive = true
+      of 1:
+        # Showing intro: tween glow up over 0.5s while narration plays.
+        if game.introCharacterIdx >= 0 and game.introCharacterIdx < game.characters.len:
+          game.characters[game.introCharacterIdx].introGlowBoost =
+            min(2.0, game.characters[game.introCharacterIdx].introGlowBoost + 4.0 * scaledDt)
+        if not game.narrationActive:
+          game.introPhase = 2
+          game.introTimer = 0.0
+      of 2:
+        # Post-narration 0.5s delay before unfreeze.
+        if game.introTimer >= 0.5:
+          game.gameFrozen = false
+          if game.introCharacterIdx >= 0 and game.introCharacterIdx < game.characters.len:
+            game.charactersMet.incl(uint8(game.characters[game.introCharacterIdx].colorIndex))
+          game.introQueue.delete(0)
+          game.introPhase = 0
+          game.introTimer = 0.0
+      else: discard
+
+    # Decay introGlowBoost for all characters (fade out after intro ends).
+    for i in 0..<game.characters.len:
+      if game.introPhase != 1 or i != game.introCharacterIdx:
+        game.characters[i].introGlowBoost =
+          max(0.0, game.characters[i].introGlowBoost - 4.0 * scaledDt)
+
+    if not game.gameFrozen:
+      # Apply movement to active character (blocked during death/respawn)
+      if game.activeCharacterIndex < game.characters.len:
+        let ac = game.characters[game.activeCharacterIndex]
+        if ac.isDying() or ac.isRespawning():
+          game.characters[game.activeCharacterIndex].inputDir = 0
+        else:
+          var dir = 0
+          if game.leftHeld: dir -= 1
+          if game.rightHeld: dir += 1
+          game.characters[game.activeCharacterIndex].inputDir = dir
+          if dir > 0: game.characters[game.activeCharacterIndex].facingRight = true
+          elif dir < 0: game.characters[game.activeCharacterIndex].facingRight = false
 
     # Physics
-    if game.currentLevel >= 0 and game.currentLevel < allLevels.len:
+    if not game.gameFrozen and game.currentLevel >= 0 and game.currentLevel < allLevels.len:
       let result = updatePhysics(game.characters, game.currentLevelState, scaledDt)
       let level = game.currentLevelState
 
@@ -866,36 +930,37 @@ proc update*(game: var Game, dt: float) =
                      ch.vx, ch.vy, ch.facingRight, level.levelWidth,
                      level.levelHeight, scaledDt)
 
-    # Tick death/respawn timers
-    for i in 0..<game.characters.len:
-      if game.characters[i].isDying():
-        # Track flash count based on elapsed time (50ms on, 50ms off = 100ms per flash)
-        let elapsed = 0.5 - game.characters[i].deathTimer
-        game.characters[i].deathFlashCount = min(3, int(elapsed / 0.1))
-        game.characters[i].deathTimer -= scaledDt
-        if game.characters[i].deathTimer <= 0.0:
-          game.characters[i].deathTimer = 0.0
-          game.characters[i].dead = false
-          game.characters[i].x = game.characters[i].spawnX
-          game.characters[i].y = game.characters[i].spawnY
-          game.characters[i].vx = 0
-          game.characters[i].vy = 0
-          game.characters[i].respawnTimer = 0.3
-          game.emitRespawnParticles(i)
-          if i == game.activeCharacterIndex:
-            game.camera.hold(0.10)
-            game.queueCameraSnapToCharacter(i)
-      elif game.characters[i].isRespawning():
-        game.characters[i].respawnTimer -= scaledDt
-        if game.characters[i].respawnTimer <= 0.0:
-          game.characters[i].respawnTimer = 0.0
+    if not game.gameFrozen:
+      # Tick death/respawn timers
+      for i in 0..<game.characters.len:
+        if game.characters[i].isDying():
+          # Track flash count based on elapsed time (50ms on, 50ms off = 100ms per flash)
+          let elapsed = 0.5 - game.characters[i].deathTimer
+          game.characters[i].deathFlashCount = min(3, int(elapsed / 0.1))
+          game.characters[i].deathTimer -= scaledDt
+          if game.characters[i].deathTimer <= 0.0:
+            game.characters[i].deathTimer = 0.0
+            game.characters[i].dead = false
+            game.characters[i].x = game.characters[i].spawnX
+            game.characters[i].y = game.characters[i].spawnY
+            game.characters[i].vx = 0
+            game.characters[i].vy = 0
+            game.characters[i].respawnTimer = 0.3
+            game.emitRespawnParticles(i)
+            if i == game.activeCharacterIndex:
+              game.camera.hold(0.10)
+              game.queueCameraSnapToCharacter(i)
+        elif game.characters[i].isRespawning():
+          game.characters[i].respawnTimer -= scaledDt
+          if game.characters[i].respawnTimer <= 0.0:
+            game.characters[i].respawnTimer = 0.0
 
-    # Update animations for all characters
-    for i in 0..<game.characters.len:
-      updateAnimation(game.characters[i], scaledDt)
-      if game.characters[i].jumpBufferTimer > 0.0:
-        game.characters[i].jumpBufferTimer =
-          max(0.0, game.characters[i].jumpBufferTimer - scaledDt)
+      # Update animations for all characters
+      for i in 0..<game.characters.len:
+        updateAnimation(game.characters[i], scaledDt)
+        if game.characters[i].jumpBufferTimer > 0.0:
+          game.characters[i].jumpBufferTimer =
+            max(0.0, game.characters[i].jumpBufferTimer - scaledDt)
 
     # Precompute pairwise distances — reused by all proximity systems.
     let n = game.characters.len

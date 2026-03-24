@@ -4,9 +4,7 @@
 import
   windy,
   ../game,
-  ../constants,
-  ./audio,
-  ./save
+  ./audio
 
 {.passL: "-framework IOKit -framework CoreFoundation".}
 
@@ -64,6 +62,8 @@ var
   padDownPressed*: bool = false
   padLeftPressed*: bool = false
   padRightPressed*: bool = false
+  padConfirmPressed*: bool = false
+  padBackPressed*: bool = false
 
 proc clearPadPressed*() =
   ## Clear all per-frame one-shot pad flags. Call once per frame before polling.
@@ -71,6 +71,8 @@ proc clearPadPressed*() =
   padDownPressed = false
   padLeftPressed = false
   padRightPressed = false
+  padConfirmPressed = false
+  padBackPressed = false
 
 proc resetControllerState() =
   dpadLeftHeld = false
@@ -104,6 +106,8 @@ proc resetControllerState() =
   padDownPressed = false
   padLeftPressed = false
   padRightPressed = false
+  padConfirmPressed = false
+  padBackPressed = false
 
 proc syncDirectionalHeldState(game: var Game) =
   game.leftHeld = dpadLeftHeld or stickLeftHeld
@@ -113,40 +117,15 @@ proc resetPadState*() =
   ## Reset internal pad held state. Useful for tests.
   resetControllerState()
 
-# --- Game logic (pure Nim, no platform dependency) ---
-
-const
-  SettingsCount = 5  ## Number of settings rows (0..4).
-  VolumeStep = 0.1  ## Volume increment per d-pad press.
-
-proc adjustVolumePad(delta: float) =
-  ## Nudge master volume, clamp, persist, and play feedback.
-  let vol = clamp(getMasterVolume() + delta, 0.0, 1.0)
-  setMasterVolume(vol)
-  saveMasterVolume(vol)
-  playSound(soundMenuHover)
-
-proc cycleSettingsCursorPad(game: var Game, delta: int) =
-  ## Move settings cursor with wrapping. Mirrors cycleSettingsCursor in ui.nim.
-  let prev = game.settingsCursor
-  game.settingsCursor = (game.settingsCursor + delta + SettingsCount * 4) mod SettingsCount
-  if game.settingsCursor != prev:
-    playSound(soundMenuHover)
-
 proc handleControllerButton*(game: var Game, button: uint8, isDown: bool) =
   ## Map controller buttons to game actions.
+  ## Settings navigation is handled by one-shot flags in main().
   case button
   of ButtonA:
     if isDown:
-      if game.state == settings:
-        if game.settingsCursor == 4:
-          game.state = game.previousState
-          playSound(soundMenuBack)
-        elif game.settingsCursor >= 0 and game.settingsCursor <= 2:
-          game.pendingSettingsApply = true
-      elif game.state == playing:
+      if game.state == playing:
         game.pressJump()
-      else:
+      elif game.state != settings:
         case game.state
         of menu:
           game.handleKey(KeyEnter)
@@ -164,12 +143,8 @@ proc handleControllerButton*(game: var Game, button: uint8, isDown: bool) =
       game.releaseJump()
 
   of ButtonB:
-    if isDown:
-      if game.state == settings:
-        game.state = game.previousState
-        playSound(soundMenuBack)
-      else:
-        game.handleKey(KeyR)
+    if isDown and game.state != settings:
+      game.handleKey(KeyR)
 
   of ButtonStart:
     if isDown:
@@ -188,46 +163,18 @@ proc handleControllerButton*(game: var Game, button: uint8, isDown: bool) =
       playSound(soundCharSwitch)
 
   of ButtonDpadLeft:
-    if isDown and game.state == settings:
-      case game.settingsCursor
-      of 0:
-        game.settingsWindowPreset = (game.settingsWindowPreset - 1 + WindowPresets.len) mod WindowPresets.len
-        game.pendingSettingsApply = true
-      of 1, 2:
-        game.pendingSettingsApply = true
-      of 3:
-        adjustVolumePad(-VolumeStep)
-      else: discard
-    else:
-      dpadLeftHeld = isDown
-      syncDirectionalHeldState(game)
+    dpadLeftHeld = isDown
+    syncDirectionalHeldState(game)
 
   of ButtonDpadRight:
-    if isDown and game.state == settings:
-      case game.settingsCursor
-      of 0:
-        game.settingsWindowPreset = (game.settingsWindowPreset + 1) mod WindowPresets.len
-        game.pendingSettingsApply = true
-      of 1, 2:
-        game.pendingSettingsApply = true
-      of 3:
-        adjustVolumePad(VolumeStep)
-      else: discard
-    else:
-      dpadRightHeld = isDown
-      syncDirectionalHeldState(game)
+    dpadRightHeld = isDown
+    syncDirectionalHeldState(game)
 
   of ButtonDpadUp:
-    if isDown and game.state == settings:
-      game.cycleSettingsCursorPad(-1)
-    else:
-      dpadUpHeld = isDown
+    dpadUpHeld = isDown
 
   of ButtonDpadDown:
-    if isDown and game.state == settings:
-      game.cycleSettingsCursorPad(1)
-    else:
-      dpadDownHeld = isDown
+    dpadDownHeld = isDown
 
   else: discard
 
@@ -253,11 +200,13 @@ proc applyControllerSnapshot*(
   ## transition logic deterministic without requiring hardware.
   if aPressed != prevButtonA:
     handleControllerButton(game, ButtonA, aPressed)
+    if aPressed: padConfirmPressed = true
     prevButtonA = aPressed
 
   if bPressed != prevButtonB:
     if bPressed:
       handleControllerButton(game, ButtonB, true)
+      padBackPressed = true
     prevButtonB = bPressed
 
   if startPressed != prevButtonStart:

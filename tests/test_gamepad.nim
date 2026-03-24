@@ -151,43 +151,29 @@ suite "gamepad system":
     check g.leftHeld == true
     check g.rightHeld == false
 
-  # --- Settings navigation tests ---
+  # --- Settings navigation: handled by one-shot flags in main(), not handleControllerButton ---
 
-  test "d-pad down moves settings cursor forward":
+  test "d-pad down in settings does not move cursor":
     var g = newGame()
     g.openSettings()
     check g.settingsCursor == 0
     handleControllerButton(g, ButtonDpadDown, true)
-    check g.settingsCursor == 1
+    check g.settingsCursor == 0
 
-  test "d-pad up moves settings cursor backward":
+  test "d-pad up in settings does not move cursor":
     var g = newGame()
     g.openSettings()
     g.settingsCursor = 2
     handleControllerButton(g, ButtonDpadUp, true)
-    check g.settingsCursor == 1
+    check g.settingsCursor == 2
 
-  test "d-pad up wraps from 0 to 4":
-    var g = newGame()
-    g.openSettings()
-    check g.settingsCursor == 0
-    handleControllerButton(g, ButtonDpadUp, true)
-    check g.settingsCursor == 4
-
-  test "d-pad down wraps from 4 to 0":
-    var g = newGame()
-    g.openSettings()
-    g.settingsCursor = 4
-    handleControllerButton(g, ButtonDpadDown, true)
-    check g.settingsCursor == 0
-
-  test "B exits settings to previous state":
+  test "B in settings does not change state":
     var g = newGame()
     g.state = menu
     g.openSettings()
     check g.state == settings
     handleControllerButton(g, ButtonB, true)
-    check g.state == menu
+    check g.state == settings
 
   test "Start exits settings to previous state":
     var g = newGame()
@@ -199,38 +185,32 @@ suite "gamepad system":
     handleControllerButton(g, ButtonStart, true)
     check g.state == paused
 
-  test "A on back row exits settings":
+  test "A in settings does not change state or set pending":
     var g = newGame()
     g.state = menu
     g.openSettings()
     g.settingsCursor = 4
     handleControllerButton(g, ButtonA, true)
-    check g.state == menu
+    check g.state == settings
+    check g.pendingSettingsApply == false
 
-  test "d-pad right on window size cycles preset forward and sets pending":
+  test "d-pad right in settings does not cycle preset":
     var g = newGame()
     g.openSettings()
     g.settingsCursor = 0
     g.settingsWindowPreset = 0
     handleControllerButton(g, ButtonDpadRight, true)
-    check g.settingsWindowPreset == 1
-    check g.pendingSettingsApply == true
+    check g.settingsWindowPreset == 0
+    check g.pendingSettingsApply == false
 
-  test "d-pad left on window size cycles preset backward with wrap":
+  test "d-pad left in settings does not cycle preset":
     var g = newGame()
     g.openSettings()
     g.settingsCursor = 0
     g.settingsWindowPreset = 0
     handleControllerButton(g, ButtonDpadLeft, true)
-    check g.settingsWindowPreset == WindowPresets.len - 1
-    check g.pendingSettingsApply == true
-
-  test "A on fullscreen row sets pending apply":
-    var g = newGame()
-    g.openSettings()
-    g.settingsCursor = 1
-    handleControllerButton(g, ButtonA, true)
-    check g.pendingSettingsApply == true
+    check g.settingsWindowPreset == 0
+    check g.pendingSettingsApply == false
 
   # --- One-shot press flag tests ---
 
@@ -252,21 +232,43 @@ suite "gamepad system":
     check padDownPressed == true
     check padUpPressed == false
 
-  test "clearPadPressed resets one-shot flags":
+  test "snapshot sets padConfirmPressed on A rising edge":
     var g = newGame()
     g.startGame()
     g.skipActTitle()
     clearPadPressed()
-    applyControllerSnapshot(g, false, false, false, false, false, true, true, true, true, 0'i16)
+    applyControllerSnapshot(g, true, false, false, false, false, false, false, false, false, 0'i16)
+    check padConfirmPressed == true
+    check padBackPressed == false
+
+  test "snapshot sets padBackPressed on B rising edge":
+    var g = newGame()
+    g.startGame()
+    g.skipActTitle()
+    clearPadPressed()
+    applyControllerSnapshot(g, false, true, false, false, false, false, false, false, false, 0'i16)
+    check padBackPressed == true
+    check padConfirmPressed == false
+
+  test "clearPadPressed resets all one-shot flags":
+    var g = newGame()
+    g.startGame()
+    g.skipActTitle()
+    clearPadPressed()
+    applyControllerSnapshot(g, true, true, false, false, false, true, true, true, true, 0'i16)
     check padUpPressed == true
     check padDownPressed == true
     check padLeftPressed == true
     check padRightPressed == true
+    check padConfirmPressed == true
+    check padBackPressed == true
     clearPadPressed()
     check padUpPressed == false
     check padDownPressed == false
     check padLeftPressed == false
     check padRightPressed == false
+    check padConfirmPressed == false
+    check padBackPressed == false
 
 suite "normalizeAxis":
   test "minimum input maps to -32768":
