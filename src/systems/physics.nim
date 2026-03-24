@@ -187,6 +187,7 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
 
     # Reset grounded and wall-touch before collision resolution
     let wasGrounded = c.grounded
+    let preLandVy = c.vy
     c.grounded = false
     c.wallTouching = false
     c.wallTouchDir = 0
@@ -226,7 +227,7 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
 
     # Trigger landing animation on touchdown
     if not wasGrounded and c.grounded:
-      c.triggerLanding()
+      c.triggerLanding(preLandVy)
       result.landedCharacters.add(c.id)
 
     # Hazard detection — skip during death/respawn (invulnerability)

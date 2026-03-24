@@ -106,6 +106,7 @@ proc attemptCharacterJump(c: var Character): bool =
   case c.ability
   of doubleJump:
     if c.grounded or c.coyoteTimer < graceWindow or c.jumpCount < 2:
+      let isSecondJump = c.jumpCount >= 1
       c.vy = c.jumpForce()
       c.grounded = false
       if c.jumpCount < 1:
@@ -114,7 +115,7 @@ proc attemptCharacterJump(c: var Character): bool =
         inc c.jumpCount
       c.coyoteTimer = graceWindow + 1.0
       c.jumpBufferTimer = 0.0
-      c.triggerJump()
+      c.triggerJump(isSecondJump)
       return true
   of wallJump:
     if c.grounded or c.coyoteTimer < graceWindow:

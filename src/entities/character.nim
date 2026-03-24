@@ -211,14 +211,26 @@ proc updateAnimation*(c: var Character, dt: float) =
       # Ivy: breathing — squashY oscillates +/-0.02 on 3s sine
       c.squashY = 1.0 + sin(c.idleTimer * PI * 2.0 / 3.0) * 0.02
 
-proc triggerLanding*(c: var Character) =
-  c.squashX = 1.3
-  c.squashY = 0.7
+proc triggerLanding*(c: var Character, vy: float = 300.0) =
+  ## Apply landing squash proportional to fall velocity.
+  const
+    MinLandingVy = 80.0
+    MaxLandingVy = 600.0
+  let intensity = clamp((vy - MinLandingVy) / (MaxLandingVy - MinLandingVy), 0.0, 1.0)
+  if intensity < 0.1:
+    return
+  c.squashX = 1.0 + 0.3 * intensity
+  c.squashY = 1.0 - 0.3 * intensity
   c.landingTimer = 0.15
 
-proc triggerJump*(c: var Character) =
-  c.squashX = 0.7
-  c.squashY = 1.3
+proc triggerJump*(c: var Character, isDoubleJump: bool = false) =
+  ## Apply jump stretch; smaller for Pip's double jump.
+  if isDoubleJump:
+    c.squashX = 0.85
+    c.squashY = 1.15
+  else:
+    c.squashX = 0.7
+    c.squashY = 1.3
 
 proc drawWidth*(c: Character): float =
   float(c.width) * c.squashX
