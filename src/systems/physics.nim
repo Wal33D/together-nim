@@ -17,6 +17,7 @@ type
 
   PhysicsResult* = object
     deadCharacters*: seq[string]
+    hazardCharacters*: seq[string]
     exitedCharacters*: seq[string]
     landedCharacters*: seq[LandedCharacter]
 
@@ -123,7 +124,8 @@ proc applyJump*(c: var Character) =
     c.triggerJump()
 
 proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float): PhysicsResult =
-  result = PhysicsResult(deadCharacters: @[], exitedCharacters: @[], landedCharacters: @[])
+  result = PhysicsResult(deadCharacters: @[], hazardCharacters: @[],
+                         exitedCharacters: @[], landedCharacters: @[])
 
   # Update moving platforms
   updateMovingPlatforms(level, dt)
@@ -243,6 +245,7 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
           let hRect = Rect(x: hazard.x, y: hazard.y, w: hazard.width, h: hazard.height)
           if intersects(toRect(c), hRect):
             result.deadCharacters.add(c.id)
+            result.hazardCharacters.add(c.id)
             break hazardCheck
 
       # Fell off screen

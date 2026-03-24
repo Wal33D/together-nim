@@ -51,15 +51,15 @@ suite "screenEffects":
     var fx = initScreenEffects()
     var cam = newCamera()
     fx.triggerShake(cam, 4.0, 0.3)
-    check cam.shakeTimer == 0.3
-    check cam.shakeIntensity == 4.0
+    check cam.shakes[0].timer == 0.3
+    check cam.shakes[0].intensity == 4.0
 
   test "triggerShake produces offsets after camera update":
     var fx = initScreenEffects()
     var cam = newCamera()
     fx.triggerShake(cam, 4.0, 0.3)
     cam.updateShake(0.016)
-    check cam.shakeTimer > 0.0
+    check cam.shakes[0].timer > 0.0
     check cam.shakeOffsetX != 0.0 or cam.shakeOffsetY != 0.0
 
   test "vignette is active by default":
