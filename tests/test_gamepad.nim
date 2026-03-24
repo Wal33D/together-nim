@@ -127,9 +127,9 @@ suite "gamepad system":
     handleControllerAxis(g, AxisLeftX, 100'i16)
     check g.rightHeld == false
 
-  test "AXIS_DEADZONE constant is reasonable":
-    check AXIS_DEADZONE > 0
-    check AXIS_DEADZONE < 16000
+  test "AxisDeadzone constant is reasonable":
+    check AxisDeadzone > 0
+    check AxisDeadzone < 16000
 
   test "polling snapshot starts game from menu on A press":
     var g = newGame()

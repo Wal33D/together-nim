@@ -19,7 +19,7 @@ const
   ButtonDpadLeft* = 13'u8
   ButtonDpadRight* = 14'u8
   AxisLeftX* = 0'u8
-  AXIS_DEADZONE* = 8000'i16  ## Stick deadzone threshold.
+  AxisDeadzone* = 8000'i16  ## Stick deadzone threshold.
 
 # --- Module state ---
 
@@ -133,8 +133,8 @@ proc handleControllerButton*(game: var Game, button: uint8, isDown: bool) =
 proc handleControllerAxis*(game: var Game, axis: uint8, value: int16) =
   ## Map left stick X axis to left/right movement.
   if axis == AxisLeftX:
-    let newLeft = value < -AXIS_DEADZONE
-    let newRight = value > AXIS_DEADZONE
+    let newLeft = value < -AxisDeadzone
+    let newRight = value > AxisDeadzone
     stickLeftHeld = newLeft
     stickRightHeld = newRight
     syncDirectionalHeldState(game)
@@ -181,8 +181,8 @@ proc applyControllerSnapshot*(
     handleControllerButton(game, ButtonDpadRight, dpadRightPressed)
     prevDpadRight = dpadRightPressed
 
-  let newStickLeft = leftX < -AXIS_DEADZONE
-  let newStickRight = leftX > AXIS_DEADZONE
+  let newStickLeft = leftX < -AxisDeadzone
+  let newStickRight = leftX > AxisDeadzone
   if newStickLeft != prevStickLeft or newStickRight != prevStickRight:
     handleControllerAxis(game, AxisLeftX, leftX)
     prevStickLeft = newStickLeft
