@@ -65,6 +65,7 @@ type
     settingsWindowPreset*: int
     fullscreenEnabled*: bool
     vsyncEnabled*: bool
+    pendingSettingsApply*: bool
     creditsTimer*: float
     dynamicTimeScale*: float
     slowMotionTimer*: float
