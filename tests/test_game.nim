@@ -620,3 +620,56 @@ suite "won screen":
     check g.totalDeaths == 0
     g.totalDeaths += 1
     check g.totalDeaths == 1
+
+suite "first-meeting introductions":
+  test "level 5 schedules intro for luca":
+    var g = newGame()
+    g.startGame()
+    g.skipActTitle()
+    # Advance to level 5 (idx 4) which introduces luca.
+    g.charactersMet = {0'u8}  # Only pip met so far.
+    g.loadLevel(4)
+    check g.introQueue.len == 1
+    let introIdx = g.introQueue[0]
+    check g.characters[introIdx].id == "luca"
+
+  test "intro does not replay on restart":
+    var g = newGame()
+    g.startGame()
+    g.skipActTitle()
+    g.charactersMet = {0'u8}
+    g.loadLevel(4)
+    check g.introQueue.len == 1
+    # Mark luca as met (simulating completed intro).
+    g.charactersMet.incl(1'u8)
+    # Restart same level.
+    g.loadLevel(4)
+    check g.introQueue.len == 0
+
+  test "intro freezes physics after 2s delay":
+    var g = newGame()
+    g.state = playing
+    g.charactersMet = {0'u8}
+    g.loadLevel(4)
+    check g.gameFrozen == false
+    # Advance past the 2s pre-delay.
+    let scaledStep = FIXED_TIMESTEP * TIME_SCALE
+    let steps = int(2.1 / scaledStep)
+    for _ in 0 ..< steps:
+      g.update(FIXED_TIMESTEP)
+    check g.gameFrozen == true
+    check g.narrationActive == true
+
+  test "intro glow boost increases during intro":
+    var g = newGame()
+    g.state = playing
+    g.charactersMet = {0'u8}
+    g.loadLevel(4)
+    # Advance past the 2s pre-delay + a bit into the intro.
+    let scaledStep = FIXED_TIMESTEP * TIME_SCALE
+    let steps = int(2.5 / scaledStep)
+    for _ in 0 ..< steps:
+      g.update(FIXED_TIMESTEP)
+    let introIdx = g.introCharacterIdx
+    check introIdx >= 0
+    check g.characters[introIdx].introGlowBoost > 0.0

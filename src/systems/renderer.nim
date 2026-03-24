@@ -505,7 +505,7 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
         for pass in 0 .. 2:
           let t = float(2 - pass) / 2.0  # 1.0, 0.5, 0.0
           let scale = 1.0 + (glowScale - 1.0) * (0.4 + 0.6 * t)
-          let alpha = pulse * (0.3 + 0.35 * t) * float(baseAlpha) / 255.0
+          let alpha = pulse * (0.3 + 0.35 * t) * float(baseAlpha) / 255.0 * (1.0 + ch.introGlowBoost)
           let gw = charW * scale
           let gh = charH * scale
           let gx = charX - (gw - charW) / 2.0

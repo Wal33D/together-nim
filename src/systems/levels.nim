@@ -1304,3 +1304,13 @@ const level35* = Level(
 )
 
 const allLevels*: array[35, Level] = [level1, level2, level3, level4, level5, level6, level7, level8, level9, level10, level11, level12, level13, level14, level15, level16, level17, level18, level19, level20, level21, level22, level23, level24, level25, level26, level27, level28, level29, level30, level31, level32, level33, level34, level35]
+
+proc introNarration*(id: string): string =
+  ## Return the first-meeting narration text for a character, or empty if none.
+  case id
+  of "luca": "Something yellow drifted down from above. It fell slowly, as if gravity were just a suggestion. Luca had always been a dreamer."
+  of "bruno": "The ground shook \u2014 gently. A large brown shape stood at the bottom, solid as stone. Bruno didn't need to move fast. He just needed to be there."
+  of "cara": "A flash of pink darted up the wall. No ledge was too high, no surface too smooth. Cara climbed where others couldn't even look."
+  of "felix": "Tan and patient, Felix stood at the edge without falling. Others rushed and stumbled. Felix simply... waited."
+  of "ivy": "Teal and gentle, Ivy floated down like a leaf. Where others crashed, she landed softly. There was no hurry in her descent."
+  else: ""

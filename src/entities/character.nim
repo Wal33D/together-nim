@@ -58,6 +58,7 @@ type
     prevLeanSign*: int                 # previous lean direction sign for overshoot detection
     leanOvershootTimer*: float         # countdown for direction-reversal overshoot (0.1s)
     wallSlideOffsetX*: float           # 1-2px offset into wall during Cara wall-slide
+    introGlowBoost*: float             # additive glow alpha multiplier during intro (0..2)
 
 proc newCharacter*(id: string): Character =
   result.x = 0.0
@@ -102,6 +103,7 @@ proc newCharacter*(id: string): Character =
   result.prevLeanSign = 0
   result.leanOvershootTimer = 0.0
   result.wallSlideOffsetX = 0.0
+  result.introGlowBoost = 0.0
   case id
   of "pip":
     result.width = 24; result.height = 24
