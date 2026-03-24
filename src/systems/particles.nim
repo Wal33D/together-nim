@@ -24,6 +24,8 @@ type
     baseW*, baseH*: float
     life*, maxLife*: float
     color*: Color
+    scaleRange*: float   ## How much the ring grows: final scale = 1.0 + scaleRange
+    startAlpha*: float   ## Initial alpha (0.0–1.0)
 
   ConfettiParticle* = object
     x*, y*: float
@@ -347,7 +349,25 @@ proc emitSwitchRing*(system: var ParticleSystem, x, y, w, h: float, color: Color
     baseH: h,
     life: RingLife,
     maxLife: RingLife,
-    color: color
+    color: color,
+    scaleRange: 1.0,
+    startAlpha: 1.0
+  ))
+
+const DoubleJumpRingLife = 0.25
+
+proc emitDoubleJumpRing*(system: var ParticleSystem, x, y: float, size: float, color: Color) =
+  ## Spawn an expanding ring at Pip's feet on double-jump.
+  system.ringParticles.add(RingParticle(
+    x: x,
+    y: y,
+    baseW: size,
+    baseH: size,
+    life: DoubleJumpRingLife,
+    maxLife: DoubleJumpRingLife,
+    color: color,
+    scaleRange: 2.0,
+    startAlpha: 0.6
   ))
 
 proc emitPlatformDust*(system: var ParticleSystem, x, y, vx: float) =
