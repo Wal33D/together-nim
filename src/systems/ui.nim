@@ -1270,21 +1270,26 @@ proc renderLevelSelect(ui: UiRenderer, sk: Silky, window: Window,
         cellPos = layout.p(cellX, rowY)
         cellSize = layout.sz(CellW, CellH)
         completed = levelCompleted(levelIdx)
-        fillAlpha: uint8 = if completed: 200 else: 60
-        fill = rgbx(tc.r, tc.g, tc.b, fillAlpha)
-        edgeAlpha: uint8 = if completed: 180 else: 80
-        edge = rgbx(tc.r, tc.g, tc.b, edgeAlpha)
+        available = levelAvailable(levelIdx)
+        locked = not completed and not available
+        fill = if completed: rgbx(tc.r, tc.g, tc.b, 200)
+               elif available: rgbx(tc.r, tc.g, tc.b, 40)
+               else: rgbx(60, 64, 72, 200)
+        edge = if completed: rgbx(tc.r, tc.g, tc.b, 180)
+               elif available: rgbx(tc.r, tc.g, tc.b, 160)
+               else: rgbx(60, 64, 72, 120)
 
       sk.drawSoftPanel(cellPos, cellSize, fill, edge)
 
-      # Level number.
-      let
-        levelNum = $(levelIdx + 1)
-        textColor = if completed: rgbx(240, 244, 250, 255)
-                    else: rgbx(160, 168, 180, 180)
-      drawCenteredText(sk, layout, "Body", levelNum,
-                       cellPos.x + cellSize.x * 0.5,
-                       cellPos.y + layout.px(10), textColor)
+      # Level number (hidden for locked cells).
+      if not locked:
+        let
+          levelNum = $(levelIdx + 1)
+          textColor = if completed: rgbx(240, 244, 250, 255)
+                      else: rgbx(tc.r, tc.g, tc.b, 220)
+        drawCenteredText(sk, layout, "Body", levelNum,
+                         cellPos.x + cellSize.x * 0.5,
+                         cellPos.y + layout.px(10), textColor)
 
       # Completion indicator.
       if completed:
