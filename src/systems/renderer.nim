@@ -12,7 +12,6 @@ import "particles"
 import "render_backend"
 import "screenEffects"
 import math
-import random
 import chroma
 import vmath
 
@@ -32,78 +31,22 @@ const
   ButtonLightenAmount = 0.15
   ButtonHighlightAlpha = 0.3
 
-  BgCharCount = 8
-  BgCharMinSize = 24.0
-  BgCharMaxSize = 56.0
-  BgCharMinAlpha = 0.5
-  BgCharMaxAlpha = 0.7
-  BgCharMaxSpeed = 30.0
+  SilhouetteGrey: constants.Color = (r: 40'u8, g: 40'u8, b: 50'u8)
 
-type
-  BgChar = object
-    pos: Vec2
-    vel: Vec2
-    charIdx: int    # 0-5, maps to character color
-    size: float     # 24..56 px — smaller = further back (slower)
-    alpha: float    # 0.5..0.7
-
-var
-  bgChars: array[BgCharCount, BgChar]
-  bgCharsInit: bool = false
-
-proc initBgChars() =
-  ## Populate background character shapes with random positions and slow drift.
-  for i in 0 ..< BgCharCount:
-    let size = BgCharMinSize + rand(BgCharMaxSize - BgCharMinSize)
-    let speedFactor = float32(size / BgCharMaxSize)
-    bgChars[i] = BgChar(
-      pos: vec2(float32(rand(DEFAULT_WIDTH.float - size)),
-                float32(rand(DEFAULT_HEIGHT.float - size))),
-      vel: vec2(float32((rand(2.0) - 1.0) * BgCharMaxSpeed) * speedFactor,
-                float32((rand(2.0) - 1.0) * BgCharMaxSpeed) * speedFactor),
-      charIdx: i mod 6,
-      size: size,
-      alpha: BgCharMinAlpha + rand(BgCharMaxAlpha - BgCharMinAlpha),
-    )
-  bgCharsInit = true
-
-proc updateBgChars(dt: float) =
-  ## Drift and bounce background character shapes off screen edges.
-  let dt32 = dt.float32
-  for i in 0 ..< BgCharCount:
-    bgChars[i].pos += bgChars[i].vel * dt32
-    let sz = bgChars[i].size.float32
-    # Bounce off left/right.
-    if bgChars[i].pos.x < 0.0:
-      bgChars[i].pos.x = 0.0
-      bgChars[i].vel.x = -bgChars[i].vel.x
-    elif bgChars[i].pos.x + sz > DEFAULT_WIDTH.float32:
-      bgChars[i].pos.x = DEFAULT_WIDTH.float32 - sz
-      bgChars[i].vel.x = -bgChars[i].vel.x
-    # Bounce off top/bottom.
-    if bgChars[i].pos.y < 0.0:
-      bgChars[i].pos.y = 0.0
-      bgChars[i].vel.y = -bgChars[i].vel.y
-    elif bgChars[i].pos.y + sz > DEFAULT_HEIGHT.float32:
-      bgChars[i].pos.y = DEFAULT_HEIGHT.float32 - sz
-      bgChars[i].vel.y = -bgChars[i].vel.y
-
-proc renderBgChars(renderer: RendererPtr) =
-  ## Draw background character silhouettes on the Boxy layer.
+proc renderMenuBgChars(renderer: RendererPtr, game: Game) =
+  ## Draw 6 background character shapes — muted color if unlocked, dark silhouette if locked.
   renderer.setDrawBlendMode(BlendMode_Blend)
-  for i in 0 ..< BgCharCount:
-    let bg = bgChars[i]
-    let c = CHAR_COLORS[bg.charIdx]
-    let a = uint8(bg.alpha * 255.0)
+  for i in 0 ..< 6:
+    let bg = game.menuBgChars[i]
+    let sz = bg.scale * 56.0
+    let unlocked = uint8(bg.charIndex) in game.charactersMet
+    let c = if unlocked: CHAR_COLORS[bg.charIndex] else: SilhouetteGrey
+    let a = uint8(bg.colorAlpha * 255.0)
     renderer.setDrawColor(c.r, c.g, c.b, a)
-    drawFilledRect(renderer, bg.pos.x, bg.pos.y, bg.size, bg.size)
+    drawFilledRect(renderer, bg.pos.x, bg.pos.y, sz, sz)
   renderer.setDrawBlendMode(BlendMode_None)
 
 proc renderMenu(renderer: RendererPtr, game: Game) =
-  if not bgCharsInit:
-    initBgChars()
-  updateBgChars(game.deltaTime)
-
   let top = (r: 8'u8, g: 11'u8, b: 18'u8)
   let bottom = (r: 18'u8, g: 24'u8, b: 34'u8)
   for i in 0 ..< 14:
@@ -118,7 +61,7 @@ proc renderMenu(renderer: RendererPtr, game: Game) =
     drawFilledRect(renderer, 0, bandY.cint, DEFAULT_WIDTH.cint, (DEFAULT_HEIGHT div 14 + 1).cint)
 
   # Bouncing character shapes — behind UI fog panels.
-  renderBgChars(renderer)
+  renderMenuBgChars(renderer, game)
 
   renderer.setDrawBlendMode(BlendMode_Blend)
   renderer.setDrawColor(84, 110, 150, 28)
@@ -1042,6 +985,8 @@ proc renderGame*(renderer: RendererPtr, game: Game) =
   of won:
     renderMenu(renderer, game)
     renderParticleSystem(renderer, game.particles, 0, 0)
+  of storyBeat:
+    renderGameplay(renderer, game)
 
   # Screen flash overlay — fades out over time.
   if game.screenEffects.flashActive():
