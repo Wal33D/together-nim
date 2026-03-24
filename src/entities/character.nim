@@ -54,6 +54,10 @@ type
     prevProximityTarget*: int        # previous frame's proximityTarget; -1 = none
     isolationTimer*: float           # seconds without any neighbour within 200 px; resets on contact
     isolationSat*: float             # 0.0 = full colour, 1.0 = near-greyscale (loneliness)
+    rotation*: float                   # visual tilt in degrees; positive = lean right. Anchored at center-bottom.
+    prevLeanSign*: int                 # previous lean direction sign for overshoot detection
+    leanOvershootTimer*: float         # countdown for direction-reversal overshoot (0.1s)
+    wallSlideOffsetX*: float           # 1-2px offset into wall during Cara wall-slide
 
 proc newCharacter*(id: string): Character =
   result.x = 0.0
@@ -94,6 +98,10 @@ proc newCharacter*(id: string): Character =
   result.prevProximityTarget = -1
   result.isolationTimer = 0.0
   result.isolationSat = 0.0
+  result.rotation = 0.0
+  result.prevLeanSign = 0
+  result.leanOvershootTimer = 0.0
+  result.wallSlideOffsetX = 0.0
   case id
   of "pip":
     result.width = 24; result.height = 24
@@ -166,6 +174,49 @@ proc updateAnimation*(c: var Character, dt: float) =
     if abs(c.squashY - 1.0) < 0.02:
       c.celebrating = false
       c.squashY = 1.0
+
+  # Fall stretch — proportional to vy when falling faster than 200 px/s.
+  if not c.grounded and c.vy > 200.0:
+    let fallT = clamp((c.vy - 200.0) / (MAX_FALL_SPEED - 200.0), 0.0, 1.0)
+    c.squashX -= 0.10 * fallT
+    c.squashY += 0.15 * fallT
+
+  # Movement lean — 2-3° tilt in movement direction.
+  block:
+    var targetRotation = 0.0
+    if abs(c.vx) > 10.0:
+      let leanT = clamp(abs(c.vx) / 180.0, 0.0, 1.0)
+      let sign = if c.vx > 0.0: 1.0 else: -1.0
+      targetRotation = sign * (2.0 + 1.0 * leanT)
+
+    # Detect direction reversal and trigger overshoot.
+    let curSign = if targetRotation > 0.1: 1
+                  elif targetRotation < -0.1: -1
+                  else: 0
+    if curSign != 0 and c.prevLeanSign != 0 and curSign != c.prevLeanSign:
+      c.leanOvershootTimer = 0.1
+    if curSign != 0:
+      c.prevLeanSign = curSign
+
+    # During overshoot, briefly target −1° in the new direction.
+    if c.leanOvershootTimer > 0.0:
+      c.leanOvershootTimer -= dt
+      let overshootSign = if targetRotation > 0.0: -1.0 else: 1.0
+      targetRotation = overshootSign * 1.0
+
+    let leanSpeed = if abs(targetRotation) < 0.1 and abs(c.rotation) > 0.5: 15.0 else: 10.0
+    c.rotation += (targetRotation - c.rotation) * leanSpeed * dt
+    if abs(c.rotation) < 0.05:
+      c.rotation = 0.0
+
+  # Cara wall-slide compress — 0.9× width, 1.05× height, offset 1-2px into wall.
+  if c.wallSliding and c.ability == wallJump:
+    c.squashX = min(c.squashX, 0.90)
+    c.squashY = max(c.squashY, 1.05)
+    c.rotation = float(c.wallTouchDir) * 5.0
+    c.wallSlideOffsetX = float(c.wallTouchDir) * -1.5
+  else:
+    c.wallSlideOffsetX = 0.0
 
   # Landing timer decay
   if c.landingTimer > 0:

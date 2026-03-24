@@ -1,10 +1,12 @@
 ## Boxy-backed rendering adapter used by the game renderer.
 
-import boxy
-import chroma
-import bumpy
-import vmath
-import "../constants"
+import
+  boxy,
+  chroma,
+  bumpy,
+  vmath,
+  std/math,
+  ../constants
 
 type
   BlendMode* = enum
@@ -154,6 +156,21 @@ proc drawRotatedFilledRect*(renderer: RendererPtr, cx, cy, w, h, angle: float) =
   renderer.boxy.rotate(angle)
   renderer.boxy.drawRect(
     bumpy.rect(-w * 0.5, -h * 0.5, w, h),
+    renderer.currentColor
+  )
+  renderer.boxy.restoreTransform()
+
+proc drawRotatedFilledRectBottom*(renderer: RendererPtr, x, y, w, h, angleDeg: float) =
+  ## Draw a filled rect rotated around center-bottom (feet stay planted).
+  if w <= 0.0 or h <= 0.0:
+    return
+  let cx = x + w * 0.5
+  let cy = y + h
+  renderer.boxy.saveTransform()
+  renderer.boxy.translate(vec2(cx, cy))
+  renderer.boxy.rotate(degToRad(angleDeg))
+  renderer.boxy.drawRect(
+    bumpy.rect(-w * 0.5, -h, w, h),
     renderer.currentColor
   )
   renderer.boxy.restoreTransform()

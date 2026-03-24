@@ -465,7 +465,7 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
         chColor.g = uint8(min(255.0, brightened.g * 255.0))
         chColor.b = uint8(min(255.0, brightened.b * 255.0))
 
-    let dx = (ch.drawX() + ch.idleOffsetX + leanOffset).cint - camX
+    let dx = (ch.drawX() + ch.idleOffsetX + leanOffset + ch.wallSlideOffsetX).cint - camX
     let dy = (ch.drawY() + ch.idleSway()).cint - camY
     let dw = ch.drawWidth().cint
     let dh = ch.drawHeight().cint
@@ -515,19 +515,29 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
         renderer.setDrawBlendMode(BlendMode_None)
 
     # Character body — flash red during death, normal color otherwise
+    let useRotation = abs(ch.rotation) > 0.1
     if ch.isDying():
       renderer.setDrawBlendMode(BlendMode_Blend)
       renderer.setDrawColor(255, 40, 40, 220)
-      drawFilledRect(renderer, dx, dy, dw, dh)
+      if useRotation:
+        drawRotatedFilledRectBottom(renderer, dx.float, dy.float, dw.float, dh.float, ch.rotation)
+      else:
+        drawFilledRect(renderer, dx, dy, dw, dh)
       renderer.setDrawBlendMode(BlendMode_None)
     elif ch.isRespawning():
       renderer.setDrawBlendMode(BlendMode_Blend)
       renderer.setDrawColor(chColor.r, chColor.g, chColor.b, baseAlpha)
-      drawFilledRect(renderer, dx, dy, dw, dh)
+      if useRotation:
+        drawRotatedFilledRectBottom(renderer, dx.float, dy.float, dw.float, dh.float, ch.rotation)
+      else:
+        drawFilledRect(renderer, dx, dy, dw, dh)
       renderer.setDrawBlendMode(BlendMode_None)
     else:
       renderer.setDrawColor(chColor.r, chColor.g, chColor.b, 255)
-      drawFilledRect(renderer, dx, dy, dw, dh)
+      if useRotation:
+        drawRotatedFilledRectBottom(renderer, dx.float, dy.float, dw.float, dh.float, ch.rotation)
+      else:
+        drawFilledRect(renderer, dx, dy, dw, dh)
 
     # Skip decorations during death/respawn animation
     if ch.isDying() or ch.isRespawning():
