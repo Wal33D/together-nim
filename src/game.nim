@@ -3,6 +3,7 @@
 import
   std/[math, random, tables],
   windy,
+  vmath,
   constants,
   entities/character,
   entities/level,
@@ -24,6 +25,13 @@ type
     startLevel*: int
     endLevel*: int
     themeColor*: Color
+
+  MenuBgChar* = object
+    pos*: Vec2
+    vel*: Vec2
+    scale*: float       # 0.5–1.0 for parallax depth
+    colorAlpha*: float  # 0.6 for muted appearance
+    charIndex*: int
 
   Game* = object
     state*: GameState
@@ -95,6 +103,7 @@ type
     comboReadyTimer*: float
     charFlashTimers*: array[6, float]
     glideShimmerTimer*: float
+    menuBgChars*: array[6, MenuBgChar]
 
   ThoughtEntry = object
     pair: string
@@ -561,6 +570,41 @@ proc loadLevel*(game: var Game, idx: int) =
     startOverview(game.camera, level.levelWidth, level.levelHeight,
                   ch.x, ch.y, float(ch.width), float(ch.height))
 
+const
+  MenuBgCharMaxSpeed = 30.0
+
+proc initMenuBgChars*(game: var Game) =
+  ## Populate 6 background character shapes with random positions and depth-scaled velocity.
+  for i in 0 ..< 6:
+    let s = 0.5 + rand(0.5)  # scale 0.5..1.0
+    let sz = s * 56.0
+    game.menuBgChars[i] = MenuBgChar(
+      pos: vec2(rand(DEFAULT_WIDTH.float - sz), rand(DEFAULT_HEIGHT.float - sz)),
+      vel: vec2((rand(2.0) - 1.0) * MenuBgCharMaxSpeed * s,
+                (rand(2.0) - 1.0) * MenuBgCharMaxSpeed * s),
+      scale: s,
+      colorAlpha: 0.6,
+      charIndex: i,
+    )
+
+proc updateMenuBgChars*(game: var Game, dt: float) =
+  ## Drift and bounce background character shapes off screen edges.
+  for i in 0 ..< 6:
+    game.menuBgChars[i].pos += game.menuBgChars[i].vel * dt
+    let sz = game.menuBgChars[i].scale * 56.0
+    if game.menuBgChars[i].pos.x < 0.0:
+      game.menuBgChars[i].pos.x = 0.0
+      game.menuBgChars[i].vel.x = -game.menuBgChars[i].vel.x
+    elif game.menuBgChars[i].pos.x + sz > DEFAULT_WIDTH.float:
+      game.menuBgChars[i].pos.x = DEFAULT_WIDTH.float - sz
+      game.menuBgChars[i].vel.x = -game.menuBgChars[i].vel.x
+    if game.menuBgChars[i].pos.y < 0.0:
+      game.menuBgChars[i].pos.y = 0.0
+      game.menuBgChars[i].vel.y = -game.menuBgChars[i].vel.y
+    elif game.menuBgChars[i].pos.y + sz > DEFAULT_HEIGHT.float:
+      game.menuBgChars[i].pos.y = DEFAULT_HEIGHT.float - sz
+      game.menuBgChars[i].vel.y = -game.menuBgChars[i].vel.y
+
 proc newGame*(): Game =
   result = Game(
     state: menu,
@@ -580,6 +624,7 @@ proc newGame*(): Game =
     screenEffects: initScreenEffects(),
     dynamicTimeScale: 1.0,
   )
+  result.initMenuBgChars()
 
 proc actForLevel*(levelIdx: int): int =
   ## Return the act index (0-based) for a given level index, or -1 if none.
@@ -809,6 +854,9 @@ proc update*(game: var Game, dt: float) =
   of menu:
     game.menuTime += scaledDt
     game.menuAtmosphere.update(scaledDt)
+    game.particles.emitMenuAmbient(DEFAULT_WIDTH.float, DEFAULT_HEIGHT.float)
+    game.particles.update(scaledDt)
+    game.updateMenuBgChars(scaledDt)
   of playing:
     # Intro sequence for first-meeting characters.
     if game.introQueue.len > 0:
@@ -1503,9 +1551,13 @@ proc update*(game: var Game, dt: float) =
   of credits:
     game.creditsTimer += scaledDt
 
+  of settings:
+    game.updateMenuBgChars(scaledDt)
+
   of levelSelect:
     if game.levelSelectRejectTimer > 0:
       game.levelSelectRejectTimer = max(0.0, game.levelSelectRejectTimer - scaledDt)
+    game.updateMenuBgChars(scaledDt)
 
   of won:
     game.wonTimer += scaledDt
@@ -1514,6 +1566,7 @@ proc update*(game: var Game, dt: float) =
     game.particles.update(scaledDt)
     if rand(1.0) < 0.3:
       game.particles.emitWinSparkle()
+    game.updateMenuBgChars(scaledDt)
 
   else:
     discard
