@@ -264,7 +264,7 @@ proc cycleMenuSpotlight*(ui: UiRenderer, delta: int) =
   let prev = ui.menuSpotlight
   ui.menuSpotlight = (ui.menuSpotlight + delta + count * 4) mod count
   if ui.menuSpotlight != prev:
-    playSound(soundMenuHover)
+    playMenuHoverNote(ui.menuSpotlight)
 
 proc cycleMenuCursor*(delta: int) =
   ## Move the main menu cursor up or down among the 5 buttons.
@@ -272,14 +272,14 @@ proc cycleMenuCursor*(delta: int) =
   let prev = menuCursor
   menuCursor = (menuCursor + delta + count * 4) mod count
   if menuCursor != prev:
-    playSound(soundMenuHover)
+    playMenuHoverNote(menuCursor)
 
 proc cyclePauseSelection*(ui: UiRenderer, delta: int) =
   const count = 4
   let prev = ui.pauseSelection
   ui.pauseSelection = (ui.pauseSelection + delta + count * 4) mod count
   if ui.pauseSelection != prev:
-    playSound(soundMenuHover)
+    playMenuHoverNote(ui.pauseSelection)
 
 proc cycleSettingsCursor*(game: var Game, delta: int) =
   ## Move settings cursor up/down (0=WindowSize, 1=Fullscreen, 2=VSync, 3=Volume, 4=Back).
@@ -287,7 +287,7 @@ proc cycleSettingsCursor*(game: var Game, delta: int) =
   let prev = game.settingsCursor
   game.settingsCursor = (game.settingsCursor + delta + count * 4) mod count
   if game.settingsCursor != prev:
-    playSound(soundMenuHover)
+    playMenuHoverNote(game.settingsCursor)
 
 proc activateFocusedAction*(ui: UiRenderer, game: var Game) =
   case game.state
@@ -598,12 +598,43 @@ proc renderLevelLabel(sk: Silky, layout: UiLayout) =
                    layout.origin.y + layout.px(40),
                    rgbx(248, 249, 251, alpha))
 
+proc renderThoughtBubble(sk: Silky, layout: UiLayout, game: Game) =
+  ## Draw thought bubble above the thinking character.
+  let alpha = game.thoughtBubbleAlpha()
+  if alpha <= 0.001 or game.thoughtBubble.text.len == 0:
+    return
+  let idx = game.thoughtBubble.charIdx
+  if idx < 0 or idx >= game.characters.len:
+    return
+  let ch = game.characters[idx]
+  let camX = game.camera.x + game.camera.shakeOffsetX
+  let camY = game.camera.y + game.camera.shakeOffsetY
+  let screenX = (ch.x + float(ch.width) * 0.5 - camX).float32
+  let screenY = (ch.drawY() - 10.0 - camY).float32
+  let sx = layout.origin.x + screenX * layout.scale
+  let sy = layout.origin.y + screenY * layout.scale
+  let textSize = sk.uiTextSize(layout, "Small", game.thoughtBubble.text)
+  let padX = layout.px(8)
+  let padY = layout.px(4)
+  let boxW = textSize.x + padX * 2
+  let boxH = textSize.y + padY * 2
+  let boxX = sx - boxW * 0.5
+  let boxY = sy - boxH
+  let a = uint8(clamp(alpha * 255.0, 0.0, 255.0))
+  let bgA = uint8(clamp(alpha * 180.0, 0.0, 180.0))
+  sk.drawRect(snap(vec2(boxX, boxY)), vec2(round(boxW), round(boxH)),
+              rgbx(12, 14, 20, bgA))
+  discard sk.drawUiText(layout, "Small", game.thoughtBubble.text,
+                        snap(vec2(boxX + padX, boxY + padY)),
+                        rgbx(230, 234, 240, a))
+
 proc renderGameplayHud(sk: Silky, layout: UiLayout, game: Game) =
   renderStatusPanel(sk, layout, game)
   renderCharacterStrip(sk, layout, game)
   renderNarrationRibbon(sk, layout, game)
   renderCharInfoStrip(sk, layout)
   renderLevelLabel(sk, layout)
+  renderThoughtBubble(sk, layout, game)
 
 proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
                     x, y: float32, idx: int, name, gift: string,
@@ -1215,7 +1246,7 @@ proc renderSettings(ui: UiRenderer, sk: Silky, window: Window,
     if window.mousePos.vec2.overlaps(rowRect):
       if game.settingsCursor != i:
         game.settingsCursor = i
-        playSound(soundMenuHover)
+        playMenuHoverNote(i)
 
 proc renderLevelSelect(ui: UiRenderer, sk: Silky, window: Window,
                        layout: UiLayout, game: var Game) =

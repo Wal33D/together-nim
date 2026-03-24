@@ -28,6 +28,8 @@ const
     soundJumpCara, soundJumpFelix, soundJumpIvy
   ]
 
+  MenuHoverFreqs* = [261.6, 329.6, 392.0, 440.0, 523.3]  # C4 E4 G4 A4 C5
+
 proc musicBedPattern*(): seq[MusicStep] =
   ## A short, looping ambient bed with a slow pulse and a higher companion line.
   ##
@@ -636,6 +638,50 @@ when defined(withAudio):
       gInstances[0] = inst
     discard pthread_mutex_unlock(addr gAudioMutex)
 
+  proc playMenuHoverNote*(buttonIndex: int) =
+    ## Play a musical note for the given menu button index (3-stage envelope).
+    if not gAudioOpen: return
+    let idx = clamp(buttonIndex, 0, MenuHoverFreqs.high)
+    let freq = MenuHoverFreqs[idx]
+
+    var inst: SoundInstance
+    inst.phase         = 0.0
+    inst.noteIndex     = 0
+    inst.sampleInNote  = 0
+    inst.samplesPlayed = 0
+    inst.noteCount     = 0
+    inst.filterState   = 0.0
+    inst.noiseState    = 0xDEADBEEF'u32
+
+    template addNote(f1, f2: float, ms: int, amp: float,
+                     env: NoteEnvelope = envFlat,
+                     wf: NoteWaveform = wfSine) =
+      let ni = inst.noteCount
+      inst.notes[ni] = SoundNote(
+        freqStart: f1, freqEnd: f2,
+        durationSamples: (ms * SAMPLE_RATE) div 1000,
+        amplitude: amp, envelope: env, waveform: wf)
+      inc inst.noteCount
+
+    # 5ms attack ramp-up, 80ms flat sustain, 40ms exponential decay.
+    addNote(freq, freq, 5, 0.15, envRampUp)
+    addNote(freq, freq, 80, 0.15, envFlat)
+    addNote(freq, freq, 40, 0.15, envDecay)
+
+    inst.totalSamples = 0
+    for i in 0..<inst.noteCount:
+      inst.totalSamples += inst.notes[i].durationSamples
+    inst.active = true
+
+    discard pthread_mutex_lock(addr gAudioMutex)
+    block findSlot:
+      for slot in gInstances.mitems:
+        if not slot.active:
+          slot = inst
+          break findSlot
+      gInstances[0] = inst
+    discard pthread_mutex_unlock(addr gAudioMutex)
+
   proc setActOscConfig*(config: ActOscParams) =
     ## Store per-act oscillator configuration, applied in next buffer fill.
     if not gAudioOpen: return
@@ -669,6 +715,7 @@ else:
   proc shutdownAudio*() = discard
   proc playSound*(kind: SoundKind) = discard
   proc playLandingSound*(fallVelocity: float, ability: CharacterAbility) = discard
+  proc playMenuHoverNote*(buttonIndex: int) = discard
   proc setActPalette*(palette: TonalPalette) = discard
   proc setActOscConfig*(config: ActOscParams) = discard
   proc setCharacterActive*(charIdx: int, active: bool) = discard
