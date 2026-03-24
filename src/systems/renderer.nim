@@ -528,15 +528,29 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
 
       # Skip eye rendering when blinking
       if not ch.blinking:
-        # White sclera
-        renderer.setDrawColor(255, 255, 255, 255)
-        drawFilledRect(renderer, leftEyeX, eyeY, eyeSize, eyeSize)
-        drawFilledRect(renderer, rightEyeX, eyeY, eyeSize, eyeSize)
+        if ch.celebrating:
+          # Happy upward-arc eyes — no sclera, just dark arcs.
+          renderer.setDrawColor(30, 30, 30, 255)
+          let arcW = max(2, (eyeSize.float * 0.6).int).cint
+          let leftArcX = leftEyeX + (eyeSize - arcW) div 2
+          let rightArcX = rightEyeX + (eyeSize - arcW) div 2
+          let arcBaseY = eyeY + eyeSize div 2
+          let arcH = 2.0
+          for px in 0 ..< arcW.int:
+            let t = if arcW > 1: (2.0 * px.float / (arcW - 1).float) - 1.0 else: 0.0
+            let yOff = cint(round(arcH * (1.0 - t * t)))
+            drawFilledRect(renderer, leftArcX + px.cint, arcBaseY - yOff, 1, 2)
+            drawFilledRect(renderer, rightArcX + px.cint, arcBaseY - yOff, 1, 2)
+        else:
+          # White sclera
+          renderer.setDrawColor(255, 255, 255, 255)
+          drawFilledRect(renderer, leftEyeX, eyeY, eyeSize, eyeSize)
+          drawFilledRect(renderer, rightEyeX, eyeY, eyeSize, eyeSize)
 
-        # Dark pupils
-        renderer.setDrawColor(30, 30, 30, 255)
-        drawFilledRect(renderer, leftEyeX + 1 + pupilOffset, eyeY + 1, pupilSize, pupilSize)
-        drawFilledRect(renderer, rightEyeX + 1 + pupilOffset, eyeY + 1, pupilSize, pupilSize)
+          # Dark pupils
+          renderer.setDrawColor(30, 30, 30, 255)
+          drawFilledRect(renderer, leftEyeX + 1 + pupilOffset, eyeY + 1, pupilSize, pupilSize)
+          drawFilledRect(renderer, rightEyeX + 1 + pupilOffset, eyeY + 1, pupilSize, pupilSize)
 
       # Mouth
       let mouthFrac = if ch.celebrating: 0.38 else: 0.25
