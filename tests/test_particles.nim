@@ -75,3 +75,14 @@ suite "particle system":
     var sys = ParticleSystem(particles: @[])
     update(sys, 0.016)
     check sys.particles.len == 0
+
+  test "emitSuperBounce emits 10 particles":
+    var sys = ParticleSystem(particles: @[])
+    emitSuperBounce(sys, 100.0, 200.0)
+    check sys.particles.len == 10
+
+  test "emitSuperBounce particles have 0.4s lifetime":
+    var sys = ParticleSystem(particles: @[])
+    emitSuperBounce(sys, 100.0, 200.0)
+    for p in sys.particles:
+      check abs(p.maxLife - 0.4) < 0.001

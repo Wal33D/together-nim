@@ -15,7 +15,8 @@ type
     soundReunion, soundSeparation,
     soundJumpPip, soundJumpLuca, soundJumpBruno,
     soundJumpCara, soundJumpFelix, soundJumpIvy,
-    soundJumpPipDouble
+    soundJumpPipDouble,
+    soundSuperBounce
 
   MusicStep* = object
     freqStart*, freqEnd*: float
@@ -581,6 +582,10 @@ when defined(withAudio):
       # Gentle bell: 440 Hz fundamental with 880 Hz octave harmonic, 45ms, soft decay.
       addNote(440, 440, 45, 0.25, envDecay)
       addNote(880, 880, 45, 0.12, envDecay)
+    of soundSuperBounce:
+      # Layered spring+thud: low thud then rising spring tone.
+      addNote(100, 100, 30, 0.08, envDecay)
+      addNote(300, 700, 50, 0.06, envDecay)
 
     inst.totalSamples = 0
     for i in 0..<inst.noteCount:

@@ -67,6 +67,7 @@ const ComboPairs*: array[3, tuple[a, b: int]] = [
 const ComboCooldownTime* = 0.5
 const ComboJumpMultiplier* = 1.4
 const ComboProximity* = 40.0
+const SuperBounceMultiplier* = 1.5
 
 # Tonal palettes for per-act ambient music
 type

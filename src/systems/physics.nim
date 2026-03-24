@@ -21,6 +21,10 @@ type
     exitedCharacters*: seq[string]
     landedCharacters*: seq[LandedCharacter]
 
+  SuperBounceResult* = object
+    triggered*: bool
+    contactX*, contactY*: float
+
 proc intersects*(a, b: Rect): bool =
   a.x < b.x + b.w and
   a.x + a.w > b.x and
@@ -353,6 +357,32 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
       for r in 0..<characters.len:
         if characters[r].ridingCharacterId == idx:
           characters[r].x += dx
+
+proc applySuperBounce*(characters: var seq[Character], idx: int): SuperBounceResult =
+  ## Detect Pip riding Bruno and apply 1.5x jump velocity with Bruno squash.
+  result = SuperBounceResult(triggered: false)
+  let c = characters[idx]
+  if c.colorIndex != 0 or c.ability != doubleJump:
+    return
+  if not c.grounded:
+    return
+  let rideIdx = c.ridingCharacterId
+  if rideIdx < 0 or rideIdx >= characters.len:
+    return
+  if characters[rideIdx].colorIndex != 2:
+    return
+  # Apply super bounce to Pip.
+  characters[idx].vy = characters[idx].jumpForce() * SuperBounceMultiplier
+  characters[idx].grounded = false
+  characters[idx].jumpCount = 1
+  characters[idx].triggerJump()
+  # Squash Bruno.
+  characters[rideIdx].squashX = 1.3
+  characters[rideIdx].squashY = 0.7
+  # Contact point at Pip's feet / Bruno's top.
+  result.triggered = true
+  result.contactX = characters[idx].x + float(characters[idx].width) * 0.5
+  result.contactY = characters[idx].y + float(characters[idx].height)
 
 proc findComboPartner*(characters: seq[Character], idx: int): int =
   ## Return the index of a valid combo partner for character idx, or -1.

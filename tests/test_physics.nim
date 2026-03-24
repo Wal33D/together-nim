@@ -784,3 +784,41 @@ suite "sinusoidal ease for moving platforms":
     updateMovingPlatforms(level, 0.0)
     # At progress=0.5, t=0.5 so y should be 100.0.
     check abs(level.movingPlatforms[0].y - 100.0) < 0.01
+
+suite "super bounce":
+  test "triggers when Pip rides Bruno":
+    var chars = @[newCharacter("pip"), newCharacter("bruno")]
+    chars[0].grounded = true
+    chars[0].ridingCharacterId = 1
+    let sb = applySuperBounce(chars, 0)
+    check sb.triggered
+
+  test "applies 1.5x jump velocity to Pip":
+    var chars = @[newCharacter("pip"), newCharacter("bruno")]
+    chars[0].grounded = true
+    chars[0].ridingCharacterId = 1
+    discard applySuperBounce(chars, 0)
+    let expected = chars[0].jumpForce() * SuperBounceMultiplier
+    check abs(chars[0].vy - expected) < 0.01
+
+  test "squashes Bruno on trigger":
+    var chars = @[newCharacter("pip"), newCharacter("bruno")]
+    chars[0].grounded = true
+    chars[0].ridingCharacterId = 1
+    discard applySuperBounce(chars, 0)
+    check abs(chars[1].squashX - 1.3) < 0.01
+    check abs(chars[1].squashY - 0.7) < 0.01
+
+  test "does not trigger when not riding":
+    var chars = @[newCharacter("pip"), newCharacter("bruno")]
+    chars[0].grounded = true
+    chars[0].ridingCharacterId = -1
+    let sb = applySuperBounce(chars, 0)
+    check not sb.triggered
+
+  test "does not trigger for non-Pip character":
+    var chars = @[newCharacter("cara"), newCharacter("bruno")]
+    chars[0].grounded = true
+    chars[0].ridingCharacterId = 1
+    let sb = applySuperBounce(chars, 0)
+    check not sb.triggered

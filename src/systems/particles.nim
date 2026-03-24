@@ -426,6 +426,34 @@ proc emitWinConfetti*(system: var ParticleSystem) =
       gravityScale: 0.643,
     ))
 
+proc emitSuperBounce*(system: var ParticleSystem, x, y: float) =
+  ## Emit 10 particles in a 90-degree upward fan from (x, y).
+  ## Pink (#FF6B9D) and brown (#6B4423) mixed, velocity 100-200 px/s, life 0.4 s.
+  const
+    PinkColor: Color = (r: 255'u8, g: 107'u8, b: 157'u8)
+    BrownColor: Color = (r: 107'u8, g: 68'u8, b: 35'u8)
+    SuperBounceLife = 0.4
+    CenterAngle = PI / 2.0  # Upward.
+    HalfArc = PI / 4.0      # 45 degrees each side = 90 degree fan.
+  for i in 0..<10:
+    if system.particles.len >= MAX_PARTICLES:
+      break
+    let color = if rand(1) == 0: PinkColor else: BrownColor
+    let angle = CenterAngle + randRange(-HalfArc, HalfArc)
+    let speed = randRange(100.0, 200.0)
+    let size = randRange(3.0, 5.0)
+    pushParticle(system, Particle(
+      x: x,
+      y: y,
+      vx: cos(angle) * speed,
+      vy: -sin(angle) * speed,
+      life: SuperBounceLife,
+      maxLife: SuperBounceLife,
+      color: color,
+      size: size,
+      gravityScale: 1.0
+    ))
+
 proc emitComboReady*(system: var ParticleSystem, x, y: float, color1, color2: Color) =
   ## Emit a single small sparkle particle at (x, y) alternating between color1 and color2.
   if system.particles.len >= MAX_PARTICLES:
@@ -466,6 +494,32 @@ proc emitWinSparkle*(system: var ParticleSystem) =
     maxLife: life,
     fadeTime: 0.3,
     gravityScale: -0.1,
+  ))
+
+const
+  GlideShimmerLife = 0.6
+  GlideShimmerDriftY = -20.0
+  GlideShimmerSwayAmplitude = 15.0
+  GlideShimmerWhiteMix = 0.3
+  GlideShimmerInterval* = 0.08
+
+proc emitGlideShimmer*(system: var ParticleSystem, x, y: float, color: Color, time: float) =
+  ## Emit a single gentle shimmer particle for Luca's glide trail.
+  if system.particles.len >= MAX_PARTICLES:
+    return
+  let tinted = blendWithWhite(color, GlideShimmerWhiteMix)
+  let size = randRange(2.0, 3.0)
+  let vx = sin(time * 2.0 * PI / 2.0) * GlideShimmerSwayAmplitude
+  pushParticle(system, Particle(
+    x: x,
+    y: y,
+    vx: vx,
+    vy: GlideShimmerDriftY,
+    life: GlideShimmerLife,
+    maxLife: GlideShimmerLife,
+    color: tinted,
+    size: size,
+    gravityScale: 0.0
   ))
 
 proc updateRingParticles*(system: var ParticleSystem, dt: float) =
