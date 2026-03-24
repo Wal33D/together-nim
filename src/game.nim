@@ -194,10 +194,12 @@ proc emitJumpParticles(game: var Game, idx: int) =
   else:
     game.particles.emitJump(c.characterFeetX(), c.characterFeetY(), charColor)
 
-proc emitLandingParticles(game: var Game, idx: int) =
+proc emitLandingParticles(game: var Game, idx: int,
+                          ability: CharacterAbility, fallSpeed: float) =
   let c = game.characters[idx]
   game.particles.emitLanding(c.characterFeetX(), c.characterFeetY(),
-                             CHAR_COLORS[c.colorIndex mod 6])
+                             CHAR_COLORS[c.colorIndex mod 6],
+                             ability, fallSpeed)
 
 proc emitDeathParticles(game: var Game, idx: int) =
   let c = game.characters[idx]
@@ -777,7 +779,7 @@ proc update*(game: var Game, dt: float) =
         for landed in result.landedCharacters:
           let idx = game.findCharacterIndex(landed.id)
           if idx >= 0:
-            game.emitLandingParticles(idx)
+            game.emitLandingParticles(idx, landed.ability, landed.fallVelocity)
             game.accentLanding(idx)
           playLandingSound(landed.fallVelocity, landed.ability)
           # Velocity-scaled landing shake (up to 3px/0.15s)
