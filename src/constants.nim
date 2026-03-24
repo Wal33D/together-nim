@@ -73,6 +73,12 @@ const WallFloatRelayMaxHorizDist* = 60.0  # px — horizontal alignment window
 const GracefulLandingWindow* = 0.15       # seconds — max time gap between Felix/Ivy landings
 const GracefulLandingInvuln* = 0.5        # seconds — invulnerability duration on combo
 
+# Footstep audio
+const
+  FootstepMinInterval* = 0.20   # seconds between steps at full speed
+  FootstepMaxInterval* = 0.30   # seconds between steps at low speed
+  FootstepSpeedThreshold* = 50.0  # px/s minimum to produce sound
+
 # Tonal palettes for per-act ambient music
 type
   TonalPalette* = object

@@ -44,6 +44,7 @@ const
   NearGroundScrollSpeed = 0.8
   NearGroundClusterMin = 12
   NearGroundClusterMax = 16
+  MaxEnvElements = 12
 
 proc toChroma(c: constants.Color): chroma.Color =
   chroma.color(c.r.float32 / 255.0, c.g.float32 / 255.0, c.b.float32 / 255.0)
@@ -66,6 +67,24 @@ type
     transitionStart: float
 
 var palette: PaletteState
+
+type
+  EnvElement = object
+    x, y: float
+    vx, vy: float
+    alpha: float
+    width, height: float
+    phase: float
+
+var
+  envElements: array[MaxEnvElements, EnvElement]
+  prevEnvElements: array[MaxEnvElements, EnvElement]
+  envFadeAlpha: float
+  prevActEnvFade: float
+  envCurrentAct: int
+  envPrevAct: int
+  envTransitionTime: float
+  envLastTime: float
 
 proc actColorForLevel(levelId: int, time: float): chroma.Color =
   ## Return the act palette color, crossfading over CrossfadeDuration at act boundaries.
@@ -432,6 +451,167 @@ proc renderForegroundStrip(renderer: RendererPtr, actColor: chroma.Color, act: i
 
   renderer.setDrawBlendMode(BlendMode_None)
 
+proc envActScene(act: int): BackdropScene =
+  ## Map act number to backdrop scene.
+  case act
+  of 1: dawnMeadow
+  of 2: riverValley
+  of 3: stoneRuins
+  of 4: nightSky
+  else: aetherPlane
+
+proc initEnvElement(e: var EnvElement, act, index: int) =
+  ## Initialize a single environmental element with act-specific properties.
+  let hash = ((index * 7919 + act * 6271) and 0x7FFFFFFF) mod 65521
+  e.phase = float(hash mod 628) / 100.0
+  case act
+  of 1:
+    # Clouds: wide, slow horizontal drift.
+    e.x = float(hash mod DEFAULT_WIDTH)
+    e.y = float(20 + hash mod 130)
+    e.vx = 8.0 + float(hash mod 13)
+    e.vy = 0.0
+    e.alpha = 0.18 + float(hash mod 8) / 100.0
+    e.width = float(60 + hash mod 80)
+    e.height = float(16 + hash mod 20)
+  of 2:
+    # Rain: thin dots, falling slowly at 15-30 px/s.
+    e.x = float(hash mod DEFAULT_WIDTH)
+    e.y = -float(hash mod DEFAULT_HEIGHT)
+    e.vx = 0.0
+    e.vy = 15.0 + float(hash mod 16)
+    e.alpha = 0.15 + float(hash mod 11) / 100.0
+    e.width = 2.0
+    e.height = float(4 + hash mod 6)
+  of 3:
+    # Wind streaks: horizontal at 50-100 px/s.
+    e.x = -float(hash mod 100)
+    e.y = float(40 + hash mod (DEFAULT_HEIGHT - 80))
+    e.vx = 50.0 + float(hash mod 51)
+    e.vy = 0.0
+    e.alpha = 0.18 + float(hash mod 8) / 100.0
+    e.width = float(30 + hash mod 40)
+    e.height = 2.0
+  of 4:
+    # Falling leaves: slow descent with horizontal sway.
+    e.x = float(hash mod DEFAULT_WIDTH)
+    e.y = -float(hash mod 60)
+    e.vx = 0.0
+    e.vy = 12.0 + float(hash mod 14)
+    e.alpha = 0.18 + float(hash mod 8) / 100.0
+    e.width = float(6 + hash mod 6)
+    e.height = float(4 + hash mod 5)
+  else:
+    # Act 5: rising light particles.
+    e.x = float(hash mod DEFAULT_WIDTH)
+    e.y = float(DEFAULT_HEIGHT + hash mod 60)
+    e.vx = 0.0
+    e.vy = -(10.0 + float(hash mod 16))
+    e.alpha = 0.18 + float(hash mod 8) / 100.0
+    e.width = float(3 + hash mod 4)
+    e.height = float(3 + hash mod 4)
+
+proc initEnvElements(act: int) =
+  ## Initialize all environmental elements for the given act.
+  for i in 0..<MaxEnvElements:
+    initEnvElement(envElements[i], act, i)
+
+proc updateEnvElements(act: int, time: float) =
+  ## Advance environmental element positions and handle act transitions.
+  let dt = if envLastTime > 0.0: time - envLastTime else: 0.0
+  envLastTime = time
+
+  if envCurrentAct == 0:
+    envCurrentAct = act
+    envFadeAlpha = 1.0
+    prevActEnvFade = 0.0
+    initEnvElements(act)
+  elif act != envCurrentAct:
+    prevEnvElements = envElements
+    envPrevAct = envCurrentAct
+    prevActEnvFade = 1.0
+    envFadeAlpha = 0.0
+    envTransitionTime = time
+    envCurrentAct = act
+    initEnvElements(act)
+
+  # Advance crossfade.
+  if envFadeAlpha < 1.0:
+    let elapsed = time - envTransitionTime
+    envFadeAlpha = clamp01(elapsed / CrossfadeDuration)
+    prevActEnvFade = clamp01(1.0 - envFadeAlpha)
+
+  # Move current elements.
+  for i in 0..<MaxEnvElements:
+    envElements[i].x += envElements[i].vx * dt
+    envElements[i].y += envElements[i].vy * dt
+    # Leaf sway for Act 4.
+    if act == 4:
+      envElements[i].x += 15.0 * sin(time * 1.5 + envElements[i].phase) * dt
+
+    # Recycle off-screen elements.
+    let rehash = ((i * 7919 + act * 6271) and 0x7FFFFFFF) mod 65521
+    case act
+    of 1:
+      if envElements[i].x > float(DEFAULT_WIDTH) + envElements[i].width:
+        envElements[i].x = -envElements[i].width
+    of 2:
+      if envElements[i].y > float(DEFAULT_HEIGHT):
+        envElements[i].y = -envElements[i].height
+        envElements[i].x = float(rehash mod DEFAULT_WIDTH)
+    of 3:
+      if envElements[i].x > float(DEFAULT_WIDTH) + envElements[i].width:
+        envElements[i].x = -envElements[i].width
+        envElements[i].y = float(40 + rehash mod (DEFAULT_HEIGHT - 80))
+    of 4:
+      if envElements[i].y > float(DEFAULT_HEIGHT):
+        envElements[i].y = -envElements[i].height
+        envElements[i].x = float(rehash mod DEFAULT_WIDTH)
+    else:
+      if envElements[i].y < -envElements[i].height:
+        envElements[i].y = float(DEFAULT_HEIGHT) + envElements[i].height
+        envElements[i].x = float(rehash mod DEFAULT_WIDTH)
+
+proc renderEnvElements(renderer: RendererPtr, theme: BackdropTheme, act: int) =
+  ## Draw environmental atmosphere elements for the current and previous act.
+  renderer.setDrawBlendMode(BlendMode_Blend)
+
+  # Draw previous act elements during crossfade.
+  if prevActEnvFade > 0.01:
+    let prevTheme = themeForScene(envActScene(envPrevAct))
+    for i in 0..<MaxEnvElements:
+      let e = prevEnvElements[i]
+      let a = uint8(clamp01(e.alpha * prevActEnvFade) * 255.0)
+      if a < 1: continue
+      case envPrevAct
+      of 1, 3:
+        renderer.setDrawColor(prevTheme.haze.r, prevTheme.haze.g, prevTheme.haze.b, a)
+      of 2, 5:
+        renderer.setDrawColor(prevTheme.glow.r, prevTheme.glow.g, prevTheme.glow.b, a)
+      of 4:
+        renderer.setDrawColor(prevTheme.silhouette.r, prevTheme.silhouette.g, prevTheme.silhouette.b, a)
+      else:
+        renderer.setDrawColor(prevTheme.haze.r, prevTheme.haze.g, prevTheme.haze.b, a)
+      drawFilledRect(renderer, cint(e.x), cint(e.y), cint(e.width), cint(e.height))
+
+  # Draw current act elements.
+  for i in 0..<MaxEnvElements:
+    let e = envElements[i]
+    let a = uint8(clamp01(e.alpha * envFadeAlpha) * 255.0)
+    if a < 1: continue
+    case act
+    of 1, 3:
+      renderer.setDrawColor(theme.haze.r, theme.haze.g, theme.haze.b, a)
+    of 2, 5:
+      renderer.setDrawColor(theme.glow.r, theme.glow.g, theme.glow.b, a)
+    of 4:
+      renderer.setDrawColor(theme.silhouette.r, theme.silhouette.g, theme.silhouette.b, a)
+    else:
+      renderer.setDrawColor(theme.haze.r, theme.haze.g, theme.haze.b, a)
+    drawFilledRect(renderer, cint(e.x), cint(e.y), cint(e.width), cint(e.height))
+
+  renderer.setDrawBlendMode(BlendMode_None)
+
 proc renderBackdrop*(renderer: RendererPtr, level: Level, camX, time: float) =
   let theme = backdropThemeForLevel(level.id)
   let act = actForLevel(level.id)
@@ -441,6 +621,8 @@ proc renderBackdrop*(renderer: RendererPtr, level: Level, camX, time: float) =
   renderAmbientStrata(renderer, theme, theme.scene)
   renderStars(renderer, theme, level.id, time)
   renderAurora(renderer, theme, time)
+  updateEnvElements(act, time)
+  renderEnvElements(renderer, theme, act)
   renderHorizonBands(renderer, theme, camX)
   renderMidGroundSilhouettes(renderer, actColor, act, camX, theme.scene)
   renderMist(renderer, theme, theme.scene, time)

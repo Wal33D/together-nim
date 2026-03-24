@@ -1217,6 +1217,22 @@ proc update*(game: var Game, dt: float) =
           game.characters[i].jumpBufferTimer =
             max(0.0, game.characters[i].jumpBufferTimer - scaledDt)
 
+    # Footstep sounds for the active character.
+    block footsteps:
+      let ai = game.activeCharacterIndex
+      let speed = abs(game.characters[ai].vx)
+      if game.characters[ai].grounded and speed >= FootstepSpeedThreshold:
+        game.characters[ai].footstepTimer -= scaledDt
+        if game.characters[ai].footstepTimer <= 0.0:
+          playFootstepSound(game.characters[ai].id)
+          let maxSpeed = game.characters[ai].moveSpeed()
+          let speedT = clamp((speed - FootstepSpeedThreshold) /
+                             (maxSpeed - FootstepSpeedThreshold), 0.0, 1.0)
+          game.characters[ai].footstepTimer =
+            FootstepMaxInterval - (FootstepMaxInterval - FootstepMinInterval) * speedT
+      else:
+        game.characters[ai].footstepTimer = 0.0
+
     # Precompute pairwise distances — reused by all proximity systems.
     let n = game.characters.len
     var distMatrix = newSeq[float](n * n)

@@ -22,8 +22,10 @@ suite "audio system":
                  soundTransitionSwoosh, soundReunion, soundSeparation,
                  soundJumpPip, soundJumpLuca, soundJumpBruno,
                  soundJumpCara, soundJumpFelix, soundJumpIvy,
-                 soundJumpPipDouble]
-    check kinds.len == 19
+                 soundJumpPipDouble,
+                 soundSuperBounce, soundActTransition,
+                 soundGracefulLanding, soundFootstep]
+    check kinds.len == 23
 
   test "CharJumpSounds maps character indices to jump sounds":
     check CharJumpSounds[0] == soundJumpPip
@@ -57,6 +59,10 @@ suite "audio system":
     check palette.baseFreqs[2] == 0.0
     let derivedFifth = palette.baseFreqs[0] * 1.498
     check derivedFifth > 1.0  # Must not be zero or near-zero.
+
+  test "playFootstepSound is safe for all characters":
+    for id in ["pip", "luca", "bruno", "cara", "felix", "ivy"]:
+      playFootstepSound(id)
 
   test "setMasterVolume and getMasterVolume stubs work":
     setMasterVolume(0.5)

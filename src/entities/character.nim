@@ -64,6 +64,7 @@ type
     wallFloatRelayPartner*: int          # index of relay partner (-1 = none)
     invulnTimer*: float                  # seconds remaining of invulnerability; 0 = vulnerable
     lastLandingTime*: float              # game.elapsedTime when this character last landed
+    footstepTimer*: float                  # countdown to next footstep sound
 
 proc newCharacter*(id: string): Character =
   result.x = 0.0
@@ -114,6 +115,7 @@ proc newCharacter*(id: string): Character =
   result.wallFloatRelayPartner = -1
   result.invulnTimer = 0.0
   result.lastLandingTime = -1.0
+  result.footstepTimer = 0.0
   case id
   of "pip":
     result.width = 24; result.height = 24
