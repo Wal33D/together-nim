@@ -231,3 +231,39 @@ suite "gamepad system":
     g.settingsCursor = 1
     handleControllerButton(g, ButtonA, true)
     check g.pendingSettingsApply == true
+
+  # --- One-shot press flag tests ---
+
+  test "snapshot sets padUpPressed on rising edge":
+    var g = newGame()
+    g.startGame()
+    g.skipActTitle()
+    clearPadPressed()
+    applyControllerSnapshot(g, false, false, false, false, false, false, false, true, false, 0'i16)
+    check padUpPressed == true
+    check padDownPressed == false
+
+  test "snapshot sets padDownPressed on rising edge":
+    var g = newGame()
+    g.startGame()
+    g.skipActTitle()
+    clearPadPressed()
+    applyControllerSnapshot(g, false, false, false, false, false, false, false, false, true, 0'i16)
+    check padDownPressed == true
+    check padUpPressed == false
+
+  test "clearPadPressed resets one-shot flags":
+    var g = newGame()
+    g.startGame()
+    g.skipActTitle()
+    clearPadPressed()
+    applyControllerSnapshot(g, false, false, false, false, false, true, true, true, true, 0'i16)
+    check padUpPressed == true
+    check padDownPressed == true
+    check padLeftPressed == true
+    check padRightPressed == true
+    clearPadPressed()
+    check padUpPressed == false
+    check padDownPressed == false
+    check padLeftPressed == false
+    check padRightPressed == false
