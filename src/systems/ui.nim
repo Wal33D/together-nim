@@ -905,16 +905,49 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
     drawCenteredText(sk, layout, "Body", MenuLabels[i], layout.centerX,
                      pos.y + layout.px(8), labelColor)
 
-    # Continue progress indicator and character silhouettes.
+    # Continue progress indicator: act-colored block cells and character silhouettes.
     if i == 1 and menuHasSave and alpha > 0.5:
       let
         contLevel = savedContinueLevel()
-        actIdx = actForLevel(min(contLevel, 29))
-        actName = if actIdx >= 0 and actIdx < Acts.len: Acts[actIdx].name else: ""
-        progressText = "Level " & $(contLevel + 1) & " — " & actName
-      drawCenteredText(sk, layout, "Small", progressText, layout.centerX,
-                       pos.y + size.y + layout.px(2),
-                       rgbx(156, 168, 188, uint8(alpha * 200.0)))
+        cellW = layout.px(5)
+        cellH = layout.px(4)
+        cellGap = layout.px(1)
+        actGap = layout.px(3)
+      # Total width: sum of all cells + inner gaps + act separators.
+      var totalW: float32 = 0
+      for ai, act in Acts:
+        let count = act.endLevel - act.startLevel + 1
+        totalW += count.float32 * cellW + max(0, count - 1).float32 * cellGap
+        if ai < Acts.len - 1:
+          totalW += actGap
+      let
+        cellStartX = layout.centerX - totalW * 0.5
+        cellY = pos.y + size.y + layout.px(3)
+      var cx = cellStartX
+      for ai, act in Acts:
+        let
+          tc = act.themeColor
+          count = act.endLevel - act.startLevel + 1
+        for li in 0 ..< count:
+          let levelIdx = act.startLevel - 1 + li
+          if levelIdx == contLevel:
+            # Current level: outlined.
+            let borderA = uint8(alpha * 220.0)
+            let borderC = rgbx(tc.r, tc.g, tc.b, borderA)
+            sk.drawRect(vec2(cx, cellY), vec2(cellW, 1), borderC)
+            sk.drawRect(vec2(cx, cellY + cellH - 1), vec2(cellW, 1), borderC)
+            sk.drawRect(vec2(cx, cellY), vec2(1, cellH), borderC)
+            sk.drawRect(vec2(cx + cellW - 1, cellY), vec2(1, cellH), borderC)
+          elif levelCompleted(levelIdx):
+            # Completed: filled.
+            sk.drawRect(vec2(cx, cellY), vec2(cellW, cellH),
+                        rgbx(tc.r, tc.g, tc.b, uint8(alpha * 230.0)))
+          else:
+            # Locked/future: dim.
+            sk.drawRect(vec2(cx, cellY), vec2(cellW, cellH),
+                        rgbx(tc.r, tc.g, tc.b, uint8(alpha * 50.0)))
+          cx += cellW + cellGap
+        cx += actGap - cellGap
 
       # Character silhouettes for the saved party.
       if contLevel >= 0 and contLevel < allLevels.len:
