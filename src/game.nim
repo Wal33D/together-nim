@@ -1015,7 +1015,7 @@ proc update*(game: var Game, dt: float) =
         game.characters[i].atExit = game.characters[i].id in result.exitedCharacters
         if game.characters[i].atExit and not wasAtExit:
           game.emitExitParticles(i)
-          playSound(soundExitReached)
+          playExitReachedCharSound(game.characters[i].colorIndex)
 
       # Wall-slide sparks for Cara
       for i in 0..<game.characters.len:
@@ -1052,6 +1052,9 @@ proc update*(game: var Game, dt: float) =
           let buttonColor: Color = (r: 255'u8, g: 255'u8, b: 80'u8)
           game.particles.emitButtonShimmer(cx, cy, buttonColor)
           game.screenEffects.triggerShake(game.camera, 1.0, 0.08)
+          playButtonPressSound(b.activatedByHeavy)
+        if not b.active and b.prevActive:
+          playSound(soundButtonRelease)
 
       # Exit beckoning particles — continuous emission per exit
       if game.exitEmitTimers.len < level.exits.len:
