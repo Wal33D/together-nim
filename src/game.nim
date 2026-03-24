@@ -902,12 +902,56 @@ proc update*(game: var Game, dt: float) =
           if idx >= 0:
             game.emitLandingParticles(idx, landed.ability, landed.fallVelocity)
             game.accentLanding(idx)
+            game.characters[idx].lastLandingTime = game.elapsedTime
           playLandingSound(landed.fallVelocity, landed.ability)
           # Velocity-scaled landing shake (up to 3px/0.15s)
           let normV = min(1.0, abs(landed.fallVelocity) / MAX_FALL_SPEED)
           if normV > 0.4:
             let landIntensity = normV * 3.0
             game.screenEffects.triggerShake(game.camera, landIntensity, 0.15)
+
+        # Felix-Ivy graceful landing combo: both land within 0.15s of each other.
+        block gracefulLandingCheck:
+          var felixIdx = -1
+          var ivyIdx = -1
+          for i in 0..<game.characters.len:
+            if game.characters[i].id == "felix": felixIdx = i
+            elif game.characters[i].id == "ivy": ivyIdx = i
+          if felixIdx < 0 or ivyIdx < 0:
+            break gracefulLandingCheck
+          let ft = game.characters[felixIdx].lastLandingTime
+          let it = game.characters[ivyIdx].lastLandingTime
+          if ft < 0.0 or it < 0.0:
+            break gracefulLandingCheck
+          if abs(ft - it) > GracefulLandingWindow:
+            break gracefulLandingCheck
+          # Both must have just landed this frame (at least one in the current batch).
+          var justLanded = false
+          for landed in result.landedCharacters:
+            if landed.id == "felix" or landed.id == "ivy":
+              justLanded = true
+              break
+          if not justLanded:
+            break gracefulLandingCheck
+          # Grant invulnerability to both.
+          game.characters[felixIdx].invulnTimer = GracefulLandingInvuln
+          game.characters[ivyIdx].invulnTimer = GracefulLandingInvuln
+          # Intensify glows.
+          game.characters[felixIdx].glowAlpha = 0.4
+          game.characters[felixIdx].glowScale = 2.5
+          game.characters[ivyIdx].glowAlpha = 0.4
+          game.characters[ivyIdx].glowScale = 2.5
+          # Golden ring at midpoint.
+          let midX = (characterCenterX(game.characters[felixIdx]) +
+                      characterCenterX(game.characters[ivyIdx])) / 2.0
+          let midY = (characterCenterY(game.characters[felixIdx]) +
+                      characterCenterY(game.characters[ivyIdx])) / 2.0
+          game.particles.emitGracefulLandingRing(midX, midY)
+          # Harmonic chime.
+          playSound(soundGracefulLanding)
+          # Reset landing times to prevent re-triggering.
+          game.characters[felixIdx].lastLandingTime = -1.0
+          game.characters[ivyIdx].lastLandingTime = -1.0
 
       # Mark exits — play chime when a character newly reaches their exit
       for i in 0..<game.characters.len:

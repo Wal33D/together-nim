@@ -242,8 +242,14 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
       result.landedCharacters.add(LandedCharacter(
         id: c.id, fallVelocity: preLandVy, ability: c.ability))
 
-    # Hazard detection — skip during death/respawn (invulnerability)
-    if not c.isDying() and not c.isRespawning():
+    # Tick invulnerability timer.
+    if c.invulnTimer > 0.0:
+      c.invulnTimer -= dt
+      if c.invulnTimer < 0.0:
+        c.invulnTimer = 0.0
+
+    # Hazard detection — skip during death/respawn/invulnerability
+    if not c.isDying() and not c.isRespawning() and not c.isInvulnerable():
       block hazardCheck:
         for hazard in level.hazards:
           let hRect = Rect(x: hazard.x, y: hazard.y, w: hazard.width, h: hazard.height)
