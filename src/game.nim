@@ -385,18 +385,26 @@ proc pressJump*(game: var Game) =
     elif game.comboCooldown <= 0.0 and
          (ac.grounded or ac.coyoteTimer < jumpGraceWindow(ac)) and
          findComboPartner(game.characters, game.activeCharacterIndex) >= 0:
-      # Combo jump: boosted velocity.
-      game.characters[game.activeCharacterIndex].vy = ac.jumpForce() * ComboJumpMultiplier
-      game.characters[game.activeCharacterIndex].grounded = false
-      game.characters[game.activeCharacterIndex].jumpCount = 1
-      game.characters[game.activeCharacterIndex].coyoteTimer = jumpGraceWindow(ac) + 1.0
-      game.characters[game.activeCharacterIndex].jumpBufferTimer = 0.0
-      game.characters[game.activeCharacterIndex].triggerJump()
+      # Pip-Bruno super bounce: 1.5x velocity, squash Bruno, special particles+sound.
+      let sbResult = applySuperBounce(game.characters, game.activeCharacterIndex)
+      if sbResult.triggered:
+        game.characters[game.activeCharacterIndex].coyoteTimer = jumpGraceWindow(ac) + 1.0
+        game.characters[game.activeCharacterIndex].jumpBufferTimer = 0.0
+        game.particles.emitSuperBounce(sbResult.contactX, sbResult.contactY)
+        playSound(soundSuperBounce)
+      else:
+        # Generic combo jump for other pairs.
+        game.characters[game.activeCharacterIndex].vy = ac.jumpForce() * ComboJumpMultiplier
+        game.characters[game.activeCharacterIndex].grounded = false
+        game.characters[game.activeCharacterIndex].jumpCount = 1
+        game.characters[game.activeCharacterIndex].coyoteTimer = jumpGraceWindow(ac) + 1.0
+        game.characters[game.activeCharacterIndex].jumpBufferTimer = 0.0
+        game.characters[game.activeCharacterIndex].triggerJump()
+        game.emitJumpParticles(game.activeCharacterIndex)
+        playSound(CharJumpSounds[game.activeCharacterIndex])
       game.comboActive = true
       game.comboCooldown = ComboCooldownTime
-      game.emitJumpParticles(game.activeCharacterIndex)
       game.accentJump()
-      playSound(CharJumpSounds[game.activeCharacterIndex])
     elif attemptCharacterJump(game.characters[game.activeCharacterIndex]):
       game.emitJumpParticles(game.activeCharacterIndex)
       game.accentJump()
