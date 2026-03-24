@@ -629,3 +629,81 @@ suite "per-character acceleration":
     let expectedStep = ms / GroundDecelTime * FIXED_TIMESTEP
     let actualDecrease = ms - chars[0].vx
     check abs(actualDecrease - expectedStep) / expectedStep < 0.05
+
+suite "control curve acceleration":
+  test "velocity ramps up gradually":
+    let platform = Platform(x: 0.0, y: 400.0, width: 10000.0, height: 20.0)
+    var level = Level(platforms: @[platform], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    var chars = @[newCharacter("pip")]
+    chars[0].x = 100.0
+    chars[0].y = 400.0 - float(chars[0].height)
+    chars[0].grounded = true
+    chars[0].vx = 0.0
+    chars[0].inputDir = 1
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    check chars[0].vx > 0.0
+    check chars[0].vx < chars[0].moveSpeed()
+
+  test "deceleration reaches zero in fewer frames than acceleration reaches max":
+    let platform = Platform(x: 0.0, y: 400.0, width: 10000.0, height: 20.0)
+    var level = Level(platforms: @[platform], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    let ms = newCharacter("pip").moveSpeed()
+
+    # Count frames to accelerate from 0 to 95% of moveSpeed.
+    var accelChars = @[newCharacter("pip")]
+    accelChars[0].x = 100.0
+    accelChars[0].y = 400.0 - float(accelChars[0].height)
+    accelChars[0].grounded = true
+    accelChars[0].vx = 0.0
+    accelChars[0].inputDir = 1
+    var accelFrames = 0
+    for frame in 0..<300:
+      discard updatePhysics(accelChars, level, FIXED_TIMESTEP)
+      accelFrames += 1
+      if accelChars[0].vx >= ms * 0.95:
+        break
+
+    # Count frames to decelerate from near-max speed to ~0.
+    var decelChars = @[newCharacter("pip")]
+    decelChars[0].x = 100.0
+    decelChars[0].y = 400.0 - float(decelChars[0].height)
+    decelChars[0].grounded = true
+    decelChars[0].vx = ms
+    decelChars[0].inputDir = 0
+    var decelFrames = 0
+    for frame in 0..<300:
+      discard updatePhysics(decelChars, level, FIXED_TIMESTEP)
+      decelFrames += 1
+      if abs(decelChars[0].vx) < 0.01:
+        break
+
+    check decelFrames < accelFrames
+
+  test "air control reduces horizontal acceleration":
+    let platform = Platform(x: 0.0, y: 400.0, width: 10000.0, height: 20.0)
+
+    # Grounded: one frame of acceleration.
+    var groundLevel = Level(platforms: @[platform], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    var groundChars = @[newCharacter("pip")]
+    groundChars[0].x = 100.0
+    groundChars[0].y = 400.0 - float(groundChars[0].height)
+    groundChars[0].grounded = true
+    groundChars[0].vx = 0.0
+    groundChars[0].inputDir = 1
+    discard updatePhysics(groundChars, groundLevel, FIXED_TIMESTEP)
+    let groundedVx = groundChars[0].vx
+
+    # Airborne: one frame of acceleration (no platform so stays airborne).
+    var airLevel = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    var airChars = @[newCharacter("pip")]
+    airChars[0].x = 100.0
+    airChars[0].y = 100.0
+    airChars[0].grounded = false
+    airChars[0].vx = 0.0
+    airChars[0].inputDir = 1
+    discard updatePhysics(airChars, airLevel, FIXED_TIMESTEP)
+    let airborneVx = airChars[0].vx
+
+    check airborneVx > 0.0
+    check groundedVx > 0.0
+    check airborneVx < groundedVx

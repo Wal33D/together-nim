@@ -198,10 +198,11 @@ proc emitExitParticles(game: var Game, idx: int) =
       break
 
 proc emitCompletionParticles(game: var Game) =
-  let completionColor: Color = (r: 248'u8, g: 232'u8, b: 178'u8)
   for c in game.characters:
-    game.particles.emitCompletion(c.characterCenterX(), c.characterCenterY(),
-                                  completionColor)
+    let topX = c.characterCenterX()
+    let topY = c.drawY()
+    game.particles.emitConfetti(topX, topY,
+                                CHAR_COLORS[c.colorIndex mod 6])
 
 proc emitSwitchParticles(game: var Game, idx: int) =
   ## Emit a white ring on the newly active character.
@@ -956,8 +957,13 @@ proc update*(game: var Game, dt: float) =
         # Isolation timer: increment when no neighbour within ProximityFar, reset on contact.
         if minDists[i] > ProximityFar:
           game.characters[i].isolationTimer += scaledDt
+          # Ramp desaturation toward 1.0 over ~10s of isolation.
+          let targetSat = min(1.0, game.characters[i].isolationTimer * 0.1)
+          game.characters[i].isolationSat += (targetSat - game.characters[i].isolationSat) * 2.0 * scaledDt
         else:
           game.characters[i].isolationTimer = 0.0
+          # Bloom back to full colour quickly on reconnect.
+          game.characters[i].isolationSat *= max(0.0, 1.0 - 4.0 * scaledDt)
 
     # Update atmospheric background effects
     game.atmosphere.update(scaledDt)
