@@ -99,8 +99,7 @@ proc charColorIndex(id: string): int =
 
 proc isCharLocked(idx: int): bool =
   ## Return true when a cast member has not yet been encountered.
-  let progress = savedContinueLevel()
-  progress < CharUnlockLevels[idx]
+  not levelCompleted(CharUnlockLevels[idx])
 
 proc triggerMenuEntrance() =
   ## Reset animation state and start the menu entrance sequence.
@@ -256,9 +255,16 @@ proc noteHot(ui: UiRenderer, widgetId: string, wantsMouse = true,
     ui.context.hotWidget = widgetId
 
 proc cycleMenuSpotlight*(ui: UiRenderer, delta: int) =
+  ## Cycle the cast spotlight, skipping locked characters.
   const count = 6
   let prev = ui.menuSpotlight
-  ui.menuSpotlight = (ui.menuSpotlight + delta + count * 4) mod count
+  var next = (ui.menuSpotlight + delta + count * 4) mod count
+  # Skip locked characters (wrap at most count times to avoid infinite loop).
+  for _ in 0 ..< count:
+    if not isCharLocked(next):
+      break
+    next = (next + delta + count * 4) mod count
+  ui.menuSpotlight = next
   if ui.menuSpotlight != prev:
     playMenuHoverNote(ui.menuSpotlight)
 
@@ -657,10 +663,10 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
       clamp(pulsedColor.b * 255.0, 0.0, 255.0).uint8,
       255'u8)
 
-    # Scale breathing — 2s sine cycle, disabled for selected card.
+    # Scale breathing — 2s sine cycle, disabled for selected and locked cards.
     locked = isCharLocked(idx)
     breathe =
-      if selected: 1.0'f32
+      if selected or locked: 1.0'f32
       else: 1.0'f32 + 0.02'f32 * sin(
         time.float32 * PI.float32 + cardPhases[idx].float32)
 
@@ -669,10 +675,10 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
     scaledW = baseSize.x * breathe
     scaledH = baseSize.y * breathe
 
-    # Per-character idle micro-animation offsets (disabled when selected).
+    # Per-character idle micro-animation offsets (disabled when selected or locked).
     mt = menuTime.float32
     idleX =
-      if selected: 0.0'f32
+      if selected or locked: 0.0'f32
       else:
         case idx
         of 0: sin(mt * 3.7'f32) * 2.0'f32          # Pip: rapid X jitter.
@@ -680,7 +686,7 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
         of 5: sin(mt * 0.7'f32) * 3.0'f32            # Ivy: gentle sway.
         else: 0.0'f32
     idleY =
-      if selected: 0.0'f32
+      if selected or locked: 0.0'f32
       else:
         case idx
         of 1: sin(mt * 0.9'f32) * 1.5'f32            # Luca: approximate tilt as Y shift.
@@ -698,13 +704,12 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
   if locked:
     # Dark silhouette card for locked characters.
     let
-      silFill = rgbx(10, 12, 18, 180)
+      silFill = rgbx(40, 40, 40, 200)
       silBorder = rgbx(40, 44, 56, 160)
     sk.drawSoftPanel(pos, size, silFill, silBorder)
-    sk.drawRect(pos + layout.d(12, 13), layout.sz(14, 14), rgbx(40, 44, 56, 200))
     drawCenteredText(sk, layout, "Body", "?",
-                     pos.x + size.x * 0.5, pos.y + layout.px(8),
-                     rgbx(80, 88, 104, 255))
+                     pos.x + size.x * 0.5, pos.y + layout.px(10),
+                     rgbx(120, 120, 120, 255))
     return
 
   let
@@ -815,14 +820,19 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
   drawCenteredText(sk, layout, "Display", titleText, heroCenter, titleY, rgbx(246, 248, 251, titleAlpha))
   drawCenteredText(sk, layout, "Small", tagline,
                    heroCenter, heroPos.y + layout.px(50), rgbx(160, 171, 192, 255))
-  sk.drawRect(vec2(heroCenter - layout.px(8), heroPos.y + layout.px(70)), layout.sz(16, 16), heroAccent)
-  drawCenteredText(sk, layout, "Body", castNames[spotlight], heroCenter, heroPos.y + layout.px(92),
-                   rgbx(242, 245, 248, 255))
-  drawCenteredText(sk, layout, "Small", castRoles[spotlight] & " • " & castGifts[spotlight], heroCenter,
-                   heroPos.y + layout.px(112), heroAccent)
-  discard sk.drawUiText(layout, "Small", castHeroLines[spotlight], heroLinePos,
-                        rgbx(220, 226, 236, 255),
-                        maxWidth = heroLineWidth, maxHeight = layout.px(28), wordWrap = true)
+  let spotlightLocked = isCharLocked(spotlight)
+  if not spotlightLocked:
+    sk.drawRect(vec2(heroCenter - layout.px(8), heroPos.y + layout.px(70)), layout.sz(16, 16), heroAccent)
+    drawCenteredText(sk, layout, "Body", castNames[spotlight], heroCenter, heroPos.y + layout.px(92),
+                     rgbx(242, 245, 248, 255))
+    drawCenteredText(sk, layout, "Small", castRoles[spotlight] & " • " & castGifts[spotlight], heroCenter,
+                     heroPos.y + layout.px(112), heroAccent)
+    discard sk.drawUiText(layout, "Small", castHeroLines[spotlight], heroLinePos,
+                          rgbx(220, 226, 236, 255),
+                          maxWidth = heroLineWidth, maxHeight = layout.px(28), wordWrap = true)
+  else:
+    drawCenteredText(sk, layout, "Body", "?", heroCenter, heroPos.y + layout.px(92),
+                     rgbx(120, 120, 120, 255))
 
   # 5-button vertical menu below hero panel.
   const
