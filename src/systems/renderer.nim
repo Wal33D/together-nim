@@ -224,6 +224,17 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
 
   let level = game.currentLevelState
 
+  # Overview zoom transform — scale around viewport center.
+  let ovZoom = game.camera.overviewZoom
+  let overviewActive = game.camera.isOverviewActive()
+  if overviewActive and ovZoom < 1.0:
+    renderer.boxy.saveTransform()
+    let hw = float32(DEFAULT_WIDTH) * 0.5
+    let hh = float32(DEFAULT_HEIGHT) * 0.5
+    renderer.boxy.translate(vec2(hw, hh))
+    renderer.boxy.scale(vec2(ovZoom.float32, ovZoom.float32))
+    renderer.boxy.translate(vec2(-hw, -hh))
+
   # Scenic backdrop — rendered BEFORE platforms and characters.
   renderBackdrop(renderer, level, game.camera.x, game.elapsedTime)
   renderAtmosphereOverlay(renderer, game.atmosphere)
@@ -702,6 +713,10 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
     renderer.setDrawColor(255, 255, 255, uint8(min(255.0, game.screenBrightness * 255.0)))
     drawFilledRect(renderer, 0, 0, DEFAULT_WIDTH.cint, DEFAULT_HEIGHT.cint)
     renderer.setDrawBlendMode(BlendMode_None)
+
+  # Restore zoom transform.
+  if overviewActive and ovZoom < 1.0:
+    renderer.boxy.restoreTransform()
 
 proc renderPaused(renderer: RendererPtr, game: Game) =
   ## Render gameplay only; the animated dim overlay is handled by the Silky UI layer.
