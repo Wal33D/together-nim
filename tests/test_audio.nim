@@ -17,8 +17,19 @@ suite "audio system":
     let kinds = [soundJump, soundLand, soundDeath, soundLevelComplete,
                  soundCharSwitch, soundExitReached,
                  soundMenuHover, soundMenuSelect, soundMenuBack,
-                 soundTransitionSwoosh]
-    check kinds.len == 10
+                 soundTransitionSwoosh, soundReunion, soundSeparation,
+                 soundJumpPip, soundJumpLuca, soundJumpBruno,
+                 soundJumpCara, soundJumpFelix, soundJumpIvy,
+                 soundJumpPipDouble]
+    check kinds.len == 19
+
+  test "CharJumpSounds maps character indices to jump sounds":
+    check CharJumpSounds[0] == soundJumpPip
+    check CharJumpSounds[1] == soundJumpLuca
+    check CharJumpSounds[2] == soundJumpBruno
+    check CharJumpSounds[3] == soundJumpCara
+    check CharJumpSounds[4] == soundJumpFelix
+    check CharJumpSounds[5] == soundJumpIvy
 
   test "playSound is safe without audio initialised":
     # Audio is not open (CoreAudio not initialised in unit tests).
@@ -29,6 +40,9 @@ suite "audio system":
     playSound(soundLevelComplete)
     playSound(soundCharSwitch)
     playSound(soundExitReached)
+    for sk in CharJumpSounds:
+      playSound(sk)
+    playSound(soundJumpPipDouble)
 
   test "setMasterVolume and getMasterVolume stubs work":
     setMasterVolume(0.5)

@@ -280,7 +280,11 @@ proc pressJump*(game: var Game) =
     elif attemptCharacterJump(game.characters[game.activeCharacterIndex]):
       game.emitJumpParticles(game.activeCharacterIndex)
       game.accentJump()
-      playSound(soundJump)
+      let ci = game.activeCharacterIndex
+      if game.characters[ci].ability == doubleJump and game.characters[ci].jumpCount >= 2:
+        playSound(soundJumpPipDouble)
+      else:
+        playSound(CharJumpSounds[ci])
     else:
       game.characters[game.activeCharacterIndex].jumpBufferTimer = JUMP_BUFFER_TIME
 
@@ -763,7 +767,11 @@ proc update*(game: var Game, dt: float) =
          attemptCharacterJump(game.characters[game.activeCharacterIndex]):
         game.emitJumpParticles(game.activeCharacterIndex)
         game.accentJump()
-        playSound(soundJump)
+        let ci = game.activeCharacterIndex
+        if game.characters[ci].ability == doubleJump and game.characters[ci].jumpCount >= 2:
+          playSound(soundJumpPipDouble)
+        else:
+          playSound(CharJumpSounds[ci])
 
       # Scripted emotional moments
       checkScriptedMoments(game)

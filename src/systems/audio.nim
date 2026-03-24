@@ -11,12 +11,21 @@ type
     soundJump, soundLand, soundDeath, soundLevelComplete,
     soundCharSwitch, soundExitReached,
     soundMenuHover, soundMenuSelect, soundMenuBack, soundTransitionSwoosh,
-    soundReunion, soundSeparation
+    soundReunion, soundSeparation,
+    soundJumpPip, soundJumpLuca, soundJumpBruno,
+    soundJumpCara, soundJumpFelix, soundJumpIvy,
+    soundJumpPipDouble
 
   MusicStep* = object
     freqStart*, freqEnd*: float
     durationMs*: int
     amplitude*: float
+
+const
+  CharJumpSounds*: array[6, SoundKind] = [
+    soundJumpPip, soundJumpLuca, soundJumpBruno,
+    soundJumpCara, soundJumpFelix, soundJumpIvy
+  ]
 
 proc musicBedPattern*(): seq[MusicStep] =
   ## A short, looping ambient bed with a slow pulse and a higher companion line.
@@ -543,6 +552,28 @@ when defined(withAudio):
       # Soft descending sigh: a falling tone that fades away.
       addNote(440, 330, 180, 0.20, envDecay)
       addNote(330, 220, 140, 0.12, envRampDown)
+    of soundJumpPip:
+      # High bouncy chirp: 600→800 Hz, 60ms, quick decay.
+      addNote(600, 800, 60, 0.35, envDecay)
+    of soundJumpPipDouble:
+      # Same chirp pitched up 20%: 720→960 Hz, 60ms, quick decay.
+      addNote(720, 960, 60, 0.35, envDecay)
+    of soundJumpLuca:
+      # Airy rising sweep: 250→500 Hz, 100ms, ramp up.
+      addNote(250, 500, 100, 0.30, envRampUp)
+    of soundJumpBruno:
+      # Deep thud: 150 Hz base, 40ms, slight downward sweep.
+      addNote(200, 140, 40, 0.45, envDecay)
+    of soundJumpCara:
+      # Sharp quick whistle: 900→1200 Hz, 50ms, decay.
+      addNote(900, 1200, 50, 0.30, envDecay)
+    of soundJumpFelix:
+      # Mellow tone: 300 Hz, 35ms, flat envelope.
+      addNote(300, 300, 35, 0.30, envFlat)
+    of soundJumpIvy:
+      # Gentle bell: 440 Hz fundamental with 880 Hz octave harmonic, 45ms, soft decay.
+      addNote(440, 440, 45, 0.25, envDecay)
+      addNote(880, 880, 45, 0.12, envDecay)
 
     inst.totalSamples = 0
     for i in 0..<inst.noteCount:
