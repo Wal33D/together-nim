@@ -387,6 +387,11 @@ proc pressJump*(game: var Game) =
   if game.state != playing:
     return
 
+  # Skip overview pan on any jump input.
+  if game.camera.isOverviewActive():
+    skipOverview(game.camera)
+    return
+
   if game.activeCharacterIndex < game.characters.len:
     let ac = game.characters[game.activeCharacterIndex]
     if ac.isDying() or ac.isRespawning():
@@ -557,11 +562,13 @@ proc loadLevel*(game: var Game, idx: int) =
         setActOscConfig(ActOscillatorParams[ai + 1])
       break
 
-  # Snap camera to active character immediately
+  # Snap camera to active character, then start overview pan.
   if game.characters.len > 0:
     let ch = game.characters[0]
     snapCamera(game.camera, ch.x, ch.y, float(ch.width), float(ch.height),
                level.levelWidth, level.levelHeight)
+    startOverview(game.camera, level.levelWidth, level.levelHeight,
+                  ch.x, ch.y, float(ch.width), float(ch.height))
 
 const
   MenuBgCharMaxSpeed = 30.0
@@ -894,7 +901,7 @@ proc update*(game: var Game, dt: float) =
         game.characters[i].introGlowBoost =
           max(0.0, game.characters[i].introGlowBoost - 4.0 * scaledDt)
 
-    if not game.gameFrozen:
+    if not game.gameFrozen and not game.camera.isOverviewActive():
       # Apply movement to active character (blocked during death/respawn)
       if game.activeCharacterIndex < game.characters.len:
         let ac = game.characters[game.activeCharacterIndex]
@@ -908,8 +915,9 @@ proc update*(game: var Game, dt: float) =
           if dir > 0: game.characters[game.activeCharacterIndex].facingRight = true
           elif dir < 0: game.characters[game.activeCharacterIndex].facingRight = false
 
-    # Physics
-    if not game.gameFrozen and game.currentLevel >= 0 and game.currentLevel < allLevels.len:
+    # Physics (blocked during overview pan).
+    if not game.gameFrozen and not game.camera.isOverviewActive() and
+       game.currentLevel >= 0 and game.currentLevel < allLevels.len:
       let result = updatePhysics(game.characters, game.currentLevelState, scaledDt)
       let level = game.currentLevelState
 
@@ -948,12 +956,56 @@ proc update*(game: var Game, dt: float) =
           if idx >= 0:
             game.emitLandingParticles(idx, landed.ability, landed.fallVelocity)
             game.accentLanding(idx)
+            game.characters[idx].lastLandingTime = game.elapsedTime
           playLandingSound(landed.fallVelocity, landed.ability)
           # Velocity-scaled landing shake (up to 3px/0.15s)
           let normV = min(1.0, abs(landed.fallVelocity) / MAX_FALL_SPEED)
           if normV > 0.4:
             let landIntensity = normV * 3.0
             game.screenEffects.triggerShake(game.camera, landIntensity, 0.15)
+
+        # Felix-Ivy graceful landing combo: both land within 0.15s of each other.
+        block gracefulLandingCheck:
+          var felixIdx = -1
+          var ivyIdx = -1
+          for i in 0..<game.characters.len:
+            if game.characters[i].id == "felix": felixIdx = i
+            elif game.characters[i].id == "ivy": ivyIdx = i
+          if felixIdx < 0 or ivyIdx < 0:
+            break gracefulLandingCheck
+          let ft = game.characters[felixIdx].lastLandingTime
+          let it = game.characters[ivyIdx].lastLandingTime
+          if ft < 0.0 or it < 0.0:
+            break gracefulLandingCheck
+          if abs(ft - it) > GracefulLandingWindow:
+            break gracefulLandingCheck
+          # Both must have just landed this frame (at least one in the current batch).
+          var justLanded = false
+          for landed in result.landedCharacters:
+            if landed.id == "felix" or landed.id == "ivy":
+              justLanded = true
+              break
+          if not justLanded:
+            break gracefulLandingCheck
+          # Grant invulnerability to both.
+          game.characters[felixIdx].invulnTimer = GracefulLandingInvuln
+          game.characters[ivyIdx].invulnTimer = GracefulLandingInvuln
+          # Intensify glows.
+          game.characters[felixIdx].glowAlpha = 0.4
+          game.characters[felixIdx].glowScale = 2.5
+          game.characters[ivyIdx].glowAlpha = 0.4
+          game.characters[ivyIdx].glowScale = 2.5
+          # Golden ring at midpoint.
+          let midX = (characterCenterX(game.characters[felixIdx]) +
+                      characterCenterX(game.characters[ivyIdx])) / 2.0
+          let midY = (characterCenterY(game.characters[felixIdx]) +
+                      characterCenterY(game.characters[ivyIdx])) / 2.0
+          game.particles.emitGracefulLandingRing(midX, midY)
+          # Harmonic chime.
+          playSound(soundGracefulLanding)
+          # Reset landing times to prevent re-triggering.
+          game.characters[felixIdx].lastLandingTime = -1.0
+          game.characters[ivyIdx].lastLandingTime = -1.0
 
       # Mark exits — play chime when a character newly reaches their exit
       for i in 0..<game.characters.len:
@@ -1122,8 +1174,10 @@ proc update*(game: var Game, dt: float) =
           writeSave(saveData)
           playLevelCompleteFanfare(actForLevel(game.currentLevel))
 
-      # Update camera to follow active character
-      if game.activeCharacterIndex < game.characters.len:
+      # Update camera: overview pan or normal follow.
+      if game.camera.isOverviewActive():
+        updateOverview(game.camera, level.levelWidth, level.levelHeight, scaledDt)
+      elif game.activeCharacterIndex < game.characters.len:
         let ch = game.characters[game.activeCharacterIndex]
         updateCamera(game.camera, ch.x, ch.y, float(ch.width), float(ch.height),
                      ch.vx, ch.vy, ch.facingRight, level.levelWidth,

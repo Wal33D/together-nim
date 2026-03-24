@@ -70,6 +70,8 @@ const ComboProximity* = 40.0
 const SuperBounceMultiplier* = 1.5
 const WallFloatRelaySpeedCap* = 60.0      # px/s — slowed wall-slide cap during relay
 const WallFloatRelayMaxHorizDist* = 60.0  # px — horizontal alignment window
+const GracefulLandingWindow* = 0.15       # seconds — max time gap between Felix/Ivy landings
+const GracefulLandingInvuln* = 0.5        # seconds — invulnerability duration on combo
 
 # Tonal palettes for per-act ambient music
 type

@@ -62,6 +62,8 @@ type
     introGlowBoost*: float             # additive glow alpha multiplier during intro (0..2)
     wallFloatRelayActive*: bool          # true when Cara-Luca wall-float relay is active
     wallFloatRelayPartner*: int          # index of relay partner (-1 = none)
+    invulnTimer*: float                  # seconds remaining of invulnerability; 0 = vulnerable
+    lastLandingTime*: float              # game.elapsedTime when this character last landed
 
 proc newCharacter*(id: string): Character =
   result.x = 0.0
@@ -110,6 +112,8 @@ proc newCharacter*(id: string): Character =
   result.introGlowBoost = 0.0
   result.wallFloatRelayActive = false
   result.wallFloatRelayPartner = -1
+  result.invulnTimer = 0.0
+  result.lastLandingTime = -1.0
   case id
   of "pip":
     result.width = 24; result.height = 24
@@ -312,6 +316,10 @@ proc idleSway*(c: Character): float =
     sin(c.idleTimer * 2.0) * amplitude
   else:
     0.0
+
+proc isInvulnerable*(c: Character): bool =
+  ## True when the character has an active invulnerability window.
+  c.invulnTimer > 0.0
 
 proc isDying*(c: Character): bool =
   ## True when the character is in the death animation phase.

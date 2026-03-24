@@ -522,6 +522,23 @@ proc emitGlideShimmer*(system: var ParticleSystem, x, y: float, color: Color, ti
     gravityScale: 0.0
   ))
 
+const GracefulLandingRingLife = 0.5
+
+proc emitGracefulLandingRing*(system: var ParticleSystem, x, y: float) =
+  ## Spawn an expanding golden ring at the midpoint of Felix and Ivy on graceful landing combo.
+  let goldColor: Color = (r: 255'u8, g: 215'u8, b: 0'u8)
+  system.ringParticles.add(RingParticle(
+    x: x,
+    y: y,
+    baseW: 20.0,
+    baseH: 20.0,
+    life: GracefulLandingRingLife,
+    maxLife: GracefulLandingRingLife,
+    color: goldColor,
+    scaleRange: 3.0,
+    startAlpha: 0.8
+  ))
+
 proc updateRingParticles*(system: var ParticleSystem, dt: float) =
   ## Advance ring particle lifetimes and remove dead ones.
   var i = 0

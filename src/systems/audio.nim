@@ -17,7 +17,8 @@ type
     soundJumpCara, soundJumpFelix, soundJumpIvy,
     soundJumpPipDouble,
     soundSuperBounce,
-    soundActTransition
+    soundActTransition,
+    soundGracefulLanding
 
   MusicStep* = object
     freqStart*, freqEnd*: float
@@ -604,6 +605,10 @@ when defined(withAudio):
     of soundActTransition:
       # Handled by playActTransitionStinger; no-op here.
       discard
+    of soundGracefulLanding:
+      # Harmonic chime: Felix D4 + Ivy A4 layered with gentle decay.
+      addNote(293.7, 293.7, 120, 0.25, envDecay)
+      addNote(440.0, 440.0, 120, 0.20, envDecay)
 
     inst.totalSamples = 0
     for i in 0..<inst.noteCount:
