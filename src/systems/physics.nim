@@ -353,3 +353,28 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
       for r in 0..<characters.len:
         if characters[r].ridingCharacterId == idx:
           characters[r].x += dx
+
+proc findComboPartner*(characters: seq[Character], idx: int): int =
+  ## Return the index of a valid combo partner for character idx, or -1.
+  let ci = characters[idx].colorIndex
+  for pair in ComboPairs:
+    var partnerColor = -1
+    if pair.a == ci: partnerColor = pair.b
+    elif pair.b == ci: partnerColor = pair.a
+    if partnerColor < 0:
+      continue
+    for j in 0..<characters.len:
+      if j == idx: continue
+      if characters[j].colorIndex != partnerColor: continue
+      if characters[j].isDying() or characters[j].isRespawning(): continue
+      # Check riding relationship.
+      if characters[idx].ridingCharacterId == j or characters[j].ridingCharacterId == idx:
+        return j
+      # Check AABB adjacency: gap < ComboProximity in both axes.
+      let ai = toRect(characters[idx])
+      let bj = toRect(characters[j])
+      let gapX = max(0.0, max(bj.x - (ai.x + ai.w), ai.x - (bj.x + bj.w)))
+      let gapY = max(0.0, max(bj.y - (ai.y + ai.h), ai.y - (bj.y + bj.h)))
+      if gapX < ComboProximity and gapY < ComboProximity:
+        return j
+  -1

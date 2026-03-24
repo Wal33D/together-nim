@@ -58,6 +58,16 @@ const CHAR_COLORS*: array[6, Color] = [
 const CHAR_WIDTH*  = 24
 const CHAR_HEIGHT* = 24
 
+# Combo interaction system
+const ComboPairs*: array[3, tuple[a, b: int]] = [
+  (0, 2),  # Pip + Bruno
+  (3, 1),  # Cara + Luca
+  (4, 5),  # Felix + Ivy
+]
+const ComboCooldownTime* = 0.5
+const ComboJumpMultiplier* = 1.4
+const ComboProximity* = 40.0
+
 # Tonal palettes for per-act ambient music
 type
   TonalPalette* = object

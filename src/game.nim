@@ -88,6 +88,9 @@ type
     introPhase*: int                  # 0=pre-delay, 1=showing, 2=post-narration
     thoughtBubble*: tuple[text: string, charIdx: int, timer: float, fadeIn: float, fadeOut: float]
     thoughtCooldowns*: Table[string, float]
+    comboActive*: bool
+    comboCooldown*: float
+    comboReadyTimer*: float
 
   ThoughtEntry = object
     pair: string
@@ -366,6 +369,21 @@ proc pressJump*(game: var Game) =
     let ac = game.characters[game.activeCharacterIndex]
     if ac.isDying() or ac.isRespawning():
       discard
+    elif game.comboCooldown <= 0.0 and
+         (ac.grounded or ac.coyoteTimer < jumpGraceWindow(ac)) and
+         findComboPartner(game.characters, game.activeCharacterIndex) >= 0:
+      # Combo jump: boosted velocity.
+      game.characters[game.activeCharacterIndex].vy = ac.jumpForce() * ComboJumpMultiplier
+      game.characters[game.activeCharacterIndex].grounded = false
+      game.characters[game.activeCharacterIndex].jumpCount = 1
+      game.characters[game.activeCharacterIndex].coyoteTimer = jumpGraceWindow(ac) + 1.0
+      game.characters[game.activeCharacterIndex].jumpBufferTimer = 0.0
+      game.characters[game.activeCharacterIndex].triggerJump()
+      game.comboActive = true
+      game.comboCooldown = ComboCooldownTime
+      game.emitJumpParticles(game.activeCharacterIndex)
+      game.accentJump()
+      playSound(CharJumpSounds[game.activeCharacterIndex])
     elif attemptCharacterJump(game.characters[game.activeCharacterIndex]):
       game.emitJumpParticles(game.activeCharacterIndex)
       game.accentJump()
@@ -490,6 +508,9 @@ proc loadLevel*(game: var Game, idx: int) =
   game.levelWinTimer = 0.0
   game.dynamicTimeScale = 1.0
   game.slowMotionTimer = 0.0
+  game.comboActive = false
+  game.comboCooldown = 0.0
+  game.comboReadyTimer = 0.0
   game.jumpPressed = false
   game.levelStartTime = game.elapsedTime
   game.deathOccurred = false
@@ -947,6 +968,30 @@ proc update*(game: var Game, dt: float) =
                   (r: 255'u8, g: 245'u8, b: 157'u8))
               playSound(soundExitReached)
               break
+
+      # Combo cooldown decrement.
+      if game.comboCooldown > 0.0:
+        game.comboCooldown -= scaledDt
+        if game.comboCooldown < 0.0:
+          game.comboCooldown = 0.0
+          game.comboActive = false
+
+      # Combo-ready indicator particles (2 per second between valid pairs).
+      if game.activeCharacterIndex < game.characters.len:
+        let partnerIdx = findComboPartner(game.characters, game.activeCharacterIndex)
+        if partnerIdx >= 0 and game.comboCooldown <= 0.0:
+          game.comboReadyTimer += scaledDt
+          if game.comboReadyTimer >= 0.5:
+            game.comboReadyTimer -= 0.5
+            let ac = game.characters[game.activeCharacterIndex]
+            let pc = game.characters[partnerIdx]
+            let midX = (characterCenterX(ac) + characterCenterX(pc)) / 2.0
+            let midY = (characterCenterY(ac) + characterCenterY(pc)) / 2.0
+            let c1 = CHAR_COLORS[ac.colorIndex mod 6]
+            let c2 = CHAR_COLORS[pc.colorIndex mod 6]
+            game.particles.emitComboReady(midX, midY, c1, c2)
+        else:
+          game.comboReadyTimer = 0.0
 
       # Buffered jump: if the active character landed this frame, spend the buffer immediately.
       if game.activeCharacterIndex < game.characters.len and

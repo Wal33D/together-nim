@@ -348,6 +348,29 @@ proc emitWinConfetti*(system: var ParticleSystem) =
       gravityScale: 0.643,
     ))
 
+proc emitComboReady*(system: var ParticleSystem, x, y: float, color1, color2: Color) =
+  ## Emit a single small sparkle particle at (x, y) alternating between color1 and color2.
+  if system.particles.len >= MAX_PARTICLES:
+    return
+  let base = if rand(1) == 0: color1 else: color2
+  let dimmed: Color = (
+    r: uint8(float(base.r) * 0.3),
+    g: uint8(float(base.g) * 0.3),
+    b: uint8(float(base.b) * 0.3)
+  )
+  const ComboLife = 0.4
+  pushParticle(system, Particle(
+    x: x + randRange(-4.0, 4.0),
+    y: y + randRange(-4.0, 4.0),
+    vx: randRange(-10.0, 10.0),
+    vy: randRange(-20.0, -5.0),
+    life: ComboLife,
+    maxLife: ComboLife,
+    color: dimmed,
+    size: 2.0,
+    gravityScale: -0.1
+  ))
+
 proc emitWinSparkle*(system: var ParticleSystem) =
   ## Emit a single sparkle at a random screen position for the win celebration.
   if system.particles.len >= MAX_PARTICLES:
