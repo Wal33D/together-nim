@@ -1204,13 +1204,12 @@ const level32* = Level(
   characters: @["pip", "luca", "bruno"],
   platforms: @[
     Platform(x: 0.0,   y: 460.0, width: 900.0, height: 20.0),  # ground
-    Platform(x: 580.0, y: 330.0, width: 150.0, height: 20.0),  # mid ledge — Luca's exit
     Platform(x: 600.0, y: 220.0, width: 120.0, height: 20.0),  # top ledge — Pip's exit (triple stack only)
   ],
   hazards: @[],
   exits: @[
     Exit(x: 620.0, y: 170.0, width: 40.0, height: 50.0, characterId: "pip"),
-    Exit(x: 640.0, y: 280.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 800.0, y: 410.0, width: 40.0, height: 50.0, characterId: "luca"),
     Exit(x: 100.0, y: 410.0, width: 40.0, height: 50.0, characterId: "bruno"),
   ],
   buttons: @[
@@ -1253,15 +1252,14 @@ const level34* = Level(
   platforms: @[
     Platform(x: 0.0,   y: 460.0, width: 200.0, height: 20.0),   # left ground
     Platform(x: 600.0, y: 460.0, width: 400.0, height: 20.0),   # right ground
-    Platform(x: 640.0, y: 350.0, width: 160.0, height: 20.0),   # mid ledge (Luca exit)
-    Platform(x: 680.0, y: 220.0, width: 130.0, height: 20.0),   # high ledge (Pip exit)
+    Platform(x: 680.0, y: 220.0, width: 130.0, height: 20.0),   # high ledge (Pip exit — triple stack)
   ],
   hazards: @[
     Hazard(x: 200.0, y: 470.0, width: 400.0, height: 10.0),     # chasm spikes
   ],
   exits: @[
     Exit(x: 710.0, y: 170.0, width: 40.0, height: 50.0, characterId: "pip"),
-    Exit(x: 660.0, y: 300.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 660.0, y: 410.0, width: 40.0, height: 50.0, characterId: "luca"),
     Exit(x: 880.0, y: 410.0, width: 40.0, height: 50.0, characterId: "bruno"),
   ],
   buttons: @[],
@@ -1283,20 +1281,18 @@ const level35* = Level(
   narration: "Pip had never been this high. She could see everything from up here.",
   characters: @["pip", "luca", "bruno"],
   platforms: @[
-    Platform(x: 0.0,   y: 460.0, width: 250.0,  height: 20.0),   # left ground (start)
+    Platform(x: 0.0,   y: 460.0, width: 300.0,  height: 20.0),   # left ground (start)
     Platform(x: 550.0, y: 460.0, width: 450.0,  height: 20.0),   # right ground (Bruno exit side)
-    Platform(x: 350.0, y: 460.0, width: 100.0,  height: 20.0),   # stack platform (over gap)
-    Platform(x: 300.0, y: 100.0, width: 20.0,   height: 360.0),  # left wall (blocks shortcut)
-    Platform(x: 600.0, y: 340.0, width: 140.0,  height: 20.0),   # mid platform (Luca exit)
-    Platform(x: 620.0, y: 215.0, width: 130.0,  height: 20.0),   # high platform (Pip exit)
+    Platform(x: 350.0, y: 460.0, width: 150.0,  height: 20.0),   # stack platform (over gap)
+    Platform(x: 620.0, y: 215.0, width: 130.0,  height: 20.0),   # high platform (Pip exit — triple stack)
   ],
   hazards: @[
-    Hazard(x: 250.0, y: 470.0, width: 100.0, height: 10.0),      # gap spikes left
-    Hazard(x: 450.0, y: 470.0, width: 100.0, height: 10.0),      # gap spikes right
+    Hazard(x: 300.0, y: 470.0, width: 50.0, height: 10.0),       # gap spikes left
+    Hazard(x: 500.0, y: 470.0, width: 50.0, height: 10.0),       # gap spikes right
   ],
   exits: @[
     Exit(x: 660.0, y: 165.0, width: 40.0, height: 50.0, characterId: "pip"),
-    Exit(x: 640.0, y: 290.0, width: 40.0, height: 50.0, characterId: "luca"),
+    Exit(x: 640.0, y: 410.0, width: 40.0, height: 50.0, characterId: "luca"),
     Exit(x: 900.0, y: 410.0, width: 40.0, height: 50.0, characterId: "bruno"),
   ],
   buttons: @[],
