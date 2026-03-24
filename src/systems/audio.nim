@@ -19,7 +19,8 @@ type
     soundSuperBounce,
     soundActTransition,
     soundGracefulLanding,
-    soundFootstep
+    soundFootstep,
+    soundButtonPress, soundButtonRelease
 
   MusicStep* = object
     freqStart*, freqEnd*: float
@@ -613,6 +614,13 @@ when defined(withAudio):
     of soundFootstep:
       # Handled by playFootstepSound; no-op here.
       discard
+    of soundButtonPress:
+      # 800 Hz spike (2ms) then 200 Hz resonance (20ms).
+      addNote(800, 800, 2, 0.10, envFlat)
+      addNote(200, 200, 20, 0.10, envDecay)
+    of soundButtonRelease:
+      # Sweep 200→400 Hz over 15ms.
+      addNote(200, 400, 15, 0.06, envFlat)
 
     inst.totalSamples = 0
     for i in 0..<inst.noteCount:
@@ -713,6 +721,95 @@ when defined(withAudio):
     inc inst.noteCount
 
     inst.totalSamples = inst.notes[0].durationSamples
+    inst.active = true
+
+    discard pthread_mutex_lock(addr gAudioMutex)
+    block findSlot:
+      for slot in gInstances.mitems:
+        if not slot.active:
+          slot = inst
+          break findSlot
+      gInstances[0] = inst
+    discard pthread_mutex_unlock(addr gAudioMutex)
+
+  proc playButtonPressSound*(isHeavy: bool) =
+    ## Play button press with Bruno-specific deeper variant.
+    if not gAudioOpen: return
+
+    var inst: SoundInstance
+    inst.phase         = 0.0
+    inst.noteIndex     = 0
+    inst.sampleInNote  = 0
+    inst.samplesPlayed = 0
+    inst.noteCount     = 0
+    inst.filterState   = 0.0
+    inst.noiseState    = 0xDEADBEEF'u32
+
+    template addNote(f1, f2: float, ms: int, amp: float,
+                     env: NoteEnvelope = envFlat,
+                     wf: NoteWaveform = wfSine) =
+      let ni = inst.noteCount
+      inst.notes[ni] = SoundNote(
+        freqStart: f1, freqEnd: f2,
+        durationSamples: (ms * SAMPLE_RATE) div 1000,
+        amplitude: amp, envelope: env, waveform: wf)
+      inc inst.noteCount
+
+    if isHeavy:
+      # Bruno variant: 400 Hz spike, 100 Hz resonance, 25ms.
+      addNote(400, 400, 2, 0.10, envFlat)
+      addNote(100, 100, 25, 0.10, envDecay)
+    else:
+      # Standard: 800 Hz spike (2ms) then 200 Hz resonance (20ms).
+      addNote(800, 800, 2, 0.10, envFlat)
+      addNote(200, 200, 20, 0.10, envDecay)
+
+    inst.totalSamples = 0
+    for i in 0..<inst.noteCount:
+      inst.totalSamples += inst.notes[i].durationSamples
+    inst.active = true
+
+    discard pthread_mutex_lock(addr gAudioMutex)
+    block findSlot:
+      for slot in gInstances.mitems:
+        if not slot.active:
+          slot = inst
+          break findSlot
+      gInstances[0] = inst
+    discard pthread_mutex_unlock(addr gAudioMutex)
+
+  proc playExitReachedCharSound*(colorIndex: int) =
+    ## Play character-aware exit chime: base note then its fifth, triangle wave.
+    if not gAudioOpen: return
+    # Fall back to 440 Hz (JumpFreq constants from ticket 0158 not yet available).
+    let baseNote = 440.0
+
+    var inst: SoundInstance
+    inst.phase         = 0.0
+    inst.noteIndex     = 0
+    inst.sampleInNote  = 0
+    inst.samplesPlayed = 0
+    inst.noteCount     = 0
+    inst.filterState   = 0.0
+    inst.noiseState    = 0xDEADBEEF'u32
+
+    template addNote(f1, f2: float, ms: int, amp: float,
+                     env: NoteEnvelope = envFlat,
+                     wf: NoteWaveform = wfSine) =
+      let ni = inst.noteCount
+      inst.notes[ni] = SoundNote(
+        freqStart: f1, freqEnd: f2,
+        durationSamples: (ms * SAMPLE_RATE) div 1000,
+        amplitude: amp, envelope: env, waveform: wf)
+      inc inst.noteCount
+
+    # Base note (60ms) then its fifth (60ms), triangle wave.
+    addNote(baseNote, baseNote, 60, 0.08, envFlat, wfTriangle)
+    addNote(baseNote * 1.5, baseNote * 1.5, 60, 0.08, envDecay, wfTriangle)
+
+    inst.totalSamples = 0
+    for i in 0..<inst.noteCount:
+      inst.totalSamples += inst.notes[i].durationSamples
     inst.active = true
 
     discard pthread_mutex_lock(addr gAudioMutex)
@@ -927,6 +1024,8 @@ else:
   proc playSound*(kind: SoundKind) = discard
   proc playLandingSound*(fallVelocity: float, ability: CharacterAbility) = discard
   proc playFootstepSound*(characterId: string) = discard
+  proc playButtonPressSound*(isHeavy: bool) = discard
+  proc playExitReachedCharSound*(colorIndex: int) = discard
   proc playMenuHoverNote*(buttonIndex: int) = discard
   proc playLevelCompleteFanfare*(actIndex: int) = discard
   proc fadeOutAmbient*(seconds: float) = discard

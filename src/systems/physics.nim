@@ -142,6 +142,7 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
   for b in 0..<level.buttons.len:
     level.buttons[b].prevActive = level.buttons[b].active
     level.buttons[b].active = false
+    level.buttons[b].activatedByHeavy = false
 
   # Snapshot X positions before per-character physics so dx captures full displacement.
   var prevX = newSeq[float](characters.len)
@@ -277,6 +278,8 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
         if intersects(toRect(c), bRect):
           if not level.buttons[bi].requiresHeavy or c.ability == heavy:
             level.buttons[bi].active = true
+            if c.ability == heavy:
+              level.buttons[bi].activatedByHeavy = true
             for d in 0..<level.doors.len:
               if level.doors[d].id == level.buttons[bi].doorId:
                 level.doors[d].isOpen = true
