@@ -10,10 +10,15 @@ type
   Rect* = object
     x*, y*, w*, h*: float
 
+  LandedCharacter* = object
+    id*: string
+    fallVelocity*: float
+    ability*: CharacterAbility
+
   PhysicsResult* = object
     deadCharacters*: seq[string]
     exitedCharacters*: seq[string]
-    landedCharacters*: seq[string]
+    landedCharacters*: seq[LandedCharacter]
 
 proc intersects*(a, b: Rect): bool =
   a.x < b.x + b.w and
@@ -228,7 +233,8 @@ proc updatePhysics*(characters: var seq[Character], level: var Level, dt: float)
     # Trigger landing animation on touchdown
     if not wasGrounded and c.grounded:
       c.triggerLanding(preLandVy)
-      result.landedCharacters.add(c.id)
+      result.landedCharacters.add(LandedCharacter(
+        id: c.id, fallVelocity: preLandVy, ability: c.ability))
 
     # Hazard detection — skip during death/respawn (invulnerability)
     if not c.isDying() and not c.isRespawning():

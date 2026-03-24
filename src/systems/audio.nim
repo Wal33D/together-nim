@@ -4,7 +4,8 @@
 ## Without that flag all procs are harmless no-ops, safe for unit tests.
 
 import
-  ../constants
+  ../constants,
+  ../entities/character
 
 type
   SoundKind* = enum
@@ -590,6 +591,51 @@ when defined(withAudio):
       gInstances[0] = inst  # steal oldest slot when full
     discard pthread_mutex_unlock(addr gAudioMutex)
 
+  proc playLandingSound*(fallVelocity: float, ability: CharacterAbility) =
+    ## Play a landing thud scaled by fall velocity and character weight.
+    if not gAudioOpen: return
+    let speed = abs(fallVelocity)
+    if speed < 100.0: return
+    let intensity = clamp((speed - 100.0) / 400.0, 0.0, 1.0)
+    var baseFreq = 180.0 + 60.0 * intensity
+    let durationMs = int(30.0 + 20.0 * intensity)
+    var amplitude = 0.3 + 0.5 * intensity
+    case ability
+    of heavy:
+      amplitude *= 1.3
+      baseFreq -= 30.0
+    of doubleJump:
+      amplitude *= 0.7
+    else: discard
+
+    var inst: SoundInstance
+    inst.phase         = 0.0
+    inst.noteIndex     = 0
+    inst.sampleInNote  = 0
+    inst.samplesPlayed = 0
+    inst.noteCount     = 0
+    inst.filterState   = 0.0
+    inst.noiseState    = 0xDEADBEEF'u32
+
+    let ni = inst.noteCount
+    inst.notes[ni] = SoundNote(
+      freqStart: baseFreq, freqEnd: baseFreq,
+      durationSamples: (durationMs * SAMPLE_RATE) div 1000,
+      amplitude: amplitude, envelope: envDecay, waveform: wfSine)
+    inc inst.noteCount
+
+    inst.totalSamples = inst.notes[0].durationSamples
+    inst.active = true
+
+    discard pthread_mutex_lock(addr gAudioMutex)
+    block findSlot:
+      for slot in gInstances.mitems:
+        if not slot.active:
+          slot = inst
+          break findSlot
+      gInstances[0] = inst
+    discard pthread_mutex_unlock(addr gAudioMutex)
+
   proc setActOscConfig*(config: ActOscParams) =
     ## Store per-act oscillator configuration, applied in next buffer fill.
     if not gAudioOpen: return
@@ -622,6 +668,7 @@ else:
   proc initAudio*() = discard
   proc shutdownAudio*() = discard
   proc playSound*(kind: SoundKind) = discard
+  proc playLandingSound*(fallVelocity: float, ability: CharacterAbility) = discard
   proc setActPalette*(palette: TonalPalette) = discard
   proc setActOscConfig*(config: ActOscParams) = discard
   proc setCharacterActive*(charIdx: int, active: bool) = discard

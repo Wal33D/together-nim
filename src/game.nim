@@ -673,12 +673,12 @@ proc update*(game: var Game, dt: float) =
 
       # Landing sound
       if result.landedCharacters.len > 0:
-        for landedId in result.landedCharacters:
-          let idx = game.findCharacterIndex(landedId)
+        for landed in result.landedCharacters:
+          let idx = game.findCharacterIndex(landed.id)
           if idx >= 0:
             game.emitLandingParticles(idx)
             game.accentLanding(idx)
-        playSound(soundLand)
+          playLandingSound(landed.fallVelocity, landed.ability)
 
       # Mark exits — play chime when a character newly reaches their exit
       for i in 0..<game.characters.len:
