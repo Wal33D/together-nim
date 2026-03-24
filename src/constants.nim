@@ -68,6 +68,8 @@ const ComboCooldownTime* = 0.5
 const ComboJumpMultiplier* = 1.4
 const ComboProximity* = 40.0
 const SuperBounceMultiplier* = 1.5
+const WallFloatRelaySpeedCap* = 60.0      # px/s — slowed wall-slide cap during relay
+const WallFloatRelayMaxHorizDist* = 60.0  # px — horizontal alignment window
 
 # Tonal palettes for per-act ambient music
 type

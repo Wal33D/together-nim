@@ -478,10 +478,13 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
     if not ch.isDying():
       block:
         let glowScale = ch.glowScale
-        let glowAlpha = ch.glowAlpha
+        let relayAlphaBoost = if ch.wallFloatRelayActive: 1.5 else: 1.0
+        let glowAlpha = ch.glowAlpha * relayAlphaBoost
         # Loneliness pulse: grows in amplitude the longer a character is isolated.
         let lonelinessAmp = min(0.08, ch.isolationTimer * 0.008)
-        let pulse = glowAlpha + 0.05 * sin(game.elapsedTime * PI * 2.0 / 3.0) +
+        # Shared sine phase for wall-float relay sync.
+        let relayPhase = sin(game.elapsedTime * PI * 2.0 / 3.0)
+        let pulse = glowAlpha + 0.05 * relayPhase +
           lonelinessAmp * sin(game.elapsedTime * PI * 2.0 / 1.5)
         let charW = dw.float
         let charH = dh.float
@@ -652,6 +655,41 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
       renderer.setDrawColor(255, 220, 80, alpha)
       drawFilledRect(renderer, dx, dy, dw, dh)
       renderer.setDrawBlendMode(BlendMode_None)
+
+  # Wall-float relay connection line (Luca to Cara).
+  for i, ch in game.characters:
+    if not ch.wallFloatRelayActive:
+      continue
+    let partner = ch.wallFloatRelayPartner
+    if partner < 0 or partner >= game.characters.len or partner <= i:
+      continue
+    let other = game.characters[partner]
+    let x1 = ch.x + float(ch.width) * 0.5 - float(camX)
+    let y1 = ch.y + float(ch.height) * 0.5 - float(camY)
+    let x2 = other.x + float(other.width) * 0.5 - float(camX)
+    let y2 = other.y + float(other.height) * 0.5 - float(camY)
+    let waveOffset = sin(game.elapsedTime * PI * 2.0 / 3.0) * 2.0
+    # Blend Luca yellow (#FFD166) and Cara teal (#06D6A0) at alpha 0.40.
+    let blendR = uint8((0xFF + 0x06) div 2)
+    let blendG = uint8((0xD1 + 0xD6) div 2)
+    let blendB = uint8((0x66 + 0xA0) div 2)
+    let lineAlpha = uint8(0.40 * 255.0)
+    renderer.setDrawBlendMode(BlendMode_Blend)
+    let segments = 8
+    for s in 0 ..< segments:
+      let t0 = float(s) / float(segments)
+      let t1 = float(s + 1) / float(segments)
+      # Quadratic bezier approximation: offset X at midpoint.
+      let midWave0 = waveOffset * 4.0 * t0 * (1.0 - t0)
+      let midWave1 = waveOffset * 4.0 * t1 * (1.0 - t1)
+      let sx = x1 + (x2 - x1) * t0 + midWave0
+      let sy = y1 + (y2 - y1) * t0
+      let ex = x1 + (x2 - x1) * t1 + midWave1
+      let ey = y1 + (y2 - y1) * t1
+      renderer.setDrawColor(blendR, blendG, blendB, lineAlpha)
+      drawFilledRect(renderer, min(sx, ex), min(sy, ey),
+                     max(2.0, abs(ex - sx)), max(2.0, abs(ey - sy)))
+    renderer.setDrawBlendMode(BlendMode_None)
 
   # Ring particles (character switch flourish)
   if game.particles.ringParticles.len > 0:
