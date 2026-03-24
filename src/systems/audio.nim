@@ -309,6 +309,15 @@ when defined(withAudio):
         if osc.intermittentPhase >= 1.0:
           osc.intermittentPhase -= 1.0
 
+  proc setCharacterActive*(charIdx: int, active: bool) =
+    ## Immediately mute a character oscillator when inactive (dying/respawning).
+    if not gAudioOpen: return
+    if charIdx < 0 or charIdx > 5: return
+    discard pthread_mutex_lock(addr gAudioMutex)
+    if not active:
+      gCharOscillators[charIdx].targetAmp = 0.0
+    discard pthread_mutex_unlock(addr gAudioMutex)
+
   proc setCharacterDistance*(charIdx: int, distToNearest: float) =
     ## Set the target amplitude for a character oscillator based on proximity.
     ## Plays reunion chime or separation sigh on threshold crossings.
@@ -584,6 +593,7 @@ else:
   proc playSound*(kind: SoundKind) = discard
   proc setActPalette*(palette: TonalPalette) = discard
   proc setActOscConfig*(config: ActOscParams) = discard
+  proc setCharacterActive*(charIdx: int, active: bool) = discard
   proc setCharacterDistance*(charIdx: int, distToNearest: float) = discard
   proc setMasterVolume*(vol: float) = discard
   proc getMasterVolume*(): float = 1.0
