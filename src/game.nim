@@ -86,8 +86,64 @@ type
     introCharacterIdx*: int
     introQueue*: seq[int]
     introPhase*: int                  # 0=pre-delay, 1=showing, 2=post-narration
+    thoughtBubble*: tuple[text: string, charIdx: int, timer: float, fadeIn: float, fadeOut: float]
+    thoughtCooldowns*: Table[string, float]
+
+  ThoughtEntry = object
+    pair: string
+    thoughts: seq[string]
 
 const
+  ThoughtTable: seq[ThoughtEntry] = @[
+    ThoughtEntry(pair: "bruno-pip", thoughts: @[
+      "He's so big... I feel safe.",
+      "I could see everything from up there.",
+      "Must be gentle. She's so small.",
+      "She makes the quiet feel less heavy."]),
+    ThoughtEntry(pair: "luca-pip", thoughts: @[
+      "How does he float like that?",
+      "I want to drift too.",
+      "She bounces so high. I just... float."]),
+    ThoughtEntry(pair: "bruno-cara", thoughts: @[
+      "She climbs so fast. I can barely look up.",
+      "He's like a mountain. Mountains don't need to climb."]),
+    ThoughtEntry(pair: "felix-ivy", thoughts: @[
+      "She falls so gracefully. I just stand and wait.",
+      "He never rushes. I never rush. We understand each other."]),
+    ThoughtEntry(pair: "bruno-felix", thoughts: @[
+      "He stands so still. Like a tall tree.",
+      "He's solid. I can lean on that."]),
+    ThoughtEntry(pair: "bruno-ivy", thoughts: @[
+      "She moves like water. I'm just stone.",
+      "He reminds me of the ground. Steady."]),
+    ThoughtEntry(pair: "bruno-luca", thoughts: @[
+      "He drifts so easily. Must be nice.",
+      "Bruno's like an anchor. I need that."]),
+    ThoughtEntry(pair: "cara-felix", thoughts: @[
+      "He waits so long. I'd climb the walls.",
+      "She's already up there. I'll catch up."]),
+    ThoughtEntry(pair: "cara-ivy", thoughts: @[
+      "She's so calm in the air. I grip the wall.",
+      "She climbs like it's nothing. I just watch."]),
+    ThoughtEntry(pair: "cara-luca", thoughts: @[
+      "He floats. I climb. Same height, different paths.",
+      "She's always moving. I just drift."]),
+    ThoughtEntry(pair: "cara-pip", thoughts: @[
+      "She's smaller than me! That's rare.",
+      "She's so fast on walls. I want to try."]),
+    ThoughtEntry(pair: "felix-luca", thoughts: @[
+      "We both take our time. That's okay.",
+      "He's patient. Like the pause between waves."]),
+    ThoughtEntry(pair: "felix-pip", thoughts: @[
+      "She never stops. I always stop.",
+      "He's so tall and so still. Like a lighthouse."]),
+    ThoughtEntry(pair: "ivy-luca", thoughts: @[
+      "We both float, in different ways.",
+      "She falls like she's flying."]),
+    ThoughtEntry(pair: "ivy-pip", thoughts: @[
+      "So much energy in something so small.",
+      "She moves like a leaf. So gentle."]),
+  ]
   ProximityNear* = 80.0
   ProximityFar* = 200.0
   ProximityGlowRange* = 120.0
@@ -113,6 +169,30 @@ var
   transitionPool: TweenPool = initTweenPool()
   transitionPendingNextLevel: bool = false
 
+
+proc thoughtBubbleAlpha*(game: Game): float =
+  ## Return the current opacity (0.0..1.0) for the thought bubble.
+  let t = game.thoughtBubble.timer
+  if t <= 0.0 or game.thoughtBubble.text.len == 0:
+    return 0.0
+  let totalDur = 3.5
+  if t > totalDur - game.thoughtBubble.fadeIn:
+    return (totalDur - t) / game.thoughtBubble.fadeIn
+  if t < game.thoughtBubble.fadeOut:
+    return t / game.thoughtBubble.fadeOut
+  1.0
+
+proc thoughtPairKey(a, b: string): string =
+  ## Build a sorted pair key for the thought table.
+  if a < b: a & "-" & b
+  else: b & "-" & a
+
+proc thoughtsForPair(key: string): seq[string] =
+  ## Look up thoughts for a character pair.
+  for entry in ThoughtTable:
+    if entry.pair == key:
+      return entry.thoughts
+  @[]
 
 proc jumpGraceWindow(c: Character): float =
   if c.ability == coyoteTime:
@@ -1122,6 +1202,49 @@ proc update*(game: var Game, dt: float) =
           game.characters[i].isolationTimer = 0.0
           # Bloom back to full colour quickly on reconnect.
           game.characters[i].isolationSat *= max(0.0, 1.0 - 4.0 * scaledDt)
+
+    # Thought bubble system — idle pair proximity triggers.
+    if game.thoughtBubble.timer > 0.0:
+      game.thoughtBubble.timer -= scaledDt
+      if game.thoughtBubble.timer <= 0.0:
+        game.thoughtBubble.timer = 0.0
+        game.thoughtBubble.text = ""
+    else:
+      # Check all pairs for idle proximity.
+      block findThought:
+        for i in 0..<n:
+          if game.characters[i].isDying() or game.characters[i].isRespawning():
+            continue
+          if game.characters[i].idleTimer < 3.0:
+            continue
+          for j in (i + 1)..<n:
+            if game.characters[j].isDying() or game.characters[j].isRespawning():
+              continue
+            if game.characters[j].idleTimer < 3.0:
+              continue
+            if distMatrix[i * n + j] > ProximityNear:
+              continue
+            let pairKey = thoughtPairKey(game.characters[i].id, game.characters[j].id)
+            if game.thoughtCooldowns.hasKey(pairKey) and game.thoughtCooldowns[pairKey] > 0.0:
+              continue
+            let thoughts = thoughtsForPair(pairKey)
+            if thoughts.len == 0:
+              continue
+            let thought = thoughts[rand(thoughts.len - 1)]
+            let thinker = if rand(1) == 0: i else: j
+            game.thoughtBubble = (text: thought, charIdx: thinker,
+                                  timer: 3.5, fadeIn: 0.3, fadeOut: 0.5)
+            game.thoughtCooldowns[pairKey] = 15.0
+            break findThought
+
+    # Tick thought cooldowns.
+    var expiredKeys: seq[string] = @[]
+    for key, val in game.thoughtCooldowns.mpairs:
+      val -= scaledDt
+      if val <= 0.0:
+        expiredKeys.add(key)
+    for key in expiredKeys:
+      game.thoughtCooldowns.del(key)
 
     # Update atmospheric background effects
     game.atmosphere.update(scaledDt)
