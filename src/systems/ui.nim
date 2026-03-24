@@ -126,7 +126,7 @@ proc triggerMenuEntrance() =
   for i in 0..<4:
     menuBtnAlphas[i] = 0.0
 
-  discard startTween(menuTweenPool, 0.0, 1.0, 0.4, easeOutCubic,
+  discard startTween(menuTweenPool, 0.0, 1.0, 0.6, easeOutCubic,
     proc(v: float) = menuTitleAlpha = v)
 
   for i in 0..<6:
@@ -782,8 +782,41 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
     if titleShimmerX > 1.0:
       titleShimmerX = -1.0
 
-  # Title text — clean white on dark panel, no glow/shimmer.
-  drawCenteredText(sk, layout, "Display", "TOGETHER", heroCenter, heroPos.y + layout.px(18), rgbx(246, 248, 251, titleAlpha))
+  # Title text with glow halo and shimmer sweep.
+  let
+    titleText = "TOGETHER"
+    titleY = heroPos.y + layout.px(18)
+    titleSize = sk.uiTextSize(layout, "Display", titleText)
+    titleX = heroCenter - titleSize.x * 0.5
+
+  # Glow halo — color-cycling rectangle behind title.
+  if titleAlpha > 0'u8:
+    let
+      glowColor = hsl(titleGlowHue * 360.0, 60.0, 70.0).color
+      glowA = uint8(float(titleAlpha) * 0.12)
+      glowPad = layout.px(6)
+      glowPos = vec2(titleX - glowPad, titleY - glowPad)
+      glowSize = vec2(titleSize.x + glowPad * 2, titleSize.y + glowPad * 2)
+    sk.drawRect(glowPos, glowSize, rgbx(
+      clamp(glowColor.r * 255.0, 0.0, 255.0).uint8,
+      clamp(glowColor.g * 255.0, 0.0, 255.0).uint8,
+      clamp(glowColor.b * 255.0, 0.0, 255.0).uint8,
+      glowA))
+
+  drawCenteredText(sk, layout, "Display", titleText, heroCenter, titleY, rgbx(246, 248, 251, titleAlpha))
+
+  # Shimmer sweep — bright highlight band moving across title.
+  if titleShimmerX >= 0.0 and titleAlpha > 0'u8:
+    let
+      shimmerW = layout.px(32)
+      shimmerCenter = titleX + titleShimmerX * titleSize.x
+      shimmerLeft = shimmerCenter - shimmerW * 0.5
+      shimmerClipLeft = max(shimmerLeft, titleX)
+      shimmerClipRight = min(shimmerCenter + shimmerW * 0.5, titleX + titleSize.x)
+    if shimmerClipRight > shimmerClipLeft:
+      let shimmerA = uint8(float(titleAlpha) * 0.18)
+      sk.drawRect(vec2(shimmerClipLeft, titleY), vec2(shimmerClipRight - shimmerClipLeft, titleSize.y),
+                  rgbx(255, 255, 255, shimmerA))
   drawCenteredText(sk, layout, "Small", tagline,
                    heroCenter, heroPos.y + layout.px(50), rgbx(160, 171, 192, 255))
   sk.drawRect(vec2(heroCenter - layout.px(8), heroPos.y + layout.px(70)), layout.sz(16, 16), heroAccent)
