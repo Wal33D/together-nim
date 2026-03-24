@@ -8,6 +8,7 @@ src/systems/renderer
 src/systems/levels
 .scriptorium/
 .claude/
+AGENTS.md
 queue/
 tests/test_*
 !tests/*.nim
