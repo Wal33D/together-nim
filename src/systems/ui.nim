@@ -264,7 +264,7 @@ proc cycleMenuSpotlight*(ui: UiRenderer, delta: int) =
   let prev = ui.menuSpotlight
   ui.menuSpotlight = (ui.menuSpotlight + delta + count * 4) mod count
   if ui.menuSpotlight != prev:
-    playSound(soundMenuHover)
+    playMenuHoverNote(ui.menuSpotlight)
 
 proc cycleMenuCursor*(delta: int) =
   ## Move the main menu cursor up or down among the 5 buttons.
@@ -272,14 +272,14 @@ proc cycleMenuCursor*(delta: int) =
   let prev = menuCursor
   menuCursor = (menuCursor + delta + count * 4) mod count
   if menuCursor != prev:
-    playSound(soundMenuHover)
+    playMenuHoverNote(menuCursor)
 
 proc cyclePauseSelection*(ui: UiRenderer, delta: int) =
   const count = 4
   let prev = ui.pauseSelection
   ui.pauseSelection = (ui.pauseSelection + delta + count * 4) mod count
   if ui.pauseSelection != prev:
-    playSound(soundMenuHover)
+    playMenuHoverNote(ui.pauseSelection)
 
 proc cycleSettingsCursor*(game: var Game, delta: int) =
   ## Move settings cursor up/down (0=WindowSize, 1=Fullscreen, 2=VSync, 3=Volume, 4=Back).
@@ -287,7 +287,7 @@ proc cycleSettingsCursor*(game: var Game, delta: int) =
   let prev = game.settingsCursor
   game.settingsCursor = (game.settingsCursor + delta + count * 4) mod count
   if game.settingsCursor != prev:
-    playSound(soundMenuHover)
+    playMenuHoverNote(game.settingsCursor)
 
 proc activateFocusedAction*(ui: UiRenderer, game: var Game) =
   case game.state
@@ -1215,7 +1215,7 @@ proc renderSettings(ui: UiRenderer, sk: Silky, window: Window,
     if window.mousePos.vec2.overlaps(rowRect):
       if game.settingsCursor != i:
         game.settingsCursor = i
-        playSound(soundMenuHover)
+        playMenuHoverNote(i)
 
 proc renderLevelSelect(ui: UiRenderer, sk: Silky, window: Window,
                        layout: UiLayout, game: var Game) =
