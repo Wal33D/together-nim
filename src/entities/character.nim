@@ -47,6 +47,7 @@ type
     proximityTarget*: int          # index of nearest character within 80px (-1 if none)
     celebrateTimer*: float         # counts down from stagger delay, then triggers bounce
     celebrating*: bool             # true while bounce sequence is active
+    celebrateSquash*: float        # squash target during celebrate (default 0.8, finale 0.65)
     glowScale*: float              # dynamic glow scale from proximity (default 1.8)
     glowAlpha*: float              # dynamic glow alpha from proximity (default 0.15)
     glowGoldMix*: float            # gold tint blend for full-group proximity (0..0.15)
@@ -92,6 +93,7 @@ proc newCharacter*(id: string): Character =
   result.proximityTarget = -1
   result.celebrateTimer = 0.0
   result.celebrating = false
+  result.celebrateSquash = 0.8
   result.glowScale = 1.8
   result.glowAlpha = 0.15
   result.glowGoldMix = 0.0
@@ -165,11 +167,11 @@ proc updateAnimation*(c: var Character, dt: float) =
     c.celebrateTimer -= dt
     if c.celebrateTimer <= 0.0:
       c.celebrating = true
-      c.squashY = 0.8
+      c.squashY = c.celebrateSquash
       c.celebrateTimer = 0.08
   elif c.celebrating and c.celebrateTimer > 0.0:
     c.celebrateTimer -= dt
-    c.squashY = 0.8
+    c.squashY = c.celebrateSquash
     if c.celebrateTimer <= 0.0:
       c.squashY = 1.15
   elif c.celebrating:

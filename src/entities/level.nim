@@ -16,6 +16,7 @@ type
     x*, y*: float
     width*, height*: float
     characterId*: string
+    sharedExit*: bool
 
   Button* = object
     x*, y*: float

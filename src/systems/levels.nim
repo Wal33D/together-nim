@@ -852,6 +852,7 @@ const level25* = Level(
   id: 25,
   name: "Almost",
   narration: "Almost there. Almost home. Almost together.",
+  interLevelNarration: "They had been apart. The silence was unbearable.",
   characters: @["pip", "luca", "bruno", "cara", "felix", "ivy"],
   platforms: @[
     Platform(x: 0.0,    y: 560.0, width: 200.0, height: 20.0),   # start ground
@@ -914,6 +915,7 @@ const level26* = Level(
   id: 26,
   name: "Colors",
   narration: "They were colors. Each one necessary.",
+  interLevelNarration: "Every wall they passed reminded them of someone who could climb it.",
   characters: @["pip", "luca", "bruno", "cara", "felix", "ivy"],
   platforms: @[
     Platform(x: 0.0,    y: 560.0, width: 200.0, height: 20.0),   # start ground
@@ -971,6 +973,7 @@ const level27* = Level(
   id: 27,
   name: "Shapes",
   narration: "They were shapes. Each one perfect.",
+  interLevelNarration: "The heavy switches. The high ledges. The long falls. Each one a memory of a friend.",
   characters: @["pip", "luca", "bruno", "cara", "felix", "ivy"],
   platforms: @[
     Platform(x: 0.0,    y: 560.0, width: 200.0, height: 20.0),   # start ground
@@ -1023,6 +1026,7 @@ const level28* = Level(
   id: 28,
   name: "Consciousness",
   narration: "They were consciousness discovering itself.",
+  interLevelNarration: "They were closer now. They could almost feel each other.",
   characters: @["pip", "luca", "bruno", "cara", "felix", "ivy"],
   platforms: @[
     # Brain/heart shape layout — platforms form a symmetrical organic shape
@@ -1081,6 +1085,7 @@ const level29* = Level(
   id: 29,
   name: "Family",
   narration: "They were family. Not because they were alike. Because they chose each other.",
+  interLevelNarration: "One more. Just one more.",
   characters: @["pip", "luca", "bruno", "cara", "felix", "ivy"],
   platforms: @[
     Platform(x: 0.0,    y: 560.0, width: 200.0, height: 20.0),   # start ground
@@ -1158,13 +1163,8 @@ const level30* = Level(
     Hazard(x: 580.0, y: 470.0, width: 60.0, height: 10.0),
   ],
   exits: @[
-    # ONE shared exit — all 6 characters at the same position
-    Exit(x: 900.0, y: 410.0, width: 40.0, height: 50.0, characterId: "pip"),
-    Exit(x: 900.0, y: 410.0, width: 40.0, height: 50.0, characterId: "luca"),
-    Exit(x: 900.0, y: 410.0, width: 40.0, height: 50.0, characterId: "bruno"),
-    Exit(x: 900.0, y: 410.0, width: 40.0, height: 50.0, characterId: "cara"),
-    Exit(x: 900.0, y: 410.0, width: 40.0, height: 50.0, characterId: "felix"),
-    Exit(x: 900.0, y: 410.0, width: 40.0, height: 50.0, characterId: "ivy"),
+    # ONE shared exit — all 6 characters enter the same zone
+    Exit(x: 850.0, y: 380.0, width: 200.0, height: 80.0, characterId: "", sharedExit: true),
   ],
   buttons: @[],
   doors: @[],
