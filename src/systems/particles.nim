@@ -468,6 +468,32 @@ proc emitWinSparkle*(system: var ParticleSystem) =
     gravityScale: -0.1,
   ))
 
+const
+  GlideShimmerLife = 0.6
+  GlideShimmerDriftY = -20.0
+  GlideShimmerSwayAmplitude = 15.0
+  GlideShimmerWhiteMix = 0.3
+  GlideShimmerInterval* = 0.08
+
+proc emitGlideShimmer*(system: var ParticleSystem, x, y: float, color: Color, time: float) =
+  ## Emit a single gentle shimmer particle for Luca's glide trail.
+  if system.particles.len >= MAX_PARTICLES:
+    return
+  let tinted = blendWithWhite(color, GlideShimmerWhiteMix)
+  let size = randRange(2.0, 3.0)
+  let vx = sin(time * 2.0 * PI / 2.0) * GlideShimmerSwayAmplitude
+  pushParticle(system, Particle(
+    x: x,
+    y: y,
+    vx: vx,
+    vy: GlideShimmerDriftY,
+    life: GlideShimmerLife,
+    maxLife: GlideShimmerLife,
+    color: tinted,
+    size: size,
+    gravityScale: 0.0
+  ))
+
 proc updateRingParticles*(system: var ParticleSystem, dt: float) =
   ## Advance ring particle lifetimes and remove dead ones.
   var i = 0

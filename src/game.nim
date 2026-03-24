@@ -94,6 +94,7 @@ type
     comboCooldown*: float
     comboReadyTimer*: float
     charFlashTimers*: array[6, float]
+    glideShimmerTimer*: float
 
   ThoughtEntry = object
     pair: string
@@ -909,6 +910,20 @@ proc update*(game: var Game, dt: float) =
           let sparkX = if wallOnRight: c.x + float(c.width) else: c.x
           game.particles.emitWallSpark(sparkX, c.y, float(c.height), wallOnRight)
         game.characters[i] = c
+
+      # Luca glide shimmer trail — emit while airborne, falling, and jump held
+      block glideShimmer:
+        for i in 0..<game.characters.len:
+          let c = game.characters[i]
+          if c.ability == floatAbility and not c.grounded and c.vy > 0.0 and game.jumpPressed:
+            game.glideShimmerTimer -= scaledDt
+            if game.glideShimmerTimer <= 0.0:
+              let shimmerX = c.x + float(c.width) / 2.0
+              let shimmerY = c.y
+              game.particles.emitGlideShimmer(shimmerX, shimmerY, c.color, game.elapsedTime)
+              game.glideShimmerTimer = GlideShimmerInterval
+            break glideShimmer
+        game.glideShimmerTimer = 0.0
 
       # Button activation shimmer and rumble — emit on false→true edge
       for b in game.currentLevelState.buttons:
