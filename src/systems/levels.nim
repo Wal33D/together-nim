@@ -101,6 +101,7 @@ const level5* = Level(
   id: 5,
   name: "Two Minds",
   narration: "Luca was yellow. Luca could float. Together they understood more.",
+  interLevelNarration: "Something yellow drifted down from above. It fell slowly, as if gravity were just a suggestion.",
   characters: @["pip", "luca"],
   platforms: @[
     Platform(x: 0.0,    y: 260.0, width: 240.0, height: 20.0),   # start platform (high)

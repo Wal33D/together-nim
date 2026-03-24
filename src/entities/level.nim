@@ -58,6 +58,7 @@ type
     doors*: seq[Door]
     movingPlatforms*: seq[MovingPlatform]
     starChallenge*: StarChallenge
+    interLevelNarration*: string
     levelWidth*: float
     levelHeight*: float
 

@@ -16,7 +16,7 @@ import systems/[particles, animation, screenEffects]
 
 type
   GameState* = enum
-    menu, playing, paused, levelWin, credits, actTitle, settings, levelSelect, won
+    menu, playing, paused, levelWin, credits, actTitle, settings, levelSelect, won, storyBeat
 
   ActDef* = object
     number*: int
@@ -77,6 +77,10 @@ type
     totalDeaths*: int
     wonLevelsCompleted*: int
     wonTotalTime*: float
+    storyBeatText*: string
+    storyBeatRevealed*: int
+    storyBeatTimer*: float
+    charactersMet*: set[uint8]
 
 const
   ProximityNear* = 80.0
@@ -339,6 +343,17 @@ proc cycleActiveCharacter*(game: var Game, delta: int): bool =
   playSound(soundCharSwitch)
   true
 
+proc updateCharactersMet*(game: var Game) =
+  ## Derive charactersMet bitmask from currentLevel.
+  game.charactersMet = {0'u8}  # Pip is always met.
+  let levelNum = game.currentLevel + 1
+  if levelNum >= 5: game.charactersMet.incl(1'u8)   # Luca
+  if levelNum >= 6: game.charactersMet.incl(2'u8)   # Bruno
+  if levelNum >= 8: game.charactersMet.incl(3'u8)   # Cara
+  if levelNum >= 13:
+    game.charactersMet.incl(4'u8)  # Felix
+    game.charactersMet.incl(5'u8)  # Ivy
+
 proc loadLevel*(game: var Game, idx: int) =
   if idx < 0 or idx >= allLevels.len:
     return
@@ -363,6 +378,8 @@ proc loadLevel*(game: var Game, idx: int) =
   game.atmosphere = newAtmosphere(atmColors)
   game.particles = ParticleSystem(particles: @[])
   game.exitEmitTimers = newSeq[float](level.exits.len)
+
+  game.updateCharactersMet()
 
   # Narration
   game.narrationText = level.narration
@@ -564,8 +581,16 @@ proc nextLevel*(game: var Game) =
     if isFirstLevelOfAct(nextIdx):
       game.showActTitle(nextIdx)
     else:
-      game.loadLevel(nextIdx)
-      game.state = playing
+      let nextLevelData = allLevels[nextIdx]
+      if nextLevelData.interLevelNarration.len > 0:
+        game.loadLevel(nextIdx)
+        game.state = storyBeat
+        game.storyBeatText = nextLevelData.interLevelNarration
+        game.storyBeatRevealed = 0
+        game.storyBeatTimer = 0.0
+      else:
+        game.loadLevel(nextIdx)
+        game.state = playing
   else:
     game.enterCredits()
 
@@ -621,6 +646,12 @@ proc handleKey*(game: var Game, button: windy.Button) =
     if button == KeyEscape:
       game.state = menu
       playSound(soundMenuBack)
+  of storyBeat:
+    if button == KeySpace or button == KeyEnter:
+      if game.storyBeatRevealed < game.storyBeatText.len:
+        game.storyBeatRevealed = game.storyBeatText.len
+      else:
+        game.state = playing
   of won:
     if game.wonThankYouShown:
       game.state = menu
@@ -1078,6 +1109,13 @@ proc update*(game: var Game, dt: float) =
     if game.actTitleTimer >= ActTitleDuration:
       game.loadLevel(game.actTitleTarget)
       game.state = playing
+
+  of storyBeat:
+    game.storyBeatTimer += scaledDt
+    if game.storyBeatTimer >= 0.025:
+      game.storyBeatTimer -= 0.025
+      if game.storyBeatRevealed < game.storyBeatText.len:
+        game.storyBeatRevealed += 1
 
   of credits:
     game.creditsTimer += scaledDt

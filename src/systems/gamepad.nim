@@ -156,6 +156,8 @@ proc handleControllerButton*(game: var Game, button: uint8, isDown: bool) =
           game.handleKey(KeyEnter)
         of won:
           game.handleKey(KeyEnter)
+        of storyBeat:
+          game.handleKey(KeySpace)
         else:
           discard
     elif game.state == playing:

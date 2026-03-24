@@ -1401,6 +1401,23 @@ proc renderWonScreen(ui: UiRenderer, sk: Silky, window: Window,
                        "won_continue", rgbx(232, 184, 88, 255)):
       game.state = menu
 
+proc renderStoryBeat(sk: Silky, layout: UiLayout, game: Game) =
+  ## Render the story-beat screen: black background, centered narration, prompt.
+  sk.drawRect(vec2(0, 0), vec2(layout.frameSize.x.float32, layout.frameSize.y.float32),
+              rgbx(0, 0, 0, 255))
+  if game.storyBeatRevealed > 0:
+    let displayText = game.storyBeatText[0..<min(game.storyBeatRevealed, game.storyBeatText.len)]
+    let textY = layout.frameSize.y.float32 * 0.33
+    let maxW = DEFAULT_WIDTH.float32 * layout.scale * 0.7
+    let textX = layout.centerX - maxW * 0.5
+    discard sk.drawUiText(layout, "Body", displayText, vec2(textX, textY),
+                          rgbx(228, 233, 241, 255), maxW, wordWrap = true)
+  if game.storyBeatRevealed >= game.storyBeatText.len:
+    let promptAlpha = uint8(clamp((game.storyBeatTimer - 0.5) * 2.0 * 255.0, 0.0, 255.0))
+    drawCenteredText(sk, layout, "Small", "Press Space to continue",
+                     layout.centerX, layout.frameSize.y.float32 * 0.75,
+                     rgbx(150, 160, 180, promptAlpha))
+
 proc renderOverlay*(ui: UiRenderer, window: Window, game: var Game,
                     frameSize: IVec2) =
   let layout = initLayout(frameSize)
@@ -1470,6 +1487,8 @@ proc renderOverlay*(ui: UiRenderer, window: Window, game: var Game,
     ui.renderCredits(sk, window, layout, game)
   of actTitle:
     discard
+  of storyBeat:
+    sk.renderStoryBeat(layout, game)
   of settings:
     ui.renderSettings(sk, window, layout, game)
   of levelSelect:

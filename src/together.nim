@@ -239,6 +239,10 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer,
     return
   of actTitle:
     return
+  of storyBeat:
+    if window.buttonPressed[KeySpace] or window.buttonPressed[KeyEnter]:
+      game.handleKey(KeySpace)
+    return
   else:
     discard
 
