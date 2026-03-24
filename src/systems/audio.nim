@@ -16,7 +16,8 @@ type
     soundJumpPip, soundJumpLuca, soundJumpBruno,
     soundJumpCara, soundJumpFelix, soundJumpIvy,
     soundJumpPipDouble,
-    soundSuperBounce
+    soundSuperBounce,
+    soundActTransition
 
   MusicStep* = object
     freqStart*, freqEnd*: float
@@ -145,7 +146,7 @@ when defined(withAudio):
       envFlat, envDecay, envRampUp, envRampDown
 
     NoteWaveform = enum
-      wfSine, wfNoise, wfTriangle
+      wfSine, wfNoise, wfTriangle, wfSineTriMix
 
     SoundNote = object
       freqStart: float
@@ -206,6 +207,8 @@ when defined(withAudio):
     gPaletteCrossfadeT: float = 1.0
     gCrossfading: bool = false
     gMasterVolume: float = 1.0
+    gAmbientFadeLevel: float = 1.0
+    gAmbientFadeSpeed: float = 0.0
 
   proc durationSamples(step: MusicStep): int =
     max(1, (step.durationMs * SAMPLE_RATE) div 1000)
@@ -234,6 +237,12 @@ when defined(withAudio):
 
   proc mixMusicTracks(buf: ptr UncheckedArray[int16], numSamples: int): float =
     ## Mix music tracks and return the current palette scale factor.
+    # Update ambient fade level.
+    let bufSeconds = float(numSamples) / float(SAMPLE_RATE)
+    gAmbientFadeLevel = clamp(gAmbientFadeLevel + gAmbientFadeSpeed * bufSeconds, 0.0, 1.0)
+    if gAmbientFadeLevel >= 1.0 or gAmbientFadeLevel <= 0.0:
+      gAmbientFadeSpeed = 0.0
+
     var paletteScale: float
     if gCrossfading:
       gPaletteCrossfadeT += float(numSamples) / (CrossfadeDuration * float(SAMPLE_RATE))
@@ -260,7 +269,7 @@ when defined(withAudio):
           if stepDuration > 0: float(track.sampleInStep) / float(stepDuration)
           else: 0.0
         let freq = (step.freqStart + (step.freqEnd - step.freqStart) * noteProgress) * track.pitchScale * paletteScale
-        var amp = step.amplitude * track.ampScale
+        var amp = step.amplitude * track.ampScale * gAmbientFadeLevel
 
         # Gentle fade at loop boundaries to avoid clicks.
         if track.samplesPlayed < FADE_SAMPLES:
@@ -427,6 +436,12 @@ when defined(withAudio):
           rawSample = 2.0 * abs(2.0 * (inst.phase - floor(inst.phase + 0.5))) - 1.0
           inst.phase += freq / float(SAMPLE_RATE)
           if inst.phase >= 1.0: inst.phase -= 1.0
+        of wfSineTriMix:
+          let sinePart = sin(inst.phase * 2.0 * PI)
+          let triPart = 2.0 * abs(2.0 * (inst.phase - floor(inst.phase + 0.5))) - 1.0
+          rawSample = 0.7 * sinePart + 0.3 * triPart
+          inst.phase += freq / float(SAMPLE_RATE)
+          if inst.phase >= 1.0: inst.phase -= 1.0
 
         # Mix sample (saturating add)
         let sample = int32(rawSample * amp * 28000.0)
@@ -586,6 +601,9 @@ when defined(withAudio):
       # Layered spring+thud: low thud then rising spring tone.
       addNote(100, 100, 30, 0.08, envDecay)
       addNote(300, 700, 50, 0.06, envDecay)
+    of soundActTransition:
+      # Handled by playActTransitionStinger; no-op here.
+      discard
 
     inst.totalSamples = 0
     for i in 0..<inst.noteCount:
@@ -743,6 +761,79 @@ when defined(withAudio):
       gInstances[0] = inst
     discard pthread_mutex_unlock(addr gAudioMutex)
 
+  proc fadeOutAmbient*(seconds: float) =
+    ## Begin fading ambient music to silence over the given duration.
+    if not gAudioOpen: return
+    discard pthread_mutex_lock(addr gAudioMutex)
+    gAmbientFadeSpeed = if seconds > 0.0: -1.0 / seconds else: -100.0
+    discard pthread_mutex_unlock(addr gAudioMutex)
+
+  proc fadeInAmbient*(seconds: float) =
+    ## Begin fading ambient music back to full volume over the given duration.
+    if not gAudioOpen: return
+    discard pthread_mutex_lock(addr gAudioMutex)
+    gAmbientFadeSpeed = if seconds > 0.0: 1.0 / seconds else: 100.0
+    discard pthread_mutex_unlock(addr gAudioMutex)
+
+  proc playActTransitionStinger*(actIndex: int) =
+    ## Play a dramatic two-voice stinger in the new act's tonal palette.
+    if not gAudioOpen: return
+    let idx = clamp(actIndex, 0, ActPalettes.high)
+    let palette = ActPalettes[idx]
+    let root = palette.baseFreqs[0]
+    let fifth = if palette.baseFreqs[2] > 1.0: palette.baseFreqs[2]
+                else: root * 1.5
+
+    template makeVoice(baseFreq: float) =
+      var inst: SoundInstance
+      inst.phase         = 0.0
+      inst.noteIndex     = 0
+      inst.sampleInNote  = 0
+      inst.samplesPlayed = 0
+      inst.noteCount     = 0
+      inst.filterState   = 0.0
+      inst.noiseState    = 0xDEADBEEF'u32
+
+      let flatFreq = baseFreq * 0.994
+      # Note 1: pitch bend from 10 cents flat to true pitch over 200ms.
+      let ni0 = inst.noteCount
+      inst.notes[ni0] = SoundNote(
+        freqStart: flatFreq, freqEnd: baseFreq,
+        durationSamples: (200 * SAMPLE_RATE) div 1000,
+        amplitude: 0.20, envelope: envFlat, waveform: wfSineTriMix)
+      inc inst.noteCount
+      # Note 2: sustain at true pitch for 300ms.
+      let ni1 = inst.noteCount
+      inst.notes[ni1] = SoundNote(
+        freqStart: baseFreq, freqEnd: baseFreq,
+        durationSamples: (300 * SAMPLE_RATE) div 1000,
+        amplitude: 0.20, envelope: envFlat, waveform: wfSineTriMix)
+      inc inst.noteCount
+      # Note 3: 300ms decay tail.
+      let ni2 = inst.noteCount
+      inst.notes[ni2] = SoundNote(
+        freqStart: baseFreq, freqEnd: baseFreq,
+        durationSamples: (300 * SAMPLE_RATE) div 1000,
+        amplitude: 0.20, envelope: envDecay, waveform: wfSineTriMix)
+      inc inst.noteCount
+
+      inst.totalSamples = 0
+      for i in 0..<inst.noteCount:
+        inst.totalSamples += inst.notes[i].durationSamples
+      inst.active = true
+
+      block findSlot:
+        for slot in gInstances.mitems:
+          if not slot.active:
+            slot = inst
+            break findSlot
+        gInstances[0] = inst
+
+    discard pthread_mutex_lock(addr gAudioMutex)
+    makeVoice(root)
+    makeVoice(fifth)
+    discard pthread_mutex_unlock(addr gAudioMutex)
+
   proc setActOscConfig*(config: ActOscParams) =
     ## Store per-act oscillator configuration, applied in next buffer fill.
     if not gAudioOpen: return
@@ -778,6 +869,9 @@ else:
   proc playLandingSound*(fallVelocity: float, ability: CharacterAbility) = discard
   proc playMenuHoverNote*(buttonIndex: int) = discard
   proc playLevelCompleteFanfare*(actIndex: int) = discard
+  proc fadeOutAmbient*(seconds: float) = discard
+  proc fadeInAmbient*(seconds: float) = discard
+  proc playActTransitionStinger*(actIndex: int) = discard
   proc setActPalette*(palette: TonalPalette) = discard
   proc setActOscConfig*(config: ActOscParams) = discard
   proc setCharacterActive*(charIdx: int, active: bool) = discard
