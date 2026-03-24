@@ -66,6 +66,8 @@ type
     fullscreenEnabled*: bool
     vsyncEnabled*: bool
     creditsTimer*: float
+    dynamicTimeScale*: float
+    slowMotionTimer*: float
 
 const
   ProximityNear* = 80.0
@@ -354,6 +356,8 @@ proc loadLevel*(game: var Game, idx: int) =
   game.finaleTimer = 0.0
   game.screenBrightness = 0.0
   game.levelWinTimer = 0.0
+  game.dynamicTimeScale = 1.0
+  game.slowMotionTimer = 0.0
   game.jumpPressed = false
   game.levelStartTime = game.elapsedTime
   game.deathOccurred = false
@@ -391,6 +395,7 @@ proc newGame*(): Game =
     elapsedTime: 0.0,
     menuAtmosphere: newMenuAtmosphere(),
     screenEffects: initScreenEffects(),
+    dynamicTimeScale: 1.0,
   )
 
 proc actForLevel*(levelIdx: int): int =
@@ -565,7 +570,8 @@ proc handleKey*(game: var Game, button: windy.Button) =
     discard
 
 proc update*(game: var Game, dt: float) =
-  let scaledDt = dt * TIME_SCALE
+  let baseDt = dt * TIME_SCALE
+  let scaledDt = baseDt * game.dynamicTimeScale
   game.deltaTime = scaledDt
   game.elapsedTime += scaledDt
 
@@ -723,14 +729,11 @@ proc update*(game: var Game, dt: float) =
             allAtExit = false
             break
         if allAtExit and game.state == playing and not game.finaleActive:
-          for i in 0 ..< game.characters.len:
-            game.characters[i].celebrateTimer = float(i) * 0.1 + 0.001
-          game.emitCompletionParticles()
           game.accentLevelComplete()
-          let flashWhite: Color = (r: 255'u8, g: 255'u8, b: 255'u8)
-          game.screenEffects.triggerFlash(flashWhite, 0.5)
           game.state = levelWin
           game.levelWinTimer = 0.0
+          game.dynamicTimeScale = 0.5
+          game.slowMotionTimer = 0.4
           # Award stars
           let elapsed = game.elapsedTime - game.levelStartTime
           let sc = level.starChallenge
@@ -749,12 +752,6 @@ proc update*(game: var Game, dt: float) =
               saveData.levelStars[game.currentLevel][si] = true
           writeSave(saveData)
           playSound(soundLevelComplete)
-          playSound(soundTransitionSwoosh)
-          transitionColor = CHAR_COLORS[
-              game.characters[game.activeCharacterIndex].colorIndex mod 6]
-          discard startTween(transitionPool, 0.0, 1.0, 0.4, easeOutCubic,
-              proc(v: float) = transitionAlpha = v,
-              proc() = transitionPendingNextLevel = true)
 
       # Update camera to follow active character
       if game.activeCharacterIndex < game.characters.len:
@@ -977,6 +974,23 @@ proc update*(game: var Game, dt: float) =
       game.charDimTimer = max(0.0, game.charDimTimer - scaledDt)
 
   of levelWin:
+    # Tick slow-motion beat using real time.
+    if game.slowMotionTimer > 0.0:
+      game.slowMotionTimer = max(0.0, game.slowMotionTimer - baseDt)
+      if game.slowMotionTimer <= 0.0:
+        game.dynamicTimeScale = 1.0
+        for i in 0 ..< game.characters.len:
+          game.characters[i].celebrateTimer = float(i) * 0.1 + 0.001
+        game.emitCompletionParticles()
+        let flashWhite: Color = (r: 255'u8, g: 255'u8, b: 255'u8)
+        game.screenEffects.triggerFlash(flashWhite, 0.5)
+        playSound(soundTransitionSwoosh)
+        transitionColor = CHAR_COLORS[
+            game.characters[game.activeCharacterIndex].colorIndex mod 6]
+        discard startTween(transitionPool, 0.0, 1.0, 0.4, easeOutCubic,
+            proc(v: float) = transitionAlpha = v,
+            proc() = transitionPendingNextLevel = true)
+
     game.levelWinTimer += scaledDt
     for i in 0 ..< game.characters.len:
       game.characters[i].updateAnimation(scaledDt)

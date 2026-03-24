@@ -582,3 +582,50 @@ suite "character stacking and riding":
     discard updatePhysics(chars, level, FIXED_TIMESTEP)
     check chars[0].ridingCharacterId == -1
     check chars[1].ridingCharacterId == -1
+
+suite "per-character acceleration":
+  test "reach different max speeds":
+    let platform = Platform(x: 0.0, y: 400.0, width: 10000.0, height: 20.0)
+    var level = Level(platforms: @[platform], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    var pipChars = @[newCharacter("pip")]
+    pipChars[0].x = 100.0
+    pipChars[0].y = 400.0 - float(pipChars[0].height)
+    pipChars[0].grounded = true
+    pipChars[0].inputDir = 1
+    var brunoChars = @[newCharacter("bruno")]
+    brunoChars[0].x = 100.0
+    brunoChars[0].y = 400.0 - float(brunoChars[0].height)
+    brunoChars[0].grounded = true
+    brunoChars[0].inputDir = 1
+    for frame in 0..<60:
+      discard updatePhysics(pipChars, level, FIXED_TIMESTEP)
+      discard updatePhysics(brunoChars, level, FIXED_TIMESTEP)
+    # Pip (moveSpeed 165) reaches higher terminal speed than Bruno (moveSpeed 92).
+    check abs(pipChars[0].vx) > abs(brunoChars[0].vx)
+
+  test "air-control factor is applied":
+    var chars = @[newCharacter("pip")]
+    chars[0].vx = 0.0
+    chars[0].grounded = false
+    chars[0].inputDir = 1
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    let airDelta = chars[0].vx
+    let groundRate = chars[0].moveSpeed() / GroundAccelTime * FIXED_TIMESTEP
+    check airDelta > 0.0
+    check airDelta < groundRate
+
+  test "deceleration":
+    let platform = Platform(x: 0.0, y: 400.0, width: 10000.0, height: 20.0)
+    var level = Level(platforms: @[platform], hazards: @[], exits: @[], buttons: @[], doors: @[])
+    var chars = @[newCharacter("pip")]
+    let ms = chars[0].moveSpeed()
+    chars[0].x = 100.0
+    chars[0].y = 400.0 - float(chars[0].height)
+    chars[0].grounded = true
+    chars[0].vx = ms
+    chars[0].inputDir = 0
+    discard updatePhysics(chars, level, FIXED_TIMESTEP)
+    let expectedStep = ms / GroundDecelTime * FIXED_TIMESTEP
+    let actualDecrease = ms - chars[0].vx
+    check abs(actualDecrease - expectedStep) / expectedStep < 0.05
