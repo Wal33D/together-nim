@@ -18,7 +18,8 @@ type
     soundJumpPipDouble,
     soundSuperBounce,
     soundActTransition,
-    soundGracefulLanding
+    soundGracefulLanding,
+    soundFootstep
 
   MusicStep* = object
     freqStart*, freqEnd*: float
@@ -609,6 +610,9 @@ when defined(withAudio):
       # Harmonic chime: Felix D4 + Ivy A4 layered with gentle decay.
       addNote(293.7, 293.7, 120, 0.25, envDecay)
       addNote(440.0, 440.0, 120, 0.20, envDecay)
+    of soundFootstep:
+      # Handled by playFootstepSound; no-op here.
+      discard
 
     inst.totalSamples = 0
     for i in 0..<inst.noteCount:
@@ -654,6 +658,56 @@ when defined(withAudio):
     let ni = inst.noteCount
     inst.notes[ni] = SoundNote(
       freqStart: baseFreq, freqEnd: baseFreq,
+      durationSamples: (durationMs * SAMPLE_RATE) div 1000,
+      amplitude: amplitude, envelope: envDecay, waveform: wfSine)
+    inc inst.noteCount
+
+    inst.totalSamples = inst.notes[0].durationSamples
+    inst.active = true
+
+    discard pthread_mutex_lock(addr gAudioMutex)
+    block findSlot:
+      for slot in gInstances.mitems:
+        if not slot.active:
+          slot = inst
+          break findSlot
+      gInstances[0] = inst
+    discard pthread_mutex_unlock(addr gAudioMutex)
+
+  proc playFootstepSound*(characterId: string) =
+    ## Play a subliminal footstep tick with per-character synthesis parameters.
+    if not gAudioOpen: return
+    var freq: float
+    var durationMs: int
+    var amplitude: float
+    case characterId
+    of "bruno":
+      freq = 120.0; durationMs = 15; amplitude = 0.06
+    of "pip":
+      freq = 400.0; durationMs = 10; amplitude = 0.03
+    of "cara":
+      freq = 350.0; durationMs = 8; amplitude = 0.04
+    of "luca":
+      freq = 200.0; durationMs = 12; amplitude = 0.04
+    of "felix":
+      freq = 250.0; durationMs = 12; amplitude = 0.04
+    of "ivy":
+      freq = 280.0; durationMs = 12; amplitude = 0.04
+    else:
+      freq = 200.0; durationMs = 12; amplitude = 0.04
+
+    var inst: SoundInstance
+    inst.phase         = 0.0
+    inst.noteIndex     = 0
+    inst.sampleInNote  = 0
+    inst.samplesPlayed = 0
+    inst.noteCount     = 0
+    inst.filterState   = 0.0
+    inst.noiseState    = 0xDEADBEEF'u32
+
+    let ni = inst.noteCount
+    inst.notes[ni] = SoundNote(
+      freqStart: freq, freqEnd: freq,
       durationSamples: (durationMs * SAMPLE_RATE) div 1000,
       amplitude: amplitude, envelope: envDecay, waveform: wfSine)
     inc inst.noteCount
@@ -872,6 +926,7 @@ else:
   proc shutdownAudio*() = discard
   proc playSound*(kind: SoundKind) = discard
   proc playLandingSound*(fallVelocity: float, ability: CharacterAbility) = discard
+  proc playFootstepSound*(characterId: string) = discard
   proc playMenuHoverNote*(buttonIndex: int) = discard
   proc playLevelCompleteFanfare*(actIndex: int) = discard
   proc fadeOutAmbient*(seconds: float) = discard
