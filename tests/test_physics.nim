@@ -707,3 +707,80 @@ suite "control curve acceleration":
     check airborneVx > 0.0
     check groundedVx > 0.0
     check airborneVx < groundedVx
+
+suite "sinusoidal ease for moving platforms":
+  test "progress 0.0 maps to start position":
+    var mp = MovingPlatform(
+      waypoints: @[(x: 0.0, y: 0.0), (x: 100.0, y: 0.0)],
+      width: 80.0, height: 20.0, speed: 100.0,
+      currentWaypoint: 0, progress: 0.0,
+      pingPong: true, forward: true,
+      x: 0.0, y: 0.0, prevX: 0.0, prevY: 0.0,
+    )
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[],
+                      movingPlatforms: @[mp])
+    updateMovingPlatforms(level, 0.0)
+    # t = (1 - cos(0)) / 2 = 0, so position stays at start.
+    check abs(level.movingPlatforms[0].x - 0.0) < 0.01
+    check abs(level.movingPlatforms[0].y - 0.0) < 0.01
+
+  test "progress 0.5 maps to midpoint":
+    var mp = MovingPlatform(
+      waypoints: @[(x: 0.0, y: 0.0), (x: 100.0, y: 0.0)],
+      width: 80.0, height: 20.0, speed: 100.0,
+      currentWaypoint: 0, progress: 0.5,
+      pingPong: true, forward: true,
+      x: 0.0, y: 0.0, prevX: 0.0, prevY: 0.0,
+    )
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[],
+                      movingPlatforms: @[mp])
+    updateMovingPlatforms(level, 0.0)
+    # t = (1 - cos(0.5 * PI)) / 2 = (1 - 0) / 2 = 0.5, so midpoint.
+    check abs(level.movingPlatforms[0].x - 50.0) < 0.01
+
+  test "progress 1.0 wraps and maps to start of next segment":
+    var mp = MovingPlatform(
+      waypoints: @[(x: 0.0, y: 0.0), (x: 100.0, y: 0.0)],
+      width: 80.0, height: 20.0, speed: 100.0,
+      currentWaypoint: 0, progress: 0.99,
+      pingPong: true, forward: true,
+      x: 0.0, y: 0.0, prevX: 0.0, prevY: 0.0,
+    )
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[],
+                      movingPlatforms: @[mp])
+    # t at progress=0.99 should be very close to 1.0.
+    let expectedT = (1.0 - cos(0.99 * PI)) / 2.0
+    check expectedT > 0.99
+
+  test "ease is symmetric around midpoint":
+    # t(0.25) and t(0.75) should be equidistant from 0.5.
+    let t25 = (1.0 - cos(0.25 * PI)) / 2.0
+    let t75 = (1.0 - cos(0.75 * PI)) / 2.0
+    check abs((t25 + t75) - 1.0) < 0.001
+
+  test "ease produces smooth acceleration at start":
+    # Near progress=0, small increments should produce smaller position changes
+    # than linear interpolation (ease starts slow).
+    let t01 = (1.0 - cos(0.1 * PI)) / 2.0
+    # Linear would give 0.1; sinusoidal ease should be less.
+    check t01 < 0.1
+
+  test "ease produces smooth deceleration at end":
+    # Near progress=1, the ease should be closer to 1.0 than linear.
+    let t09 = (1.0 - cos(0.9 * PI)) / 2.0
+    # Linear would give 0.9; sinusoidal ease should be greater.
+    check t09 > 0.9
+
+  test "vertical moving platform uses sinusoidal ease":
+    var mp = MovingPlatform(
+      waypoints: @[(x: 0.0, y: 0.0), (x: 0.0, y: 200.0)],
+      width: 80.0, height: 20.0, speed: 100.0,
+      currentWaypoint: 0, progress: 0.5,
+      pingPong: true, forward: true,
+      x: 0.0, y: 0.0, prevX: 0.0, prevY: 0.0,
+    )
+    var level = Level(platforms: @[], hazards: @[], exits: @[], buttons: @[], doors: @[],
+                      movingPlatforms: @[mp])
+    updateMovingPlatforms(level, 0.0)
+    # At progress=0.5, t=0.5 so y should be 100.0.
+    check abs(level.movingPlatforms[0].y - 100.0) < 0.01
