@@ -27,6 +27,11 @@ const
   VignetteDepth = 100
   VignettePasses = 3
 
+  ButtonDepressPx = 2.0
+  ButtonHeavyDepressPx = 3.0
+  ButtonLightenAmount = 0.15
+  ButtonHighlightAlpha = 0.3
+
   BgCharCount = 8
   BgCharMinSize = 24.0
   BgCharMaxSize = 56.0
@@ -280,22 +285,40 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
       drawFilledRect(renderer, d.x.cint - camX, d.y.cint - camY, d.width.cint, d.height.cint)
   renderer.setDrawBlendMode(BlendMode_None)
 
-  # Buttons — bright yellow when pressed (any character overlaps), dim otherwise
+  # Buttons — depress and brighten based on pressedAmount
+  renderer.setDrawBlendMode(BlendMode_Blend)
   for b in level.buttons:
-    var pressed = false
-    for ch in game.characters:
-      let chRight  = ch.x + float(ch.width)
-      let chBottom = ch.y + float(ch.height)
-      let bRight   = b.x + b.width
-      let bBottom  = b.y + b.height
-      if ch.x < bRight and chRight > b.x and ch.y < bBottom and chBottom > b.y:
-        pressed = true
-        break
-    if pressed:
-      renderer.setDrawColor(255, 255, 80, 255)
-    else:
-      renderer.setDrawColor(100, 80, 20, 255)
-    drawFilledRect(renderer, b.x.cint - camX, b.y.cint - camY, b.width.cint, b.height.cint)
+    let pa = b.pressedAmount
+    let depressPx = if b.requiresHeavy: ButtonHeavyDepressPx else: ButtonDepressPx
+    let offsetY = pa * depressPx
+
+    # Base color with chroma lighten applied proportionally.
+    let baseR = if b.active: 255'u8 else: 100'u8
+    let baseG = if b.active: 255'u8 else: 80'u8
+    let baseB = if b.active: 80'u8 else: 20'u8
+    var col = chroma.color(float(baseR) / 255.0, float(baseG) / 255.0, float(baseB) / 255.0)
+    col = col.lighten(pa * ButtonLightenAmount)
+
+    let cr = uint8(clamp(col.r * 255.0, 0.0, 255.0))
+    let cg = uint8(clamp(col.g * 255.0, 0.0, 255.0))
+    let cb = uint8(clamp(col.b * 255.0, 0.0, 255.0))
+    renderer.setDrawColor(cr, cg, cb, 255)
+    drawFilledRect(renderer,
+      b.x.cint - camX,
+      cint(b.y + offsetY) - camY,
+      b.width.cint,
+      b.height.cint)
+
+    # White highlight line along top edge when visibly pressed.
+    if pa > 0.1:
+      let hlAlpha = uint8(clamp(ButtonHighlightAlpha * pa * 255.0, 0.0, 255.0))
+      renderer.setDrawColor(255, 255, 255, hlAlpha)
+      drawFilledRect(renderer,
+        b.x.cint - camX,
+        cint(b.y + offsetY) - camY,
+        b.width.cint,
+        1)
+  renderer.setDrawBlendMode(BlendMode_None)
 
   # Exits (character-colored outlines with gentle glow)
   renderer.setDrawBlendMode(BlendMode_Blend)

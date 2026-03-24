@@ -25,6 +25,7 @@ type
     requiresHeavy*: bool
     active*: bool
     prevActive*: bool
+    pressedAmount*: float
 
   Door* = object
     id*: int

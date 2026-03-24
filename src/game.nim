@@ -606,6 +606,10 @@ proc showActTitle(game: var Game, levelIdx: int) =
   game.state = actTitle
   game.actTitleTimer = 0.0
   game.actTitleTarget = levelIdx
+  let ai = actForLevel(levelIdx)
+  if ai >= 0:
+    fadeOutAmbient(0.3)
+    playActTransitionStinger(ai)
 
 proc checkScriptedMoments*(game: var Game) =
   ## Check and trigger scripted emotional moments after physics each frame.
@@ -862,6 +866,13 @@ proc update*(game: var Game, dt: float) =
     if not game.gameFrozen and game.currentLevel >= 0 and game.currentLevel < allLevels.len:
       let result = updatePhysics(game.characters, game.currentLevelState, scaledDt)
       let level = game.currentLevelState
+
+      # Animate button pressedAmount toward target each frame.
+      for bi in 0..<game.currentLevelState.buttons.len:
+        let target = if game.currentLevelState.buttons[bi].active: 1.0 else: 0.0
+        let rate = if game.currentLevelState.buttons[bi].active: 15.0 * scaledDt else: 10.0 * scaledDt
+        game.currentLevelState.buttons[bi].pressedAmount +=
+          (target - game.currentLevelState.buttons[bi].pressedAmount) * min(1.0, rate)
 
       # Hazard contact flash-shake — fires on spike contact just before death
       for hazId in result.hazardCharacters:
@@ -1416,7 +1427,14 @@ proc update*(game: var Game, dt: float) =
                    level.levelHeight, scaledDt)
 
   of actTitle:
+    let prevT = game.actTitleTimer
     game.actTitleTimer += scaledDt
+    # At the 0.8s mark the stinger completes; resume ambient with new palette.
+    if prevT < 0.8 and game.actTitleTimer >= 0.8:
+      let ai = actForLevel(game.actTitleTarget)
+      if ai >= 0:
+        setActPalette(ActPalettes[clamp(ai, 0, ActPalettes.high)])
+        fadeInAmbient(0.5)
     if game.actTitleTimer >= ActTitleDuration:
       game.loadLevel(game.actTitleTarget)
       game.state = playing

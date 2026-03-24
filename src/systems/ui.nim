@@ -75,10 +75,6 @@ var
   prevActiveCharIdx: int = -1
   prevLevel: int = -1
   prevNarrationText: string = ""
-  # Title glow and shimmer state.
-  titleGlowHue: float = 0.0
-  titleShimmerX: float = -1.0
-  titleShimmerTimer: float = 0.0
   # Card breathing phase offsets (staggered per card).
   cardPhases: array[6, float]
   # Menu button polish state.
@@ -803,56 +799,20 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
   sk.drawSoftPanel(heroPos, heroSize, rgbx(10, 12, 18, 230), muted(heroAccent, 185))
   let titleAlpha = clamp(menuTitleAlpha * 255.0, 0.0, 255.0).uint8
 
-  # Update title glow and shimmer timing.
-  const
-    GlowCycleSec = 8.0
-    ShimmerInterval = 4.5
-    ShimmerDuration = 0.8
-  titleGlowHue = (game.elapsedTime / GlowCycleSec) mod 1.0
-  titleShimmerTimer += game.deltaTime
-  if titleShimmerTimer >= ShimmerInterval:
-    titleShimmerTimer -= ShimmerInterval
-    titleShimmerX = 0.0
-  if titleShimmerX >= 0.0:
-    titleShimmerX += game.deltaTime / ShimmerDuration
-    if titleShimmerX > 1.0:
-      titleShimmerX = -1.0
-
-  # Title text with glow halo and shimmer sweep.
+  # Title text with dark drop shadow.
   let
     titleText = "TOGETHER"
     titleY = heroPos.y + layout.px(18)
     titleSize = sk.uiTextSize(layout, "Display", titleText)
     titleX = heroCenter - titleSize.x * 0.5
+    shadowAlpha = uint8(float(titleAlpha) * 0.25)
 
-  # Glow halo — color-cycling rectangle behind title.
-  if titleAlpha > 0'u8:
-    let
-      glowColor = hsl(titleGlowHue * 360.0, 60.0, 70.0).color
-      glowA = uint8(float(titleAlpha) * 0.12)
-      glowPad = layout.px(6)
-      glowPos = vec2(titleX - glowPad, titleY - glowPad)
-      glowSize = vec2(titleSize.x + glowPad * 2, titleSize.y + glowPad * 2)
-    sk.drawRect(glowPos, glowSize, rgbx(
-      clamp(glowColor.r * 255.0, 0.0, 255.0).uint8,
-      clamp(glowColor.g * 255.0, 0.0, 255.0).uint8,
-      clamp(glowColor.b * 255.0, 0.0, 255.0).uint8,
-      glowA))
-
+  # Drop shadow at (2, 3) px offset.
+  drawCenteredText(sk, layout, "Display", titleText,
+                   heroCenter + layout.px(2), titleY + layout.px(3),
+                   rgbx(0, 0, 0, shadowAlpha))
+  # White title on top.
   drawCenteredText(sk, layout, "Display", titleText, heroCenter, titleY, rgbx(246, 248, 251, titleAlpha))
-
-  # Shimmer sweep — bright highlight band moving across title.
-  if titleShimmerX >= 0.0 and titleAlpha > 0'u8:
-    let
-      shimmerW = layout.px(32)
-      shimmerCenter = titleX + titleShimmerX * titleSize.x
-      shimmerLeft = shimmerCenter - shimmerW * 0.5
-      shimmerClipLeft = max(shimmerLeft, titleX)
-      shimmerClipRight = min(shimmerCenter + shimmerW * 0.5, titleX + titleSize.x)
-    if shimmerClipRight > shimmerClipLeft:
-      let shimmerA = uint8(float(titleAlpha) * 0.18)
-      sk.drawRect(vec2(shimmerClipLeft, titleY), vec2(shimmerClipRight - shimmerClipLeft, titleSize.y),
-                  rgbx(255, 255, 255, shimmerA))
   drawCenteredText(sk, layout, "Small", tagline,
                    heroCenter, heroPos.y + layout.px(50), rgbx(160, 171, 192, 255))
   sk.drawRect(vec2(heroCenter - layout.px(8), heroPos.y + layout.px(70)), layout.sz(16, 16), heroAccent)
