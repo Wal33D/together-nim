@@ -430,6 +430,16 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
     let isActive = i == game.activeCharacterIndex
     var chColor = CHAR_COLORS[ch.colorIndex mod 6]
 
+    # Isolation desaturation — lonely characters lose colour.
+    if ch.isolationSat > 0.001:
+      let chromaCol = chroma.color(chColor.r.float32 / 255.0,
+                                   chColor.g.float32 / 255.0,
+                                   chColor.b.float32 / 255.0)
+      let desat = chroma.desaturate(chromaCol, ch.isolationSat * 0.85)
+      chColor.r = uint8(min(255.0, desat.r * 255.0))
+      chColor.g = uint8(min(255.0, desat.g * 255.0))
+      chColor.b = uint8(min(255.0, desat.b * 255.0))
+
     # Proximity lean offset — shift toward proximityTarget
     var leanOffset = 0.0
     if ch.proximityTarget >= 0 and ch.proximityTarget < game.characters.len:

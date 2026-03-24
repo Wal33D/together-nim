@@ -708,7 +708,7 @@ const level22* = Level(
     Platform(x: 1080.0, y: 560.0, width: 120.0, height: 20.0),   # after door 3
     Platform(x: 1280.0, y: 480.0, width: 100.0, height: 20.0),   # float platform
     Platform(x: 1460.0, y: 560.0, width: 200.0, height: 20.0),   # after door 4
-    Platform(x: 1500.0, y: 380.0, width: 100.0, height: 20.0),   # high platform (pip)
+    Platform(x: 1500.0, y: 240.0, width: 100.0, height: 20.0),   # high platform (stacking required: pip on bruno)
   ],
   hazards: @[
     Hazard(x: 200.0,  y: 570.0, width: 80.0,  height: 10.0),    # gap 1
@@ -718,7 +718,7 @@ const level22* = Level(
     Hazard(x: 1380.0, y: 570.0, width: 80.0,  height: 10.0),    # gap before final
   ],
   exits: @[
-    Exit(x: 1480.0, y: 510.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 1520.0, y: 190.0, width: 40.0, height: 50.0, characterId: "pip"),
     Exit(x: 1520.0, y: 510.0, width: 40.0, height: 50.0, characterId: "luca"),
     Exit(x: 1560.0, y: 510.0, width: 40.0, height: 50.0, characterId: "bruno"),
     Exit(x: 1600.0, y: 510.0, width: 40.0, height: 50.0, characterId: "cara"),
@@ -737,7 +737,7 @@ const level22* = Level(
     Door(id: 3, x: 1040.0, y: 480.0, width: 20.0, height: 80.0, isOpen: false),
     Door(id: 4, x: 1420.0, y: 480.0, width: 20.0, height: 80.0, isOpen: false),
   ],
-  starChallenge: StarChallenge(timeTarget: 140.0, secretX: 930.0, secretY: 355.0),
+  starChallenge: StarChallenge(timeTarget: 160.0, secretX: 930.0, secretY: 355.0),
   levelWidth: 1700.0,
   levelHeight: 600.0,
 )
