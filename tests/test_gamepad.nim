@@ -1,5 +1,6 @@
 import
   unittest,
+  windy,
   game,
   constants,
   systems/gamepad,
@@ -134,7 +135,7 @@ suite "gamepad system":
   test "polling snapshot starts game from menu on A press":
     var g = newGame()
     check g.state == menu
-    applyControllerSnapshot(g, true, false, false, false, false, false, false, 0'i16)
+    applyControllerSnapshot(g, true, false, false, false, false, false, false, false, false, 0'i16)
     check g.state == actTitle
 
   test "polling snapshot keeps stick input active when dpad releases":
@@ -142,10 +143,91 @@ suite "gamepad system":
     g.startGame()
     g.skipActTitle()
 
-    applyControllerSnapshot(g, false, false, false, false, false, true, false, -20000'i16)
+    applyControllerSnapshot(g, false, false, false, false, false, true, false, false, false, -20000'i16)
     check g.leftHeld == true
     check g.rightHeld == false
 
-    applyControllerSnapshot(g, false, false, false, false, false, false, false, -20000'i16)
+    applyControllerSnapshot(g, false, false, false, false, false, false, false, false, false, -20000'i16)
     check g.leftHeld == true
     check g.rightHeld == false
+
+  # --- Settings navigation tests ---
+
+  test "d-pad down moves settings cursor forward":
+    var g = newGame()
+    g.openSettings()
+    check g.settingsCursor == 0
+    handleControllerButton(g, ButtonDpadDown, true)
+    check g.settingsCursor == 1
+
+  test "d-pad up moves settings cursor backward":
+    var g = newGame()
+    g.openSettings()
+    g.settingsCursor = 2
+    handleControllerButton(g, ButtonDpadUp, true)
+    check g.settingsCursor == 1
+
+  test "d-pad up wraps from 0 to 4":
+    var g = newGame()
+    g.openSettings()
+    check g.settingsCursor == 0
+    handleControllerButton(g, ButtonDpadUp, true)
+    check g.settingsCursor == 4
+
+  test "d-pad down wraps from 4 to 0":
+    var g = newGame()
+    g.openSettings()
+    g.settingsCursor = 4
+    handleControllerButton(g, ButtonDpadDown, true)
+    check g.settingsCursor == 0
+
+  test "B exits settings to previous state":
+    var g = newGame()
+    g.state = menu
+    g.openSettings()
+    check g.state == settings
+    handleControllerButton(g, ButtonB, true)
+    check g.state == menu
+
+  test "Start exits settings to previous state":
+    var g = newGame()
+    g.startGame()
+    g.skipActTitle()
+    g.handleKey(KeyEscape)  # Pause.
+    g.openSettings()
+    check g.state == settings
+    handleControllerButton(g, ButtonStart, true)
+    check g.state == paused
+
+  test "A on back row exits settings":
+    var g = newGame()
+    g.state = menu
+    g.openSettings()
+    g.settingsCursor = 4
+    handleControllerButton(g, ButtonA, true)
+    check g.state == menu
+
+  test "d-pad right on window size cycles preset forward and sets pending":
+    var g = newGame()
+    g.openSettings()
+    g.settingsCursor = 0
+    g.settingsWindowPreset = 0
+    handleControllerButton(g, ButtonDpadRight, true)
+    check g.settingsWindowPreset == 1
+    check g.pendingSettingsApply == true
+
+  test "d-pad left on window size cycles preset backward with wrap":
+    var g = newGame()
+    g.openSettings()
+    g.settingsCursor = 0
+    g.settingsWindowPreset = 0
+    handleControllerButton(g, ButtonDpadLeft, true)
+    check g.settingsWindowPreset == WindowPresets.len - 1
+    check g.pendingSettingsApply == true
+
+  test "A on fullscreen row sets pending apply":
+    var g = newGame()
+    g.openSettings()
+    g.settingsCursor = 1
+    handleControllerButton(g, ButtonA, true)
+    check g.pendingSettingsApply == true

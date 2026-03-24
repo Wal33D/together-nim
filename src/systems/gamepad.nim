@@ -4,7 +4,9 @@
 import
   windy,
   ../game,
-  ./audio
+  ../constants,
+  ./audio,
+  ./save
 
 {.passL: "-framework IOKit -framework CoreFoundation".}
 
@@ -18,6 +20,8 @@ const
   ButtonRB* = 10'u8
   ButtonDpadLeft* = 13'u8
   ButtonDpadRight* = 14'u8
+  ButtonDpadUp* = 15'u8
+  ButtonDpadDown* = 16'u8
   AxisLeftX* = 0'u8
   AxisDeadzone* = 8000'i16  ## Stick deadzone threshold.
 
@@ -27,6 +31,8 @@ var
   controllerConnected*: bool = false
   dpadLeftHeld: bool = false
   dpadRightHeld: bool = false
+  dpadUpHeld: bool = false
+  dpadDownHeld: bool = false
   stickLeftHeld: bool = false
   stickRightHeld: bool = false
   prevButtonA: bool = false
@@ -36,6 +42,8 @@ var
   prevButtonRB: bool = false
   prevDpadLeft: bool = false
   prevDpadRight: bool = false
+  prevDpadUp: bool = false
+  prevDpadDown: bool = false
   prevStickLeft: bool = false
   prevStickRight: bool = false
 
@@ -47,11 +55,15 @@ var
   hidButtonRB: bool = false
   hidDpadLeft: bool = false
   hidDpadRight: bool = false
+  hidDpadUp: bool = false
+  hidDpadDown: bool = false
   hidLeftX: int16 = 0
 
 proc resetControllerState() =
   dpadLeftHeld = false
   dpadRightHeld = false
+  dpadUpHeld = false
+  dpadDownHeld = false
   stickLeftHeld = false
   stickRightHeld = false
   prevButtonA = false
@@ -61,6 +73,8 @@ proc resetControllerState() =
   prevButtonRB = false
   prevDpadLeft = false
   prevDpadRight = false
+  prevDpadUp = false
+  prevDpadDown = false
   prevStickLeft = false
   prevStickRight = false
   hidButtonA = false
@@ -70,6 +84,8 @@ proc resetControllerState() =
   hidButtonRB = false
   hidDpadLeft = false
   hidDpadRight = false
+  hidDpadUp = false
+  hidDpadDown = false
   hidLeftX = 0
 
 proc syncDirectionalHeldState(game: var Game) =
@@ -82,12 +98,36 @@ proc resetPadState*() =
 
 # --- Game logic (pure Nim, no platform dependency) ---
 
+const
+  SettingsCount = 5  ## Number of settings rows (0..4).
+  VolumeStep = 0.1  ## Volume increment per d-pad press.
+
+proc adjustVolumePad(delta: float) =
+  ## Nudge master volume, clamp, persist, and play feedback.
+  let vol = clamp(getMasterVolume() + delta, 0.0, 1.0)
+  setMasterVolume(vol)
+  saveMasterVolume(vol)
+  playSound(soundMenuHover)
+
+proc cycleSettingsCursorPad(game: var Game, delta: int) =
+  ## Move settings cursor with wrapping. Mirrors cycleSettingsCursor in ui.nim.
+  let prev = game.settingsCursor
+  game.settingsCursor = (game.settingsCursor + delta + SettingsCount * 4) mod SettingsCount
+  if game.settingsCursor != prev:
+    playSound(soundMenuHover)
+
 proc handleControllerButton*(game: var Game, button: uint8, isDown: bool) =
   ## Map controller buttons to game actions.
   case button
   of ButtonA:
     if isDown:
-      if game.state == playing:
+      if game.state == settings:
+        if game.settingsCursor == 4:
+          game.state = game.previousState
+          playSound(soundMenuBack)
+        elif game.settingsCursor >= 0 and game.settingsCursor <= 2:
+          game.pendingSettingsApply = true
+      elif game.state == playing:
         game.pressJump()
       else:
         case game.state
@@ -106,11 +146,19 @@ proc handleControllerButton*(game: var Game, button: uint8, isDown: bool) =
 
   of ButtonB:
     if isDown:
-      game.handleKey(KeyR)
+      if game.state == settings:
+        game.state = game.previousState
+        playSound(soundMenuBack)
+      else:
+        game.handleKey(KeyR)
 
   of ButtonStart:
     if isDown:
-      game.handleKey(KeyEscape)
+      if game.state == settings:
+        game.state = game.previousState
+        playSound(soundMenuBack)
+      else:
+        game.handleKey(KeyEscape)
 
   of ButtonLB:
     if isDown and game.state == playing and game.cycleActiveCharacter(-1):
@@ -121,12 +169,46 @@ proc handleControllerButton*(game: var Game, button: uint8, isDown: bool) =
       playSound(soundCharSwitch)
 
   of ButtonDpadLeft:
-    dpadLeftHeld = isDown
-    syncDirectionalHeldState(game)
+    if isDown and game.state == settings:
+      case game.settingsCursor
+      of 0:
+        game.settingsWindowPreset = (game.settingsWindowPreset - 1 + WindowPresets.len) mod WindowPresets.len
+        game.pendingSettingsApply = true
+      of 1, 2:
+        game.pendingSettingsApply = true
+      of 3:
+        adjustVolumePad(-VolumeStep)
+      else: discard
+    else:
+      dpadLeftHeld = isDown
+      syncDirectionalHeldState(game)
 
   of ButtonDpadRight:
-    dpadRightHeld = isDown
-    syncDirectionalHeldState(game)
+    if isDown and game.state == settings:
+      case game.settingsCursor
+      of 0:
+        game.settingsWindowPreset = (game.settingsWindowPreset + 1) mod WindowPresets.len
+        game.pendingSettingsApply = true
+      of 1, 2:
+        game.pendingSettingsApply = true
+      of 3:
+        adjustVolumePad(VolumeStep)
+      else: discard
+    else:
+      dpadRightHeld = isDown
+      syncDirectionalHeldState(game)
+
+  of ButtonDpadUp:
+    if isDown and game.state == settings:
+      game.cycleSettingsCursorPad(-1)
+    else:
+      dpadUpHeld = isDown
+
+  of ButtonDpadDown:
+    if isDown and game.state == settings:
+      game.cycleSettingsCursorPad(1)
+    else:
+      dpadDownHeld = isDown
 
   else: discard
 
@@ -142,7 +224,8 @@ proc handleControllerAxis*(game: var Game, axis: uint8, value: int16) =
 proc applyControllerSnapshot*(
     game: var Game,
     aPressed, bPressed, startPressed, lbPressed, rbPressed,
-    dpadLeftPressed, dpadRightPressed: bool,
+    dpadLeftPressed, dpadRightPressed,
+    dpadUpPressed, dpadDownPressed: bool,
     leftX: int16
   ) =
   ## Apply a controller snapshot using edge-triggered updates.
@@ -180,6 +263,14 @@ proc applyControllerSnapshot*(
   if dpadRightPressed != prevDpadRight:
     handleControllerButton(game, ButtonDpadRight, dpadRightPressed)
     prevDpadRight = dpadRightPressed
+
+  if dpadUpPressed != prevDpadUp:
+    handleControllerButton(game, ButtonDpadUp, dpadUpPressed)
+    prevDpadUp = dpadUpPressed
+
+  if dpadDownPressed != prevDpadDown:
+    handleControllerButton(game, ButtonDpadDown, dpadDownPressed)
+    prevDpadDown = dpadDownPressed
 
   let newStickLeft = leftX < -AxisDeadzone
   let newStickRight = leftX > AxisDeadzone
@@ -370,6 +461,8 @@ proc inputValueCallback(context: pointer, res: IOReturn, sender: pointer,
     of KHIDUsageGDHatswitch:
       hidDpadLeft = intVal >= 5 and intVal <= 7
       hidDpadRight = intVal >= 1 and intVal <= 3
+      hidDpadUp = intVal == 7 or intVal == 0 or intVal == 1
+      hidDpadDown = intVal >= 3 and intVal <= 5
     else: discard
 
 proc createMatchingDict(usagePage: uint32, usage: uint32): CFDictionaryRef =
@@ -443,5 +536,5 @@ proc pollControllerInput*(game: var Game) =
   applyControllerSnapshot(
     game,
     hidButtonA, hidButtonB, hidButtonStart, hidButtonLB, hidButtonRB,
-    hidDpadLeft, hidDpadRight, hidLeftX
+    hidDpadLeft, hidDpadRight, hidDpadUp, hidDpadDown, hidLeftX
   )

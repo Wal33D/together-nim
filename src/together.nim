@@ -338,6 +338,10 @@ proc main() =
     handleKeyboardInput(window, g, ui, windowMode)
     pollControllerInput(g)
 
+    if g.pendingSettingsApply:
+      g.pendingSettingsApply = false
+      applySettingsChange(window, g, windowMode)
+
     while accumulator >= FIXED_TIMESTEP:
       g.update(FIXED_TIMESTEP)
       accumulator -= FIXED_TIMESTEP
