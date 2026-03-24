@@ -275,7 +275,7 @@ proc cycleMenuCursor*(delta: int) =
     playMenuHoverNote(menuCursor)
 
 proc cyclePauseSelection*(ui: UiRenderer, delta: int) =
-  const count = 4
+  const count = 5
   let prev = ui.pauseSelection
   ui.pauseSelection = (ui.pauseSelection + delta + count * 4) mod count
   if ui.pauseSelection != prev:
@@ -318,6 +318,8 @@ proc activateFocusedAction*(ui: UiRenderer, game: var Game) =
       game.state = menu
     of 3:
       game.openSettings()
+    of 4:
+      game.state = levelSelect
     else:
       discard
   else:
@@ -1057,7 +1059,9 @@ proc renderPauseModal(ui: UiRenderer, sk: Silky, window: Window,
     menuPos = layout.p(baseX + insetX + halfBtnW + 10, baseY + 158)
     menuSize = layout.sz(halfBtnW, 38)
     settingsPos = layout.p(baseX + insetX, baseY + 208)
-    settingsSize = layout.sz(btnW, 38)
+    settingsSize = layout.sz(halfBtnW, 38)
+    levelsPos = layout.p(baseX + insetX + halfBtnW + 10, baseY + 208)
+    levelsSize = layout.sz(halfBtnW, 38)
   sk.drawSoftPanel(pos, size, rgbx(10, 12, 18, 232), rgbx(90, 104, 132, 180))
   discard sk.drawUiText(layout, "Display", "Paused", pos + layout.d(insetX + 6, 22), rgbx(248, 249, 251, 255))
   discard sk.drawUiText(layout, "Small", levelText, pos + layout.d(insetX + 8, 62), rgbx(162, 174, 194, 255))
@@ -1102,6 +1106,16 @@ proc renderPauseModal(ui: UiRenderer, sk: Silky, window: Window,
               "pause_settings", muted(rgbx(160, 160, 180, 255), uint8(pauseBtn3Alpha * 255)),
               selected = ui.pauseSelection == 3):
       ui.pauseSelection = 3
+      ui.activateFocusedAction(game)
+
+  if pauseBtn3Alpha > 0.01:
+    if window.mousePos.vec2.overlaps(rect(levelsPos.x, levelsPos.y, levelsSize.x, levelsSize.y)):
+      ui.pauseSelection = 4
+    if button(ui, sk, window, layout, levelsPos, levelsSize,
+              "Levels", "",
+              "pause_levels", muted(rgbx(140, 180, 160, 255), uint8(pauseBtn3Alpha * 255)),
+              selected = ui.pauseSelection == 4):
+      ui.pauseSelection = 4
       ui.activateFocusedAction(game)
 
 proc renderWinModal(ui: UiRenderer, sk: Silky, window: Window,
