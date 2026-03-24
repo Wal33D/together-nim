@@ -548,6 +548,7 @@ proc enterWon*(game: var Game) =
   game.wonTotalTime = game.elapsedTime
   let saveData = loadSave()
   game.wonLevelsCompleted = saveData.levelStars.len
+  game.particles.emitWinConfetti()
 
 proc nextLevel*(game: var Game) =
   if game.currentLevel == FinalLevel:
@@ -1080,6 +1081,9 @@ proc update*(game: var Game, dt: float) =
     game.wonTimer += scaledDt
     if not game.wonThankYouShown and game.wonTimer >= 5.0:
       game.wonThankYouShown = true
+    game.particles.update(scaledDt)
+    if rand(1.0) < 0.3:
+      game.particles.emitWinSparkle()
 
   else:
     discard

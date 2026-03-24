@@ -929,6 +929,7 @@ proc renderGame*(renderer: RendererPtr, game: Game) =
     renderMenu(renderer, game)
   of won:
     renderMenu(renderer, game)
+    renderParticleSystem(renderer, game.particles, 0, 0)
 
   # Screen flash overlay — fades out over time.
   if game.screenEffects.flashActive():

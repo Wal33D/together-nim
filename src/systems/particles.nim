@@ -331,6 +331,42 @@ proc emitSparkle*(system: var ParticleSystem, x, y: float, color: Color) =
     gravityScale: -0.2
   ))
 
+proc emitWinConfetti*(system: var ParticleSystem) =
+  ## Burst 50 confetti particles upward from bottom of screen for the win celebration.
+  for _ in 0 ..< 50:
+    let color = CHAR_COLORS[rand(CHAR_COLORS.len - 1)]
+    pushParticle(system, Particle(
+      x: rand(float(DEFAULT_WIDTH)),
+      y: float(DEFAULT_HEIGHT) + 5.0,
+      vx: rand(240.0) - 120.0,
+      vy: -(150.0 + rand(250.0)),
+      color: color,
+      size: 4.0 + rand(5.0),
+      life: 3.0 + rand(1.0),
+      maxLife: 4.0,
+      fadeTime: 0.5,
+      gravityScale: 0.643,
+    ))
+
+proc emitWinSparkle*(system: var ParticleSystem) =
+  ## Emit a single sparkle at a random screen position for the win celebration.
+  if system.particles.len >= MAX_PARTICLES:
+    return
+  let color = CHAR_COLORS[rand(CHAR_COLORS.len - 1)]
+  let life = randRange(0.4, 0.8)
+  pushParticle(system, Particle(
+    x: rand(float(DEFAULT_WIDTH)),
+    y: rand(float(DEFAULT_HEIGHT)),
+    vx: randRange(-15.0, 15.0),
+    vy: randRange(-30.0, -10.0),
+    color: color,
+    size: randRange(2.0, 3.5),
+    life: life,
+    maxLife: life,
+    fadeTime: 0.3,
+    gravityScale: -0.1,
+  ))
+
 proc updateRingParticles*(system: var ParticleSystem, dt: float) =
   ## Advance ring particle lifetimes and remove dead ones.
   var i = 0
