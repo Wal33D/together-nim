@@ -855,6 +855,13 @@ proc update*(game: var Game, dt: float) =
       let result = updatePhysics(game.characters, game.currentLevelState, scaledDt)
       let level = game.currentLevelState
 
+      # Animate button pressedAmount toward target each frame.
+      for bi in 0..<game.currentLevelState.buttons.len:
+        let target = if game.currentLevelState.buttons[bi].active: 1.0 else: 0.0
+        let rate = if game.currentLevelState.buttons[bi].active: 15.0 * scaledDt else: 10.0 * scaledDt
+        game.currentLevelState.buttons[bi].pressedAmount +=
+          (target - game.currentLevelState.buttons[bi].pressedAmount) * min(1.0, rate)
+
       # Hazard contact flash-shake — fires on spike contact just before death
       for hazId in result.hazardCharacters:
         let hazardRed: Color = (r: 180'u8, g: 30'u8, b: 30'u8)
