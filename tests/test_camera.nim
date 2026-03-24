@@ -131,24 +131,24 @@ suite "camera":
     updateCamera(cam, 400.0, 250.0, 24.0, 24.0, 1200.0, 500.0)
     check cam.y == 0.0
 
-  test "triggerShake sets timer and intensity":
+  test "triggerShake sets timer and intensity in first slot":
     var cam = newCamera()
     cam.triggerShake(4.0, 0.3)
-    check cam.shakeTimer == 0.3
-    check cam.shakeIntensity == 4.0
+    check cam.shakes[0].timer == 0.3
+    check cam.shakes[0].intensity == 4.0
 
   test "updateShake produces nonzero offsets while active":
     var cam = newCamera()
     cam.triggerShake(4.0, 0.3)
     cam.updateShake(0.016)
-    check cam.shakeTimer > 0.0
+    check cam.shakes[0].timer > 0.0
     check cam.shakeOffsetX != 0.0 or cam.shakeOffsetY != 0.0
 
   test "updateShake clears offsets when timer expires":
     var cam = newCamera()
     cam.triggerShake(4.0, 0.3)
     cam.updateShake(0.5)  # advance past the 300ms duration
-    check cam.shakeTimer == 0.0
+    check cam.shakes[0].timer == 0.0
     check cam.shakeOffsetX == 0.0
     check cam.shakeOffsetY == 0.0
 
@@ -157,3 +157,34 @@ suite "camera":
     cam.updateShake(0.016)
     check cam.shakeOffsetX == 0.0
     check cam.shakeOffsetY == 0.0
+
+  test "multi-shake uses separate slots":
+    var cam = newCamera()
+    cam.triggerShake(4.0, 0.3)
+    cam.triggerShake(2.0, 0.2)
+    check cam.shakes[0].intensity == 4.0
+    check cam.shakes[1].intensity == 2.0
+
+  test "multi-shake additive magnitude exceeds single shake":
+    var cam = newCamera()
+    var camSingle = newCamera()
+    cam.triggerShake(4.0, 0.3)
+    cam.triggerShake(4.0, 0.3)
+    camSingle.triggerShake(4.0, 0.3)
+    cam.updateShake(0.016)
+    camSingle.updateShake(0.016)
+    let multiMag = abs(cam.shakeOffsetX) + abs(cam.shakeOffsetY)
+    let singleMag = abs(camSingle.shakeOffsetX) + abs(camSingle.shakeOffsetY)
+    check multiMag > singleMag
+
+  test "triggerShake replaces weakest when all slots full":
+    var cam = newCamera()
+    for i in 0..<MaxShakes:
+      cam.triggerShake(1.0, 0.3)
+    # All slots at intensity 1.0; new stronger shake replaces the weakest
+    cam.triggerShake(5.0, 0.5)
+    var found = false
+    for i in 0..<MaxShakes:
+      if cam.shakes[i].intensity == 5.0:
+        found = true
+    check found

@@ -687,6 +687,12 @@ proc update*(game: var Game, dt: float) =
       let result = updatePhysics(game.characters, game.currentLevelState, scaledDt)
       let level = game.currentLevelState
 
+      # Hazard contact flash-shake — fires on spike contact just before death
+      for hazId in result.hazardCharacters:
+        let hazardRed: Color = (r: 180'u8, g: 30'u8, b: 30'u8)
+        game.screenEffects.triggerShake(game.camera, 4.0, 0.15)
+        game.screenEffects.triggerFlash(hazardRed, 0.05)
+
       # Handle deaths — start death animation phase (500ms)
       for deadId in result.deadCharacters:
         for i in 0..<game.characters.len:
@@ -699,10 +705,10 @@ proc update*(game: var Game, dt: float) =
             game.totalDeaths += 1
             game.emitDeathParticles(i)
             game.accentDeath(i)
-            game.screenEffects.triggerShake(game.camera, 4.0, 0.3)
+            game.screenEffects.triggerShake(game.camera, 6.0, 0.25)
             playSound(soundDeath)
 
-      # Landing sound
+      # Landing sound and shake
       if result.landedCharacters.len > 0:
         for landed in result.landedCharacters:
           let idx = game.findCharacterIndex(landed.id)
@@ -710,6 +716,11 @@ proc update*(game: var Game, dt: float) =
             game.emitLandingParticles(idx)
             game.accentLanding(idx)
           playLandingSound(landed.fallVelocity, landed.ability)
+          # Velocity-scaled landing shake (up to 3px/0.15s)
+          let normV = min(1.0, abs(landed.fallVelocity) / MAX_FALL_SPEED)
+          if normV > 0.4:
+            let landIntensity = normV * 3.0
+            game.screenEffects.triggerShake(game.camera, landIntensity, 0.15)
 
       # Mark exits — play chime when a character newly reaches their exit
       for i in 0..<game.characters.len:
@@ -732,13 +743,14 @@ proc update*(game: var Game, dt: float) =
           game.particles.emitWallSpark(sparkX, c.y, float(c.height), wallOnRight)
         game.characters[i] = c
 
-      # Button activation shimmer — emit on false→true edge
+      # Button activation shimmer and rumble — emit on false→true edge
       for b in game.currentLevelState.buttons:
         if b.active and not b.prevActive:
           let cx = b.x + b.width * 0.5
           let cy = b.y + b.height * 0.5
           let buttonColor: Color = (r: 255'u8, g: 255'u8, b: 80'u8)
           game.particles.emitButtonShimmer(cx, cy, buttonColor)
+          game.screenEffects.triggerShake(game.camera, 1.0, 0.08)
 
       # Exit beckoning particles — continuous emission per exit
       if game.exitEmitTimers.len < level.exits.len:

@@ -1,4 +1,5 @@
 together
+together_save.json
 nimcache/
 *.exe
 *.dll

@@ -18,8 +18,14 @@ const MAX_IMPULSE_Y* = 28.0
 
 const
   ShakeDecay = 10.0  # How fast shake amplitude decays per second.
+  MaxShakes* = 4
 
 type
+  Shake* = object
+    timer*: float
+    duration*: float
+    intensity*: float
+
   Camera* = object
     x*, y*: float        # current world coord of screen top-left
     targetX*, targetY*: float
@@ -29,8 +35,7 @@ type
     holdTimer*: float
     pendingSnapX, pendingSnapY: float
     pendingSnapActive: bool
-    shakeTimer*: float       # remaining shake time
-    shakeIntensity*: float   # current amplitude in pixels
+    shakes*: array[MaxShakes, Shake]
     shakeOffsetX*: float     # per-frame render offset
     shakeOffsetY*: float
 
@@ -188,24 +193,37 @@ proc snapCamera*(cam: var Camera, charX, charY, charW, charH: float,
   cam.clampToBounds(levelWidth, levelHeight)
 
 proc triggerShake*(cam: var Camera, intensity: float, duration: float) =
-  ## Start a screen shake with given pixel amplitude and duration.
-  cam.shakeTimer = duration
-  cam.shakeIntensity = intensity
+  ## Start a screen shake. Uses the first free slot, or replaces the weakest.
+  var bestSlot = 0
+  var bestIntensity = cam.shakes[0].intensity
+  for i in 0..<MaxShakes:
+    if cam.shakes[i].timer <= 0.0:
+      cam.shakes[i] = Shake(timer: duration, duration: duration,
+                             intensity: intensity)
+      return
+    if cam.shakes[i].intensity < bestIntensity:
+      bestIntensity = cam.shakes[i].intensity
+      bestSlot = i
+  cam.shakes[bestSlot] = Shake(timer: duration, duration: duration,
+                                intensity: intensity)
 
 proc updateShake*(cam: var Camera, dt: float) =
-  ## Advance the shake timer and compute per-frame random offsets.
-  if cam.shakeTimer <= 0.0:
-    cam.shakeOffsetX = 0.0
-    cam.shakeOffsetY = 0.0
-    return
-  cam.shakeTimer -= dt
-  if cam.shakeTimer <= 0.0:
-    cam.shakeTimer = 0.0
-    cam.shakeIntensity = 0.0
-    cam.shakeOffsetX = 0.0
-    cam.shakeOffsetY = 0.0
-    return
-  cam.shakeIntensity *= max(0.0, 1.0 - ShakeDecay * dt)
-  let amp = cam.shakeIntensity
-  cam.shakeOffsetX = sin(cam.shakeTimer * 97.0) * amp
-  cam.shakeOffsetY = cos(cam.shakeTimer * 131.0) * amp
+  ## Advance all shake timers and compute additive per-frame offsets.
+  var totalX = 0.0
+  var totalY = 0.0
+  for i in 0..<MaxShakes:
+    if cam.shakes[i].timer <= 0.0:
+      continue
+    cam.shakes[i].timer -= dt
+    if cam.shakes[i].timer <= 0.0:
+      cam.shakes[i].timer = 0.0
+      cam.shakes[i].intensity = 0.0
+      continue
+    cam.shakes[i].intensity *= max(0.0, 1.0 - ShakeDecay * dt)
+    let amp = cam.shakes[i].intensity
+    let freqX = 97.0 + float(i) * 23.0
+    let freqY = 131.0 + float(i) * 17.0
+    totalX += sin(cam.shakes[i].timer * freqX) * amp
+    totalY += cos(cam.shakes[i].timer * freqY) * amp
+  cam.shakeOffsetX = totalX
+  cam.shakeOffsetY = totalY
