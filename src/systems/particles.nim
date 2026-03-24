@@ -1,6 +1,7 @@
 ## Particle system for visual effects — subtle geometric bursts and dust
 
 import "../constants"
+import "../entities/character"
 import math
 import random
 
@@ -39,6 +40,22 @@ type
     confettiParticles*: seq[ConfettiParticle]
 
 const MAX_PARTICLES = 200
+
+# Landing dust puff constants
+const
+  LandingMinSpeed = 40.0
+  LandingMaxSpeed = 80.0
+  LandingGrayMix = 0.5
+  LandingFallSpeedDivisor = 100.0
+  BrunoLandingRadius = 5.0
+  BrunoLandingSpread = 140.0 * PI / 180.0
+  BrunoLandingLife = 0.35
+  PipLandingRadius = 2.0
+  PipLandingSpread = 90.0 * PI / 180.0
+  PipLandingLife = 0.20
+  DefaultLandingRadius = 3.0
+  DefaultLandingSpread = 110.0 * PI / 180.0
+  DefaultLandingLife = 0.28
 
 proc pushParticle(system: var ParticleSystem, p: Particle) =
   if system.particles.len < MAX_PARTICLES:
@@ -88,6 +105,13 @@ proc blendWithWhite(c: Color, whiteFraction: float): Color =
   result.g = uint8(float(c.g) * f + 255.0 * whiteFraction)
   result.b = uint8(float(c.b) * f + 255.0 * whiteFraction)
 
+proc blendWithGray(c: Color, grayFraction: float): Color =
+  ## Mix a color toward mid-gray (128, 128, 128) by the given fraction.
+  let f = 1.0 - grayFraction
+  result.r = uint8(float(c.r) * f + 128.0 * grayFraction)
+  result.g = uint8(float(c.g) * f + 128.0 * grayFraction)
+  result.b = uint8(float(c.b) * f + 128.0 * grayFraction)
+
 proc emitJumpFan(system: var ParticleSystem, x, y: float, color: Color,
                  count: int, halfArc: float) =
   ## Downward-fanning burst shared by jump and double-jump emitters.
@@ -120,9 +144,43 @@ proc emitDoubleJump*(system: var ParticleSystem, x, y: float, color: Color) =
   ## Wider downward burst for Pip's double-jump.
   system.emitJumpFan(x, y, color, 10, 4.0 * PI / 9.0)
 
-proc emitLanding*(system: var ParticleSystem, x, y: float, color: Color) =
-  ## Low dust puff for touchdown.
-  system.emitBurst(x, y, 6, color, 14.0, 22.0, 10.0, 0.20, 0.40, 1.5, 3.2)
+proc emitLanding*(system: var ParticleSystem, x, y: float, color: Color,
+                  ability: CharacterAbility, fallSpeed: float) =
+  ## Landing dust puff scaled by character type and fall velocity.
+  let count = 3 + clamp(int(abs(fallSpeed) / LandingFallSpeedDivisor), 0, 5)
+  let tinted = blendWithGray(color, LandingGrayMix)
+  var radius, spreadAngle, life: float
+  case ability
+  of heavy:
+    radius = BrunoLandingRadius
+    spreadAngle = BrunoLandingSpread
+    life = BrunoLandingLife
+  of doubleJump:
+    radius = PipLandingRadius
+    spreadAngle = PipLandingSpread
+    life = PipLandingLife
+  else:
+    radius = DefaultLandingRadius
+    spreadAngle = DefaultLandingSpread
+    life = DefaultLandingLife
+  let halfSpread = spreadAngle / 2.0
+  for i in 0..<count:
+    if system.particles.len >= MAX_PARTICLES:
+      break
+    let angle = PI / 2.0 + randRange(-halfSpread, halfSpread)
+    let speed = randRange(LandingMinSpeed, LandingMaxSpeed)
+    let size = randRange(radius * 0.7, radius * 1.3)
+    pushParticle(system, Particle(
+      x: x,
+      y: y,
+      vx: cos(angle) * speed,
+      vy: sin(angle) * speed,
+      life: life,
+      maxLife: life,
+      color: tinted,
+      size: size,
+      gravityScale: 1.0
+    ))
 
 proc emitDeath*(system: var ParticleSystem, x, y: float, color: Color) =
   ## Wider burst used when a character dies and respawns.
@@ -347,6 +405,29 @@ proc emitWinConfetti*(system: var ParticleSystem) =
       fadeTime: 0.5,
       gravityScale: 0.643,
     ))
+
+proc emitComboReady*(system: var ParticleSystem, x, y: float, color1, color2: Color) =
+  ## Emit a single small sparkle particle at (x, y) alternating between color1 and color2.
+  if system.particles.len >= MAX_PARTICLES:
+    return
+  let base = if rand(1) == 0: color1 else: color2
+  let dimmed: Color = (
+    r: uint8(float(base.r) * 0.3),
+    g: uint8(float(base.g) * 0.3),
+    b: uint8(float(base.b) * 0.3)
+  )
+  const ComboLife = 0.4
+  pushParticle(system, Particle(
+    x: x + randRange(-4.0, 4.0),
+    y: y + randRange(-4.0, 4.0),
+    vx: randRange(-10.0, 10.0),
+    vy: randRange(-20.0, -5.0),
+    life: ComboLife,
+    maxLife: ComboLife,
+    color: dimmed,
+    size: 2.0,
+    gravityScale: -0.1
+  ))
 
 proc emitWinSparkle*(system: var ParticleSystem) =
   ## Emit a single sparkle at a random screen position for the win celebration.
