@@ -16,7 +16,7 @@ import systems/[particles, animation, screenEffects]
 
 type
   GameState* = enum
-    menu, playing, paused, levelWin, credits, actTitle, settings, levelSelect
+    menu, playing, paused, levelWin, credits, actTitle, settings, levelSelect, won
 
   ActDef* = object
     number*: int
@@ -71,11 +71,18 @@ type
     levelSelectRow*: int
     levelSelectCol*: int
     levelSelectRejectTimer*: float
+    wonTimer*: float
+    wonThankYouShown*: bool
+    totalDeaths*: int
+    wonLevelsCompleted*: int
+    wonTotalTime*: float
 
 const
   ProximityNear* = 80.0
   ProximityFar* = 200.0
   ProximityGlowRange* = 120.0
+
+  FinalLevel* = 29
 
   ActTitleFadeIn* = 1.0
   ActTitleHold* = 2.0
@@ -533,7 +540,19 @@ proc enterCredits*(game: var Game) =
   game.creditsTimer = 0.0
   game.screenBrightness = 0.0
 
+proc enterWon*(game: var Game) =
+  ## Transition to the end-game celebration screen.
+  game.state = won
+  game.wonTimer = 0.0
+  game.wonThankYouShown = false
+  game.wonTotalTime = game.elapsedTime
+  let saveData = loadSave()
+  game.wonLevelsCompleted = saveData.levelStars.len
+
 proc nextLevel*(game: var Game) =
+  if game.currentLevel == FinalLevel:
+    game.enterWon()
+    return
   let nextIdx = game.currentLevel + 1
   if nextIdx < allLevels.len:
     if isFirstLevelOfAct(nextIdx):
@@ -596,6 +615,11 @@ proc handleKey*(game: var Game, button: windy.Button) =
     if button == KeyEscape:
       game.state = menu
       playSound(soundMenuBack)
+  of won:
+    if game.wonThankYouShown:
+      game.state = menu
+    else:
+      game.wonThankYouShown = true
 
 proc update*(game: var Game, dt: float) =
   let baseDt = dt * TIME_SCALE
@@ -635,6 +659,7 @@ proc update*(game: var Game, dt: float) =
             game.characters[i].vx = 0
             game.characters[i].vy = 0
             game.deathOccurred = true
+            game.totalDeaths += 1
             game.emitDeathParticles(i)
             game.accentDeath(i)
             game.screenEffects.triggerShake(game.camera, 4.0, 0.3)
@@ -747,7 +772,7 @@ proc update*(game: var Game, dt: float) =
         game.screenBrightness = min(1.0, game.finaleTimer / 2.0)
         if game.finaleTimer >= 2.0:
           game.finaleActive = false
-          game.enterCredits()
+          game.enterWon()
 
       # Check win — all characters at their exits
       if game.characters.len > 0:
@@ -1050,6 +1075,11 @@ proc update*(game: var Game, dt: float) =
   of levelSelect:
     if game.levelSelectRejectTimer > 0:
       game.levelSelectRejectTimer = max(0.0, game.levelSelectRejectTimer - scaledDt)
+
+  of won:
+    game.wonTimer += scaledDt
+    if not game.wonThankYouShown and game.wonTimer >= 5.0:
+      game.wonThankYouShown = true
 
   else:
     discard

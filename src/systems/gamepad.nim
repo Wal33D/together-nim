@@ -97,6 +97,8 @@ proc handleControllerButton*(game: var Game, button: uint8, isDown: bool) =
           game.handleKey(KeyEnter)
         of credits:
           game.handleKey(KeyEnter)
+        of won:
+          game.handleKey(KeyEnter)
         else:
           discard
     elif game.state == playing:

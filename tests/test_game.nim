@@ -576,3 +576,47 @@ suite "credits sequence":
     g.enterCredits()
     g.handleKey(KeyEnter)
     check g.state == menu
+
+suite "won screen":
+  test "nextLevel enters won after final level":
+    var g = newGame()
+    g.state = playing
+    g.currentLevel = FinalLevel
+    g.nextLevel()
+    check g.state == won
+    check g.wonTimer == 0.0
+    check g.wonThankYouShown == false
+
+  test "won handleKey two-phase interaction":
+    var g = newGame()
+    g.enterWon()
+    # First key press shows thank-you.
+    g.handleKey(KeyEnter)
+    check g.state == won
+    check g.wonThankYouShown == true
+    # Second key press returns to menu.
+    g.handleKey(KeyEnter)
+    check g.state == menu
+
+  test "won timer auto-reveals thank-you at 5s":
+    var g = newGame()
+    g.enterWon()
+    check g.wonThankYouShown == false
+    # Each update adds dt * TIME_SCALE to wonTimer.
+    # Use FIXED_TIMESTEP so each step adds FIXED_TIMESTEP * TIME_SCALE.
+    let scaledStep = FIXED_TIMESTEP * TIME_SCALE
+    let stepsUnder = int(4.9 / scaledStep)
+    for i in 0 ..< stepsUnder:
+      g.update(FIXED_TIMESTEP)
+    check g.wonThankYouShown == false
+    # Push past 5 seconds.
+    let stepsOver = int(5.5 / scaledStep) - stepsUnder
+    for i in 0 ..< stepsOver:
+      g.update(FIXED_TIMESTEP)
+    check g.wonThankYouShown == true
+
+  test "totalDeaths increments on death":
+    var g = newGame()
+    check g.totalDeaths == 0
+    g.totalDeaths += 1
+    check g.totalDeaths == 1

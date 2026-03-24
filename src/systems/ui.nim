@@ -1312,6 +1312,90 @@ proc renderLevelSelect(ui: UiRenderer, sk: Silky, window: Window,
           let flashAlpha = uint8(game.levelSelectRejectTimer / 0.25 * 180)
           sk.drawRect(cellPos, cellSize, rgbx(255, 60, 60, flashAlpha))
 
+proc renderWonScreen(ui: UiRenderer, sk: Silky, window: Window,
+                     layout: UiLayout, game: var Game) =
+  ## End-game celebration screen after completing level 30.
+  let
+    t = game.wonTimer
+    panelW = 520.0'f32
+    panelH = 380.0'f32
+    panelX = DEFAULT_WIDTH.float32 * 0.5 - panelW * 0.5
+    panelY = DEFAULT_HEIGHT.float32 * 0.5 - panelH * 0.5
+    pos = layout.p(panelX, panelY)
+    size = layout.sz(panelW, panelH)
+    baseY = pos.y + layout.px(16)
+
+  sk.drawPanel(pos, size, rgbx(10, 12, 18, 230), rgbx(132, 110, 54, 240))
+
+  # Character swatches with animated bounce and color glows.
+  let swatchSize = layout.px(28)
+  let swatchGap = layout.px(12)
+  let totalSwatchW = 6.0 * swatchSize + 5.0 * swatchGap
+  let swatchStartX = layout.centerX - totalSwatchW * 0.5
+  let swatchY = baseY + layout.px(10)
+
+  for i in 0 ..< 6:
+    let color = CHAR_COLORS[i]
+    let bounce = sin(t * 2.5 + float(i) * 0.8) * layout.px(4)
+    let sx = swatchStartX + float32(i) * (swatchSize + swatchGap)
+    let sy = swatchY + bounce.float32
+
+    # Glow halo behind character swatch.
+    let glowPad = layout.px(6)
+    let glowA = uint8(clamp(80.0 + sin(t * 1.8 + float(i) * 1.2) * 40.0, 40.0, 120.0))
+    sk.drawRect(vec2(sx - glowPad, sy - glowPad),
+                vec2(swatchSize + glowPad * 2, swatchSize + glowPad * 2),
+                rgbx(color.r, color.g, color.b, glowA))
+
+    # Character swatch.
+    sk.drawRect(vec2(sx, sy), vec2(swatchSize, swatchSize),
+                rgbx(color.r, color.g, color.b, 255))
+
+  # "TOGETHER" title with 6-color glow halos.
+  let titleText = "TOGETHER"
+  let titleY = baseY + layout.px(58)
+  let titleSize = sk.uiTextSize(layout, "Display", titleText)
+  let titleX = layout.centerX - titleSize.x * 0.5
+
+  for i in 0 ..< 6:
+    let haloColor = CHAR_COLORS[i]
+    let haloA = uint8(clamp(20.0 + sin(t * 1.5 + float(i) * 1.05) * 12.0, 8.0, 32.0))
+    let offset = float32(i - 3) * layout.px(3)
+    sk.drawRect(vec2(titleX + offset - layout.px(4), titleY - layout.px(4)),
+                vec2(titleSize.x + layout.px(8), titleSize.y + layout.px(8)),
+                rgbx(haloColor.r, haloColor.g, haloColor.b, haloA))
+
+  drawCenteredText(sk, layout, "Display", titleText, layout.centerX, titleY,
+                   rgbx(248, 232, 178, 255))
+
+  # Stats summary — fades in at 2s.
+  let statsAlpha = clamp((t - 2.0) * 2.0, 0.0, 1.0)
+  if statsAlpha > 0.0:
+    let sa = uint8(statsAlpha * 255)
+    let statsY = baseY + layout.px(110)
+    let minutes = int(game.wonTotalTime) div 60
+    let seconds = int(game.wonTotalTime) mod 60
+    let statsText = &"Levels: {game.wonLevelsCompleted}    Deaths: {game.totalDeaths}    Time: {minutes}m {seconds}s"
+    drawCenteredText(sk, layout, "Body", statsText, layout.centerX, statsY,
+                     rgbx(200, 210, 228, sa))
+
+  # "Thank you for playing" — fades in at 5s or on first key press.
+  if game.wonThankYouShown:
+    let ta = if game.wonTimer >= 5.0:
+      uint8(clamp((game.wonTimer - 5.0) * 2.0, 0.0, 1.0) * 255)
+    else:
+      uint8(255)
+    let thankY = baseY + layout.px(150)
+    drawCenteredText(sk, layout, "Body", "Thank you for playing.", layout.centerX,
+                     thankY, rgbx(200, 210, 228, ta))
+
+  # Continue button — only after thank-you is shown.
+  if game.wonThankYouShown:
+    if ui.actionButton(sk, window, layout, panelX + 40, panelY + panelH - 80,
+                       panelW - 80, "Continue", "Return to main menu.",
+                       "won_continue", rgbx(232, 184, 88, 255)):
+      game.state = menu
+
 proc renderOverlay*(ui: UiRenderer, window: Window, game: var Game,
                     frameSize: IVec2) =
   let layout = initLayout(frameSize)
@@ -1387,6 +1471,10 @@ proc renderOverlay*(ui: UiRenderer, window: Window, game: var Game,
     sk.drawRect(vec2(0, 0), vec2(frameSize.x.float32, frameSize.y.float32),
                 rgbx(0, 0, 0, 24))
     ui.renderLevelSelect(sk, window, layout, game)
+  of won:
+    sk.drawRect(vec2(0, 0), vec2(frameSize.x.float32, frameSize.y.float32),
+                rgbx(0, 0, 0, 34))
+    ui.renderWonScreen(sk, window, layout, game)
 
   # Render pause exit animation overlay even after state leaves paused.
   if pauseExiting and not nowPaused and pauseOverlayAlpha > 0.001:
