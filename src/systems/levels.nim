@@ -511,21 +511,20 @@ const level17* = Level(
     Platform(x: 0.0,   y: 460.0, width: 1000.0, height: 20.0),   # full ground
     Platform(x: 480.0, y: 80.0,  width: 20.0,   height: 300.0),   # dividing wall
     Platform(x: 200.0, y: 300.0, width: 120.0,   height: 20.0),   # bruno button platform
-    Platform(x: 700.0, y: 300.0, width: 120.0,   height: 20.0),   # pip stepping stone
-    Platform(x: 700.0, y: 180.0, width: 120.0,   height: 20.0),   # pip exit platform
+    Platform(x: 700.0, y: 250.0, width: 120.0,   height: 20.0),   # pip exit platform (stacking required)
   ],
   hazards: @[],
   exits: @[
     Exit(x: 100.0, y: 410.0, width: 40.0, height: 50.0, characterId: "bruno"),
-    Exit(x: 730.0, y: 130.0, width: 40.0, height: 50.0, characterId: "pip"),
+    Exit(x: 730.0, y: 200.0, width: 40.0, height: 50.0, characterId: "pip"),
   ],
   buttons: @[
     Button(x: 240.0, y: 290.0, width: 40.0, height: 10.0, doorId: 1, requiresHeavy: false),
   ],
   doors: @[
-    Door(id: 1, x: 650.0, y: 220.0, width: 20.0, height: 80.0, isOpen: false),
+    Door(id: 1, x: 650.0, y: 300.0, width: 20.0, height: 80.0, isOpen: false),
   ],
-  starChallenge: StarChallenge(timeTarget: 80.0, secretX: 960.0, secretY: 435.0),
+  starChallenge: StarChallenge(timeTarget: 95.0, secretX: 960.0, secretY: 435.0),
   levelWidth: 1000.0,
   levelHeight: 500.0,
 )
