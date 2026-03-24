@@ -19,8 +19,15 @@ const MAX_IMPULSE_Y* = 28.0
 const
   ShakeDecay = 10.0  # How fast shake amplitude decays per second.
   MaxShakes* = 4
+  OverviewHoldTime = 0.8   # Seconds to hold the zoomed-out view.
+  OverviewZoomTime = 1.0   # Seconds to zoom and pan back to character.
+  OverviewMinZoom = 0.35   # Never zoom out further than this.
+  OverviewSkipThreshold = 0.9  # Skip overview if zoom would be above this.
 
 type
+  OverviewPhase* = enum
+    opDone, opHold, opZooming
+
   Shake* = object
     timer*: float
     duration*: float
@@ -38,6 +45,14 @@ type
     shakes*: array[MaxShakes, Shake]
     shakeOffsetX*: float     # per-frame render offset
     shakeOffsetY*: float
+    overviewPhase*: OverviewPhase
+    overviewTimer*: float
+    overviewZoom*: float         # current zoom (1.0 = normal)
+    overviewTargetZoom*: float   # zoom to fit level
+    overviewStartX*: float       # camera pos at start of zoom-in
+    overviewStartY*: float
+    overviewEndX*: float         # camera pos at end (character)
+    overviewEndY*: float
 
 proc newCamera*(): Camera =
   Camera(
@@ -53,7 +68,9 @@ proc newCamera*(): Camera =
     holdTimer: 0.0,
     pendingSnapX: 0.0,
     pendingSnapY: 0.0,
-    pendingSnapActive: false
+    pendingSnapActive: false,
+    overviewPhase: opDone,
+    overviewZoom: 1.0,
   )
 
 proc clampf(value, low, high: float): float =
@@ -227,3 +244,94 @@ proc updateShake*(cam: var Camera, dt: float) =
     totalY += cos(cam.shakes[i].timer * freqY) * amp
   cam.shakeOffsetX = totalX
   cam.shakeOffsetY = totalY
+
+proc easeInOutCubic(t: float): float =
+  ## Smooth ease-in-out interpolation curve.
+  if t < 0.5:
+    4.0 * t * t * t
+  else:
+    1.0 - pow(-2.0 * t + 2.0, 3.0) / 2.0
+
+proc isOverviewActive*(cam: Camera): bool =
+  cam.overviewPhase != opDone
+
+proc startOverview*(cam: var Camera, levelWidth, levelHeight,
+                    charX, charY, charW, charH: float) =
+  ## Begin the level-start overview pan. Calculates zoom to fit the full level,
+  ## centers the camera, then later zooms and pans to the active character.
+  let zoomX = float(DEFAULT_WIDTH) / levelWidth
+  let zoomY = float(DEFAULT_HEIGHT) / levelHeight
+  let fitZoom = min(zoomX, zoomY)
+  if fitZoom >= OverviewSkipThreshold:
+    cam.overviewPhase = opDone
+    cam.overviewZoom = 1.0
+    return
+  let zoom = max(OverviewMinZoom, fitZoom)
+  cam.overviewTargetZoom = zoom
+  cam.overviewZoom = zoom
+  # Visible area at this zoom, in world pixels.
+  let visW = float(DEFAULT_WIDTH) / zoom
+  let visH = float(DEFAULT_HEIGHT) / zoom
+  # Center camera on the level midpoint.
+  cam.overviewStartX = clampf(levelWidth * 0.5 - visW * 0.5, 0.0,
+                               max(0.0, levelWidth - visW))
+  cam.overviewStartY = clampf(levelHeight * 0.5 - visH * 0.5, 0.0,
+                               max(0.0, levelHeight - visH))
+  cam.x = cam.overviewStartX
+  cam.y = cam.overviewStartY
+  # End position: character-centered at zoom 1.0.
+  let maxX = max(0.0, levelWidth - float(DEFAULT_WIDTH))
+  let maxY = max(0.0, levelHeight - float(DEFAULT_HEIGHT))
+  cam.overviewEndX = clampf(charX + charW * 0.5 - float(DEFAULT_WIDTH) * 0.5,
+                             0.0, maxX)
+  cam.overviewEndY = clampf(charY + charH * 0.5 - float(DEFAULT_HEIGHT) * 0.5,
+                             0.0, maxY)
+  cam.overviewTimer = 0.0
+  cam.overviewPhase = opHold
+
+proc updateOverview*(cam: var Camera, levelWidth, levelHeight, dt: float) =
+  ## Advance the overview state machine. Call each frame while active.
+  if cam.overviewPhase == opDone:
+    return
+  cam.overviewTimer += dt
+  case cam.overviewPhase
+  of opHold:
+    # Keep the zoomed-out view centered on the level.
+    let visW = float(DEFAULT_WIDTH) / cam.overviewZoom
+    let visH = float(DEFAULT_HEIGHT) / cam.overviewZoom
+    cam.x = clampf(cam.overviewStartX, 0.0, max(0.0, levelWidth - visW))
+    cam.y = clampf(cam.overviewStartY, 0.0, max(0.0, levelHeight - visH))
+    if cam.overviewTimer >= OverviewHoldTime:
+      cam.overviewTimer = 0.0
+      cam.overviewPhase = opZooming
+  of opZooming:
+    let raw = min(1.0, cam.overviewTimer / OverviewZoomTime)
+    let t = easeInOutCubic(raw)
+    cam.overviewZoom = cam.overviewTargetZoom + (1.0 - cam.overviewTargetZoom) * t
+    # Lerp camera position, accounting for changing visible area.
+    let visW = float(DEFAULT_WIDTH) / cam.overviewZoom
+    let visH = float(DEFAULT_HEIGHT) / cam.overviewZoom
+    let rawX = cam.overviewStartX + (cam.overviewEndX - cam.overviewStartX) * t
+    let rawY = cam.overviewStartY + (cam.overviewEndY - cam.overviewStartY) * t
+    cam.x = clampf(rawX, 0.0, max(0.0, levelWidth - visW))
+    cam.y = clampf(rawY, 0.0, max(0.0, levelHeight - visH))
+    if raw >= 1.0:
+      cam.overviewPhase = opDone
+      cam.overviewZoom = 1.0
+      cam.x = cam.overviewEndX
+      cam.y = cam.overviewEndY
+      cam.targetX = cam.overviewEndX
+      cam.targetY = cam.overviewEndY
+  of opDone:
+    discard
+
+proc skipOverview*(cam: var Camera) =
+  ## Immediately end the overview and snap to the character position.
+  if cam.overviewPhase == opDone:
+    return
+  cam.overviewPhase = opDone
+  cam.overviewZoom = 1.0
+  cam.x = cam.overviewEndX
+  cam.y = cam.overviewEndY
+  cam.targetX = cam.overviewEndX
+  cam.targetY = cam.overviewEndY

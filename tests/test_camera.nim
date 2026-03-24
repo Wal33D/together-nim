@@ -188,3 +188,52 @@ suite "camera":
       if cam.shakes[i].intensity == 5.0:
         found = true
     check found
+
+  test "startOverview activates on large level":
+    var cam = newCamera()
+    snapCamera(cam, 50.0, 200.0, 24.0, 24.0, 2400.0, 1200.0)
+    startOverview(cam, 2400.0, 1200.0, 50.0, 200.0, 24.0, 24.0)
+    check cam.isOverviewActive()
+    check cam.overviewPhase == opHold
+    check cam.overviewZoom < 1.0
+
+  test "startOverview skips on small level":
+    var cam = newCamera()
+    snapCamera(cam, 50.0, 200.0, 24.0, 24.0, 800.0, 500.0)
+    startOverview(cam, 800.0, 500.0, 50.0, 200.0, 24.0, 24.0)
+    check not cam.isOverviewActive()
+    check cam.overviewZoom == 1.0
+
+  test "updateOverview transitions hold to zooming":
+    var cam = newCamera()
+    startOverview(cam, 2400.0, 1200.0, 50.0, 200.0, 24.0, 24.0)
+    check cam.overviewPhase == opHold
+    # Advance past hold time.
+    for i in 0 ..< 60:
+      updateOverview(cam, 2400.0, 1200.0, FIXED_TIMESTEP)
+    check cam.overviewPhase == opZooming
+
+  test "updateOverview completes zoom to done":
+    var cam = newCamera()
+    startOverview(cam, 2400.0, 1200.0, 50.0, 200.0, 24.0, 24.0)
+    # Run well past total duration.
+    for i in 0 ..< 180:
+      updateOverview(cam, 2400.0, 1200.0, FIXED_TIMESTEP)
+    check not cam.isOverviewActive()
+    check cam.overviewZoom == 1.0
+
+  test "skipOverview immediately ends overview":
+    var cam = newCamera()
+    startOverview(cam, 2400.0, 1200.0, 50.0, 200.0, 24.0, 24.0)
+    check cam.isOverviewActive()
+    skipOverview(cam)
+    check not cam.isOverviewActive()
+    check cam.overviewZoom == 1.0
+    check cam.x == cam.overviewEndX
+    check cam.y == cam.overviewEndY
+
+  test "overview zoom reaches target zoom during hold":
+    var cam = newCamera()
+    startOverview(cam, 2400.0, 1200.0, 50.0, 200.0, 24.0, 24.0)
+    check cam.overviewZoom == cam.overviewTargetZoom
+    check cam.overviewTargetZoom < 1.0

@@ -378,6 +378,11 @@ proc pressJump*(game: var Game) =
   if game.state != playing:
     return
 
+  # Skip overview pan on any jump input.
+  if game.camera.isOverviewActive():
+    skipOverview(game.camera)
+    return
+
   if game.activeCharacterIndex < game.characters.len:
     let ac = game.characters[game.activeCharacterIndex]
     if ac.isDying() or ac.isRespawning():
@@ -548,11 +553,13 @@ proc loadLevel*(game: var Game, idx: int) =
         setActOscConfig(ActOscillatorParams[ai + 1])
       break
 
-  # Snap camera to active character immediately
+  # Snap camera to active character, then start overview pan.
   if game.characters.len > 0:
     let ch = game.characters[0]
     snapCamera(game.camera, ch.x, ch.y, float(ch.width), float(ch.height),
                level.levelWidth, level.levelHeight)
+    startOverview(game.camera, level.levelWidth, level.levelHeight,
+                  ch.x, ch.y, float(ch.width), float(ch.height))
 
 proc newGame*(): Game =
   result = Game(
@@ -848,7 +855,7 @@ proc update*(game: var Game, dt: float) =
         game.characters[i].introGlowBoost =
           max(0.0, game.characters[i].introGlowBoost - 4.0 * scaledDt)
 
-    if not game.gameFrozen:
+    if not game.gameFrozen and not game.camera.isOverviewActive():
       # Apply movement to active character (blocked during death/respawn)
       if game.activeCharacterIndex < game.characters.len:
         let ac = game.characters[game.activeCharacterIndex]
@@ -862,8 +869,9 @@ proc update*(game: var Game, dt: float) =
           if dir > 0: game.characters[game.activeCharacterIndex].facingRight = true
           elif dir < 0: game.characters[game.activeCharacterIndex].facingRight = false
 
-    # Physics
-    if not game.gameFrozen and game.currentLevel >= 0 and game.currentLevel < allLevels.len:
+    # Physics (blocked during overview pan).
+    if not game.gameFrozen and not game.camera.isOverviewActive() and
+       game.currentLevel >= 0 and game.currentLevel < allLevels.len:
       let result = updatePhysics(game.characters, game.currentLevelState, scaledDt)
       let level = game.currentLevelState
 
@@ -1120,8 +1128,10 @@ proc update*(game: var Game, dt: float) =
           writeSave(saveData)
           playLevelCompleteFanfare(actForLevel(game.currentLevel))
 
-      # Update camera to follow active character
-      if game.activeCharacterIndex < game.characters.len:
+      # Update camera: overview pan or normal follow.
+      if game.camera.isOverviewActive():
+        updateOverview(game.camera, level.levelWidth, level.levelHeight, scaledDt)
+      elif game.activeCharacterIndex < game.characters.len:
         let ch = game.characters[game.activeCharacterIndex]
         updateCamera(game.camera, ch.x, ch.y, float(ch.width), float(ch.height),
                      ch.vx, ch.vy, ch.facingRight, level.levelWidth,
