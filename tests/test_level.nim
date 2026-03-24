@@ -262,3 +262,13 @@ suite "levels":
 
   test "level 25 has 6 exits":
     check level25.exits.len == 6
+
+suite "level moving platform presence":
+  test "level 13 has at least one moving platform":
+    check level13.movingPlatforms.len >= 1
+
+  test "level 14 has at least one moving platform":
+    check level14.movingPlatforms.len >= 1
+
+  test "level 15 has at least one moving platform":
+    check level15.movingPlatforms.len >= 1
