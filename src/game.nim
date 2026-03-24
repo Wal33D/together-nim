@@ -16,7 +16,7 @@ import systems/[particles, animation, screenEffects]
 
 type
   GameState* = enum
-    menu, playing, paused, levelWin, credits, actTitle, settings
+    menu, playing, paused, levelWin, credits, actTitle, settings, levelSelect
 
   ActDef* = object
     number*: int
@@ -570,6 +570,10 @@ proc handleKey*(game: var Game, button: windy.Button) =
     discard
   of settings:
     discard
+  of levelSelect:
+    if button == KeyEscape:
+      game.state = menu
+      playSound(soundMenuBack)
 
 proc update*(game: var Game, dt: float) =
   let baseDt = dt * TIME_SCALE

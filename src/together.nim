@@ -216,6 +216,11 @@ proc handleKeyboardInput(window: Window, game: var Game, ui: UiRenderer,
       game.state = game.previousState
       playSound(soundMenuBack)
     return
+  of levelSelect:
+    if window.buttonPressed[KeyEscape]:
+      game.state = menu
+      playSound(soundMenuBack)
+    return
   of actTitle:
     return
   else:

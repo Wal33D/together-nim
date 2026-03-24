@@ -925,6 +925,8 @@ proc renderGame*(renderer: RendererPtr, game: Game) =
       renderPaused(renderer, game)
     else:
       renderMenu(renderer, game)
+  of levelSelect:
+    renderMenu(renderer, game)
 
   # Screen flash overlay — fades out over time.
   if game.screenEffects.flashActive():

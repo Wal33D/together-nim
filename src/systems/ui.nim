@@ -41,7 +41,7 @@ var
   menuButtonScale: float = 0.0
   menuEntrancePlaying: bool = false
   menuCursor: int = 0
-  menuBtnAlphas: array[4, float]
+  menuBtnAlphas: array[5, float]
   menuHasSave: bool = false
   menuTweenPool: TweenPool = initTweenPool()
   btnScale: float = 1.0
@@ -123,7 +123,7 @@ proc triggerMenuEntrance() =
   if menuHasSave:
     firstLaunch = false
   slideIndicatorY = -1.0
-  for i in 0..<4:
+  for i in 0..<5:
     menuBtnAlphas[i] = 0.0
 
   discard startTween(menuTweenPool, 0.0, 1.0, 0.6, easeOutCubic,
@@ -136,7 +136,7 @@ proc triggerMenuEntrance() =
       delay = float(idx) * 0.08)
 
   let buttonDelay = 5.0 * 0.08 + 0.5 + 0.2
-  for i in 0..<4:
+  for i in 0..<5:
     let idx = i
     discard startTween(menuTweenPool, 0.0, 1.0, 0.25, easeOutCubic,
       proc(v: float) = menuBtnAlphas[idx] = v,
@@ -267,8 +267,8 @@ proc cycleMenuSpotlight*(ui: UiRenderer, delta: int) =
     playSound(soundMenuHover)
 
 proc cycleMenuCursor*(delta: int) =
-  ## Move the main menu cursor up or down among the 4 buttons.
-  const count = 4
+  ## Move the main menu cursor up or down among the 5 buttons.
+  const count = 5
   let prev = menuCursor
   menuCursor = (menuCursor + delta + count * 4) mod count
   if menuCursor != prev:
@@ -301,8 +301,9 @@ proc activateFocusedAction*(ui: UiRenderer, game: var Game) =
     of 1:
       if menuHasSave:
         game.continueGame()
-    of 2: game.openSettings()
-    of 3: game.state = credits
+    of 2: game.state = levelSelect
+    of 3: game.openSettings()
+    of 4: game.state = credits
     else: discard
   of paused:
     playSound(soundMenuSelect)
@@ -830,12 +831,13 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
                         rgbx(220, 226, 236, 255),
                         maxWidth = heroLineWidth, maxHeight = layout.px(28), wordWrap = true)
 
-  # 4-button vertical menu below hero panel.
+  # 5-button vertical menu below hero panel.
   const
-    MenuLabels = ["New Game", "Continue", "Settings", "Credits"]
-    MenuAccents: array[4, ColorRGBX] = [
+    MenuLabels = ["New Game", "Continue", "Level Select", "Settings", "Credits"]
+    MenuAccents: array[5, ColorRGBX] = [
       rgbx(108, 168, 232, 255),
       rgbx(232, 184, 88, 255),
+      rgbx(168, 200, 140, 255),
       rgbx(160, 160, 180, 255),
       rgbx(140, 152, 172, 255),
     ]
@@ -857,7 +859,7 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
   if warmthFlashAlpha > 0.0:
     warmthFlashAlpha = max(0.0, warmthFlashAlpha - game.deltaTime * 10.0)
 
-  for i in 0..<4:
+  for i in 0..<5:
     let alpha = menuBtnAlphas[i]
     if alpha < 0.01:
       continue
@@ -1215,6 +1217,82 @@ proc renderSettings(ui: UiRenderer, sk: Silky, window: Window,
         game.settingsCursor = i
         playSound(soundMenuHover)
 
+proc renderLevelSelect(ui: UiRenderer, sk: Silky, window: Window,
+                       layout: UiLayout, game: var Game) =
+  ## Render the level select screen: 5 act rows, each with 6 level cells.
+  const
+    LevelsPerAct = 6
+    CellW = 80.0'f32
+    CellH = 50.0'f32
+    CellGap = 8.0'f32
+    RowGap = 12.0'f32
+    ActLabelW = 100.0'f32
+
+  let
+    gridW = LevelsPerAct.float32 * CellW + (LevelsPerAct - 1).float32 * CellGap
+    totalW = ActLabelW + gridW
+    startX = DEFAULT_WIDTH.float32 * 0.5 - totalW * 0.5
+    startY = 80.0'f32
+
+  # Title.
+  drawCenteredText(sk, layout, "Title", "Level Select", layout.centerX,
+                   layout.p(0, 24).y, rgbx(230, 236, 244, 255))
+
+  # Back hint.
+  drawCenteredText(sk, layout, "Small", "Esc to return",
+                   layout.centerX,
+                   layout.bottom - layout.px(18), rgbx(122, 134, 152, 255))
+
+  for ai in 0..<Acts.len:
+    let
+      act = Acts[ai]
+      tc = act.themeColor
+      rowY = startY + ai.float32 * (CellH + RowGap)
+
+    # Act label.
+    let
+      labelPos = layout.p(startX, rowY + CellH * 0.5 - 10)
+      actLabel = "Act " & $act.number
+      labelColor = rgbx(tc.r, tc.g, tc.b, 220)
+    discard sk.drawUiText(layout, "Body", actLabel, labelPos, labelColor)
+
+    # Act name below label.
+    let
+      namePos = layout.p(startX, rowY + CellH * 0.5 + 4)
+      nameColor = rgbx(tc.r, tc.g, tc.b, 140)
+    discard sk.drawUiText(layout, "Small", act.name, namePos, nameColor)
+
+    # Level cells.
+    for li in 0..<LevelsPerAct:
+      let
+        levelIdx = act.startLevel - 1 + li
+        cellX = startX + ActLabelW + li.float32 * (CellW + CellGap)
+        cellPos = layout.p(cellX, rowY)
+        cellSize = layout.sz(CellW, CellH)
+        completed = levelCompleted(levelIdx)
+        fillAlpha: uint8 = if completed: 200 else: 60
+        fill = rgbx(tc.r, tc.g, tc.b, fillAlpha)
+        edgeAlpha: uint8 = if completed: 180 else: 80
+        edge = rgbx(tc.r, tc.g, tc.b, edgeAlpha)
+
+      sk.drawSoftPanel(cellPos, cellSize, fill, edge)
+
+      # Level number.
+      let
+        levelNum = $(levelIdx + 1)
+        textColor = if completed: rgbx(240, 244, 250, 255)
+                    else: rgbx(160, 168, 180, 180)
+      drawCenteredText(sk, layout, "Body", levelNum,
+                       cellPos.x + cellSize.x * 0.5,
+                       cellPos.y + layout.px(10), textColor)
+
+      # Completion indicator.
+      if completed:
+        let checkPos = vec2(cellPos.x + cellSize.x * 0.5 - layout.px(4),
+                            cellPos.y + cellSize.y - layout.px(14))
+        let checkSize = vec2(layout.px(8), layout.px(3))
+        sk.drawRect(checkPos, checkSize, rgbx(180, 255, 180, 200))
+
 proc renderOverlay*(ui: UiRenderer, window: Window, game: var Game,
                     frameSize: IVec2) =
   let layout = initLayout(frameSize)
@@ -1286,6 +1364,10 @@ proc renderOverlay*(ui: UiRenderer, window: Window, game: var Game,
     discard
   of settings:
     ui.renderSettings(sk, window, layout, game)
+  of levelSelect:
+    sk.drawRect(vec2(0, 0), vec2(frameSize.x.float32, frameSize.y.float32),
+                rgbx(0, 0, 0, 24))
+    ui.renderLevelSelect(sk, window, layout, game)
 
   # Render pause exit animation overlay even after state leaves paused.
   if pauseExiting and not nowPaused and pauseOverlayAlpha > 0.001:
