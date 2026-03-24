@@ -37,7 +37,13 @@ const
     (r: 60'u8, g: 60'u8, b: 160'u8),     # Act 4: deep indigo
     (r: 220'u8, g: 220'u8, b: 240'u8),   # Act 5: near-white
   ]
-  TransitionDuration = 2.0
+  CrossfadeDuration = 0.5
+  MidGroundScrollSpeed = 0.4
+  MidGroundShapeMin = 6
+  MidGroundShapeMax = 10
+  NearGroundScrollSpeed = 0.8
+  NearGroundClusterMin = 12
+  NearGroundClusterMax = 16
 
 proc toChroma(c: constants.Color): chroma.Color =
   chroma.color(c.r.float32 / 255.0, c.g.float32 / 255.0, c.b.float32 / 255.0)
@@ -51,32 +57,37 @@ proc seededVal(seed, index, lo, hi: int): int =
   let hash = ((seed * 7919 + index * 6271) and 0x7FFFFFFF) mod 65521
   lo + hash mod (hi - lo + 1)
 
-var
-  currentAct: int = 0
-  transitionFromAct: int = 0
-  transitionStart: float = -10.0
+type
+  PaletteState = object
+    currentAct: int
+    paletteBlend: float
+    prevActColor: chroma.Color
+    nextActColor: chroma.Color
+    transitionStart: float
+
+var palette: PaletteState
 
 proc actColorForLevel(levelId: int, time: float): chroma.Color =
-  ## Return the act palette color, blending over 2s at act boundaries.
+  ## Return the act palette color, crossfading over CrossfadeDuration at act boundaries.
   let act = actForLevel(levelId)
-  if currentAct == 0:
-    currentAct = act
-  elif act != currentAct:
-    transitionFromAct = currentAct
-    transitionStart = time
-    currentAct = act
+  if palette.currentAct == 0:
+    palette.currentAct = act
+    palette.nextActColor = ActColors[act - 1].toChroma
+    palette.prevActColor = palette.nextActColor
+    palette.paletteBlend = 1.0
+  elif act != palette.currentAct:
+    palette.prevActColor = palette.nextActColor
+    palette.nextActColor = ActColors[act - 1].toChroma
+    palette.transitionStart = time
+    palette.paletteBlend = 0.0
+    palette.currentAct = act
 
-  let elapsed = time - transitionStart
-  if elapsed < TransitionDuration and transitionFromAct > 0:
-    let t = elapsed / TransitionDuration
-    result = chroma.mix(
-      ActColors[transitionFromAct - 1].toChroma,
-      ActColors[act - 1].toChroma,
-      t
-    )
+  if palette.paletteBlend < 1.0:
+    let elapsed = time - palette.transitionStart
+    palette.paletteBlend = clamp01(elapsed / CrossfadeDuration)
+    result = chroma.mix(palette.prevActColor, palette.nextActColor, palette.paletteBlend)
   else:
-    transitionFromAct = 0
-    result = ActColors[act - 1].toChroma
+    result = palette.nextActColor
 
 proc themeForScene(scene: BackdropScene): BackdropTheme =
   case scene
@@ -302,8 +313,8 @@ proc renderMidGroundSilhouettes(renderer: RendererPtr, actColor: chroma.Color, a
   let cr = uint8(darkColor.r * 255.0)
   let cg = uint8(darkColor.g * 255.0)
   let cb = uint8(darkColor.b * 255.0)
-  let count = seededVal(act, 999, 8, 12)
-  let scrollShift = int(camX * 0.4) mod DEFAULT_WIDTH
+  let count = seededVal(act, 999, MidGroundShapeMin, MidGroundShapeMax)
+  let scrollShift = int(camX * MidGroundScrollSpeed) mod DEFAULT_WIDTH
 
   renderer.setDrawBlendMode(BlendMode_Blend)
   renderer.setDrawColor(cr, cg, cb, 200)
@@ -376,8 +387,8 @@ proc renderNearGroundDetail(renderer: RendererPtr, actColor: chroma.Color, act: 
   let cr = uint8(lightColor.r * 255.0)
   let cg = uint8(lightColor.g * 255.0)
   let cb = uint8(lightColor.b * 255.0)
-  let count = seededVal(act, 888, 20, 30)
-  let scrollShift = int(camX * 0.8) mod DEFAULT_WIDTH
+  let count = seededVal(act, 888, NearGroundClusterMin, NearGroundClusterMax)
+  let scrollShift = int(camX * NearGroundScrollSpeed) mod DEFAULT_WIDTH
   let groundZone = DEFAULT_HEIGHT * 15 div 100
   let groundTop = DEFAULT_HEIGHT - groundZone
 
