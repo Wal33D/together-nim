@@ -63,6 +63,14 @@ proc hasSaveProgress*(): bool =
   let data = loadSave()
   data.levelStars.len > 0
 
+proc levelCompleted*(levelIdx: int): bool =
+  ## Return true when the player has any star for this 0-based level index.
+  let data = loadSave()
+  if data.levelStars.hasKey(levelIdx):
+    for star in data.levelStars[levelIdx]:
+      if star: return true
+  false
+
 proc savedContinueLevel*(): int =
   ## Return the level index to resume from (one past the furthest completed).
   let data = loadSave()

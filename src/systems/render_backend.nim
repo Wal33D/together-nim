@@ -144,3 +144,16 @@ proc drawOutlineRect*(renderer: RendererPtr, x, y, w, h: float) =
 
 proc drawOutlineRect*(renderer: RendererPtr, x, y, w, h: cint) =
   renderer.drawOutlineRect(x.float32, y.float32, w.float32, h.float32)
+
+proc drawRotatedFilledRect*(renderer: RendererPtr, cx, cy, w, h, angle: float) =
+  ## Draw a filled rect centered at (cx, cy), rotated by angle radians.
+  if w <= 0.0 or h <= 0.0:
+    return
+  renderer.boxy.saveTransform()
+  renderer.boxy.translate(vec2(cx, cy))
+  renderer.boxy.rotate(angle)
+  renderer.boxy.drawRect(
+    bumpy.rect(-w * 0.5, -h * 0.5, w, h),
+    renderer.currentColor
+  )
+  renderer.boxy.restoreTransform()

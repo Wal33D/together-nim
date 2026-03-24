@@ -24,9 +24,19 @@ type
     life*, maxLife*: float
     color*: Color
 
+  ConfettiParticle* = object
+    x*, y*: float
+    vx*, vy*: float
+    life*, maxLife*: float
+    color*: Color
+    w*, h*: float
+    angle*: float
+    angularVelocity*: float
+
   ParticleSystem* = object
     particles*: seq[Particle]
     ringParticles*: seq[RingParticle]
+    confettiParticles*: seq[ConfettiParticle]
 
 const MAX_PARTICLES = 200
 
@@ -125,6 +135,33 @@ proc emitExit*(system: var ParticleSystem, x, y: float, color: Color) =
 proc emitCompletion*(system: var ParticleSystem, x, y: float, color: Color) =
   ## Slightly brighter celebration burst for level completion.
   system.emitBurst(x, y, 8, color, 18.0, 34.0, -14.0, 0.24, 0.50, 1.5, 3.4)
+
+const
+  ConfettiLife = 0.8
+  MaxConfetti = 80
+
+proc emitConfetti*(system: var ParticleSystem, x, y: float, color: Color) =
+  ## Emit 8-10 tumbling confetti rectangles at (x, y) in the given color.
+  let tinted = blendWithWhite(color, 0.25)
+  let count = 8 + rand(2)
+  for i in 0..<count:
+    if system.confettiParticles.len >= MaxConfetti:
+      break
+    let angle = rand(2.0 * PI)
+    let speed = randRange(60.0, 140.0)
+    system.confettiParticles.add(ConfettiParticle(
+      x: x + randRange(-8.0, 8.0),
+      y: y + randRange(-4.0, 4.0),
+      vx: cos(angle) * speed,
+      vy: sin(angle) * speed - 80.0,
+      life: ConfettiLife,
+      maxLife: ConfettiLife,
+      color: tinted,
+      w: randRange(4.0, 7.0),
+      h: randRange(2.0, 4.0),
+      angle: rand(2.0 * PI),
+      angularVelocity: randRange(-4.0, 4.0)
+    ))
 
 proc emitWallSpark*(system: var ParticleSystem, x, y: float, charH: float,
                     wallOnRight: bool) =
@@ -326,3 +363,19 @@ proc update*(system: var ParticleSystem, dt: float) =
       system.particles[i] = p
       inc i
   system.updateRingParticles(dt)
+
+  # Advance confetti particles.
+  var ci = 0
+  while ci < system.confettiParticles.len:
+    var cp = system.confettiParticles[ci]
+    cp.life -= dt
+    if cp.life <= 0.0:
+      system.confettiParticles.del(ci)
+    else:
+      cp.x += cp.vx * dt
+      cp.y += cp.vy * dt
+      cp.vy += 280.0 * dt
+      cp.vx *= pow(0.88, dt * 60.0)
+      cp.angle += cp.angularVelocity * dt
+      system.confettiParticles[ci] = cp
+      inc ci

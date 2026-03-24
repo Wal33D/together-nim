@@ -338,6 +338,18 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
 
   renderParticleSystem(renderer, game.particles, camX, camY)
 
+  # Tumbling confetti rectangles.
+  if game.particles.confettiParticles.len > 0:
+    renderer.setDrawBlendMode(BlendMode_Blend)
+    for cp in game.particles.confettiParticles:
+      let lifeRatio = max(0.0, min(1.0, cp.life / cp.maxLife))
+      let alpha = uint8(lifeRatio * 220.0)
+      let cx = cp.x - float(camX)
+      let cy = cp.y - float(camY)
+      renderer.setDrawColor(cp.color.r, cp.color.g, cp.color.b, alpha)
+      drawRotatedFilledRect(renderer, cx, cy, cp.w, cp.h, cp.angle)
+    renderer.setDrawBlendMode(BlendMode_None)
+
   # Connection lines between nearby characters
   if game.characters.len > 1:
     renderer.setDrawBlendMode(BlendMode_Blend)
@@ -417,6 +429,16 @@ proc renderGameplay(renderer: RendererPtr, game: Game) =
         continue
     let isActive = i == game.activeCharacterIndex
     var chColor = CHAR_COLORS[ch.colorIndex mod 6]
+
+    # Isolation desaturation — lonely characters lose colour.
+    if ch.isolationSat > 0.001:
+      let chromaCol = chroma.color(chColor.r.float32 / 255.0,
+                                   chColor.g.float32 / 255.0,
+                                   chColor.b.float32 / 255.0)
+      let desat = chroma.desaturate(chromaCol, ch.isolationSat * 0.85)
+      chColor.r = uint8(min(255.0, desat.r * 255.0))
+      chColor.g = uint8(min(255.0, desat.g * 255.0))
+      chColor.b = uint8(min(255.0, desat.b * 255.0))
 
     # Proximity lean offset — shift toward proximityTarget
     var leanOffset = 0.0
