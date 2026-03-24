@@ -706,7 +706,6 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
       glowSize = vec2(size.x + layout.px(8), size.y + layout.px(8))
     sk.drawRect(glowPos, glowSize, glowColor)
 
-  discard gift
   sk.drawSoftPanel(pos, size, fill, border)
   sk.drawRect(pos + layout.d(12, 13), layout.sz(14, 14), accent)
   discard sk.drawUiText(layout, "Small", name, pos + layout.d(34, 10),
@@ -724,11 +723,14 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
         vec2(size.x - layout.px(8), layout.px(2)),
         rgbx(255, 255, 255, uint8(blinkAlpha * 255.0)))
 
-  # Hover personality quote above card.
+  # Hover personality quote and ability name above card.
   if hovered:
     drawCenteredText(sk, layout, "Small", CardHoverQuotes[idx],
-                     pos.x + size.x * 0.5, pos.y - layout.px(14),
+                     pos.x + size.x * 0.5, pos.y - layout.px(22),
                      rgbx(220, 226, 236, 200))
+    drawCenteredText(sk, layout, "Small", gift,
+                     pos.x + size.x * 0.5, pos.y - layout.px(10),
+                     rgbx(accent.r, accent.g, accent.b, 180))
 
 proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
                 layout: UiLayout, game: var Game) =
