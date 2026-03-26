@@ -100,6 +100,8 @@ proc charColorIndex(id: string): int =
 
 proc isCharLocked(idx: int): bool =
   ## Return true when a cast member has not yet been encountered.
+  ## Pip (idx 0) is always unlocked.
+  if idx == 0: return false
   not levelCompleted(CharUnlockLevels[idx])
 
 proc triggerMenuEntrance() =
@@ -121,7 +123,7 @@ proc triggerMenuEntrance() =
   slideIndicatorY = -1.0
   progressStripAlpha = 0.0
   for i in 0..<5:
-    menuBtnAlphas[i] = 0.0
+    menuBtnAlphas[i] = 1.0  # Buttons visible immediately.
 
   discard startTween(menuTweenPool, 0.0, 1.0, 0.6, easeOutCubic,
     proc(v: float) = menuTitleAlpha = v)
@@ -132,17 +134,8 @@ proc triggerMenuEntrance() =
       proc(v: float) = menuCardOffsets[idx] = v,
       delay = float(idx) * 0.08)
 
-  let buttonDelay = 5.0 * 0.08 + 0.5 + 0.2
-  for i in 0..<5:
-    let idx = i
-    discard startTween(menuTweenPool, 0.0, 1.0, 0.25, easeOutCubic,
-      proc(v: float) = menuBtnAlphas[idx] = v,
-      delay = buttonDelay + float(idx) * 0.06)
-
-  # Progress strip fades in 0.2 s after buttons appear.
-  discard startTween(menuTweenPool, 0.0, 1.0, 0.2, easeOutCubic,
-    proc(v: float) = progressStripAlpha = v,
-    delay = buttonDelay + 4.0 * 0.06 + 0.25)
+  # Progress strip fades in after a short delay.
+  progressStripAlpha = 1.0
 
 proc triggerPauseEnter() =
   ## Start the pause menu entrance animation.
@@ -709,14 +702,14 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
     hovered = window.mousePos.vec2.overlaps(cardRect)
 
   if locked:
-    # Dark silhouette card for locked characters.
+    # Dimmed card for locked characters — still shows name and color hint.
     let
-      silFill = rgbx(40, 40, 40, 200)
-      silBorder = rgbx(40, 44, 56, 160)
+      silFill = rgbx(18, 22, 30, 200)
+      silBorder = muted(accent, 80)
     sk.drawSoftPanel(pos, size, silFill, silBorder)
-    drawCenteredText(sk, layout, "Body", "?",
-                     pos.x + size.x * 0.5, pos.y + layout.px(10),
-                     rgbx(120, 120, 120, 255))
+    sk.drawRect(pos + layout.d(12, 13), layout.sz(14, 14), muted(accent, 60))
+    discard sk.drawUiText(layout, "Small", name, pos + layout.d(34, 10),
+                          rgbx(100, 108, 124, 255))
     return
 
   let
@@ -827,19 +820,14 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
   drawCenteredText(sk, layout, "Display", titleText, heroCenter, titleY, rgbx(246, 248, 251, titleAlpha))
   drawCenteredText(sk, layout, "Small", tagline,
                    heroCenter, heroPos.y + layout.px(50), rgbx(160, 171, 192, 255))
-  let spotlightLocked = isCharLocked(spotlight)
-  if not spotlightLocked:
-    sk.drawRect(vec2(heroCenter - layout.px(8), heroPos.y + layout.px(70)), layout.sz(16, 16), heroAccent)
-    drawCenteredText(sk, layout, "Body", castNames[spotlight], heroCenter, heroPos.y + layout.px(92),
-                     rgbx(242, 245, 248, 255))
-    drawCenteredText(sk, layout, "Small", castRoles[spotlight] & " • " & castGifts[spotlight], heroCenter,
-                     heroPos.y + layout.px(112), heroAccent)
-    discard sk.drawUiText(layout, "Small", castHeroLines[spotlight], heroLinePos,
-                          rgbx(220, 226, 236, 255),
-                          maxWidth = heroLineWidth, maxHeight = layout.px(28), wordWrap = true)
-  else:
-    drawCenteredText(sk, layout, "Body", "?", heroCenter, heroPos.y + layout.px(92),
-                     rgbx(120, 120, 120, 255))
+  sk.drawRect(vec2(heroCenter - layout.px(8), heroPos.y + layout.px(70)), layout.sz(16, 16), heroAccent)
+  drawCenteredText(sk, layout, "Body", castNames[spotlight], heroCenter, heroPos.y + layout.px(92),
+                   rgbx(242, 245, 248, 255))
+  drawCenteredText(sk, layout, "Small", castRoles[spotlight] & " • " & castGifts[spotlight], heroCenter,
+                   heroPos.y + layout.px(112), heroAccent)
+  discard sk.drawUiText(layout, "Small", castHeroLines[spotlight], heroLinePos,
+                        rgbx(220, 226, 236, 255),
+                        maxWidth = heroLineWidth, maxHeight = layout.px(28), wordWrap = true)
 
   # 5-button vertical menu below hero panel.
   const
