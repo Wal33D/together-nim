@@ -98,6 +98,26 @@ proc charColorIndex(id: string): int =
       return i
   0
 
+proc cardIdleOffset(charIndex: int, t: float): Vec2 =
+  ## Per-character positional idle micro-animation.
+  let phase = float(charIndex) * 0.8
+  case charIndex
+  of 0: vec2(0.0, sin(t * 4.0 + phase) * 3.0)                        # Pip: rapid small vertical bounces.
+  of 1: vec2(sin(t * 1.2 + phase) * 4.0, 0.0)                        # Luca: slow left-right sway.
+  of 2: vec2(0.0, 0.0)                                                 # Bruno: scale only.
+  of 3: vec2(0.0, -abs(sin(t * 2.5 + phase)) * 3.0)                   # Cara: quick upward dart.
+  of 4: vec2(sin(t * 0.5 + phase) * 2.0, 0.0)                        # Felix: very slow drift.
+  of 5: vec2(sin(t * 1.0 + phase) * 3.5, 0.0)                        # Ivy: graceful sine sway.
+  else: vec2(0.0, 0.0)
+
+proc cardIdleScale(charIndex: int, t: float): float =
+  ## Per-character scale idle micro-animation.
+  let phase = float(charIndex) * 0.8
+  case charIndex
+  of 2: 1.0 + sin(t * 0.8 + phase) * 0.015                           # Bruno: slow settle pulse.
+  of 5: 1.0 - sin(t * 1.0 + phase) * 0.008                           # Ivy: slight counter-scale.
+  else: 1.0
+
 proc isCharLocked(idx: int): bool =
   ## Return true when a cast member has not yet been encountered.
   ## Pip (idx 0) is always unlocked.
@@ -675,29 +695,20 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
     scaledW = baseSize.x * breathe
     scaledH = baseSize.y * breathe
 
-    # Per-character idle micro-animation offsets (disabled when selected or locked).
-    mt = menuTime.float32
-    idleX =
-      if selected or locked: 0.0'f32
-      else:
-        case idx
-        of 0: sin(mt * 3.7'f32) * 2.0'f32          # Pip: rapid X jitter.
-        of 3: 0.0'f32                                 # Cara: Y only.
-        of 5: sin(mt * 0.7'f32) * 3.0'f32            # Ivy: gentle sway.
-        else: 0.0'f32
-    idleY =
-      if selected or locked: 0.0'f32
-      else:
-        case idx
-        of 1: sin(mt * 0.9'f32) * 1.5'f32            # Luca: approximate tilt as Y shift.
-        of 2: sin(mt * 0.5'f32) * 1.5'f32            # Bruno: slow settle.
-        of 3: sin(mt * 1.1'f32 + 0.5'f32) * 2.0'f32  # Cara: slight upward gaze.
-        else: 0.0'f32
+    # Per-character idle micro-animation offsets and scale (disabled when selected or locked).
+    idleOff =
+      if selected or locked: vec2(0.0, 0.0)
+      else: cardIdleOffset(idx, menuTime)
+    idleScl =
+      if selected or locked: 1.0'f32
+      else: cardIdleScale(idx, menuTime).float32
+    finalW = scaledW * idleScl
+    finalH = scaledH * idleScl
 
     pos = snap(vec2(
-      posBase.x + (baseSize.x - scaledW) * 0.5 + idleX,
-      posBase.y + (baseSize.y - scaledH) * 0.5 + idleY))
-    size = vec2(scaledW, scaledH)
+      posBase.x + (baseSize.x - finalW) * 0.5 + idleOff.x.float32,
+      posBase.y + (baseSize.y - finalH) * 0.5 + idleOff.y.float32))
+    size = vec2(finalW, finalH)
     cardRect = rect(pos.x, pos.y, size.x, size.y)
     hovered = window.mousePos.vec2.overlaps(cardRect)
 
@@ -749,7 +760,7 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
   # Felix (idx 4): thin white blink bar at top 20% of card, every ~3s.
   if idx == 4 and not selected:
     let
-      blinkCycle = mt mod 3.0'f32
+      blinkCycle = menuTime.float32 mod 3.0'f32
       blinkT = blinkCycle - 2.6'f32
     if blinkT >= 0.0 and blinkT <= 0.4:
       let blinkAlpha = sin(blinkT / 0.4'f32 * PI.float32) * 0.3
