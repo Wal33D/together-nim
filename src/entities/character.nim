@@ -241,7 +241,9 @@ proc updateAnimation*(c: var Character, dt: float) =
       let overshootSign = if targetRotation > 0.0: -1.0 else: 1.0
       targetRotation = overshootSign * 1.0
 
-    let leanSpeed = if abs(targetRotation) < 0.1 and abs(c.rotation) > 0.5: 15.0 else: 10.0
+    let leanSpeed = if c.leanOvershootTimer > 0.0: 20.0
+                    elif abs(targetRotation) < 0.1 and abs(c.rotation) > 0.5: 15.0
+                    else: 10.0
     c.rotation += (targetRotation - c.rotation) * leanSpeed * dt
     if abs(c.rotation) < 0.05:
       c.rotation = 0.0
