@@ -211,9 +211,12 @@ proc updateAnimation*(c: var Character, dt: float) =
 
   # Fall stretch — proportional to vy when falling faster than 200 px/s.
   if not c.grounded and c.vy > 200.0:
-    let fallT = clamp((c.vy - 200.0) / (MAX_FALL_SPEED - 200.0), 0.0, 1.0)
-    c.squashX -= 0.10 * fallT
-    c.squashY += 0.15 * fallT
+    let fallRatio = clamp((c.vy - 200.0) / (MAX_FALL_SPEED - 200.0), 0.0, 1.0)
+    let targetX = 1.0 + (0.9 - 1.0) * fallRatio
+    let targetY = 1.0 + (1.15 - 1.0) * fallRatio
+    let t = min(1.0, 6.0 * dt)
+    c.squashX = c.squashX + (targetX - c.squashX) * t
+    c.squashY = c.squashY + (targetY - c.squashY) * t
 
   # Movement lean — 2-3° tilt in movement direction.
   block:
