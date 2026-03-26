@@ -81,6 +81,8 @@ var
   # Menu button polish state.
   firstLaunch: bool = true
   warmthFlashAlpha: float = 0.0
+  warmthFlashDone: bool = false
+  warmthFlashMenuCursor: int = -1
   slideIndicatorY: float = -1.0
 
 const
@@ -315,21 +317,14 @@ proc activateFocusedAction*(ui: UiRenderer, game: var Game) =
   case game.state
   of menu:
     playSound(soundMenuSelect)
-    warmthFlashAlpha = 1.0
-    case menuCursor
-    of 0:
-      firstLaunch = false
-      game.startGame()
-    of 1:
-      if menuHasSave:
-        game.continueGame()
-    of 2: game.state = levelSelect
-    of 3: game.openSettings()
-    of 4: game.state = credits
-    else: discard
+    warmthFlashAlpha = 0.18
+    warmthFlashDone = false
+    warmthFlashMenuCursor = menuCursor
+    discard startTween(menuTweenPool, 0.18, 0.0, 0.1, easeOutCubic,
+      proc(v: float) = warmthFlashAlpha = v,
+      onComplete = proc() = warmthFlashDone = true)
   of paused:
     playSound(soundMenuSelect)
-    warmthFlashAlpha = 1.0
     case ui.pauseSelection
     of 0:
       game.state = playing
@@ -863,10 +858,6 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
   else:
     slideIndicatorY = slideIndicatorY + (targetIndicatorY - slideIndicatorY) * min(1.0, game.deltaTime * 12.0)
 
-  # Warmth flash decay.
-  if warmthFlashAlpha > 0.0:
-    warmthFlashAlpha = max(0.0, warmthFlashAlpha - game.deltaTime * 10.0)
-
   for i in 0..<5:
     let alpha = menuBtnAlphas[i]
     if alpha < 0.01:
@@ -997,12 +988,6 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
     indicatorX = layout.p(menuColumnX, 0).x - indicatorW - layout.px(4)
   sk.drawRect(vec2(indicatorX, slideIndicatorY), vec2(indicatorW, indicatorH), indicatorAccent)
 
-  # Screen-wide warmth flash.
-  if warmthFlashAlpha > 0.01:
-    let flashA = uint8(warmthFlashAlpha * 28.0)
-    sk.drawRect(vec2(0, 0), vec2(layout.frameSize.x.float32, layout.frameSize.y.float32),
-                rgbx(255, 240, 220, flashA))
-
   sk.drawSoftPanel(ribbonPos, ribbonSize, rgbx(10, 12, 18, 110), rgbx(52, 62, 82, 120))
   for i in 0 ..< castNames.len:
     # 6 cards × 96px wide + 5 gaps × 8px = 616px total. Center in 800px → start at 92.
@@ -1014,6 +999,12 @@ proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
 
   drawCenteredText(sk, layout, "Small", "Up/Down selects • Enter confirms • 1-6 preview cast",
                    heroCenter, layout.bottom - layout.px(18), rgbx(122, 134, 152, 255))
+
+  # Screen-wide warmth flash (last draw call, above all UI).
+  if warmthFlashAlpha > 0.001:
+    let flashA = uint8(warmthFlashAlpha * 255.0)
+    sk.drawRect(vec2(0, 0), vec2(layout.frameSize.x.float32, layout.frameSize.y.float32),
+                rgbx(255, 200, 80, flashA))
 
 proc renderPauseModal(ui: UiRenderer, sk: Silky, window: Window,
                       layout: UiLayout, game: var Game) =
@@ -1466,6 +1457,20 @@ proc renderOverlay*(ui: UiRenderer, window: Window, game: var Game,
     menuEntrancePlaying = false
   if inMenu:
     updateTweens(menuTweenPool, game.deltaTime)
+    if warmthFlashDone:
+      warmthFlashDone = false
+      case warmthFlashMenuCursor
+      of 0:
+        firstLaunch = false
+        game.startGame()
+      of 1:
+        if menuHasSave:
+          game.continueGame()
+      of 2: game.state = levelSelect
+      of 3: game.openSettings()
+      of 4: game.state = credits
+      else: discard
+      warmthFlashMenuCursor = -1
 
   # Detect pause state transitions.
   let nowPaused = game.state == paused

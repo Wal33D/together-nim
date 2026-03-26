@@ -7,6 +7,7 @@ nimcache/
 *.dylib
 src/systems/renderer
 src/systems/levels
+src/systems/ui
 .scriptorium/
 .claude/
 AGENTS.md
