@@ -1,9 +1,14 @@
-## Save/load system for Together — persists user preferences and star progress
+## Save/load system for Together — persists user preferences, star progress,
+## and cumulative play statistics.
 
 import
   std/[os, tables],
   jsony,
   "../constants"
+
+let
+  saveDir = getHomeDir() / SaveDirName
+  saveFilePath* = saveDir / SaveFileName
 
 type
   SaveData* = object
@@ -13,21 +18,27 @@ type
     masterVolume*: float
     levelStars*: Table[int, array[3, bool]]
     highestCompletedLevel*: int
+    totalDeaths*: int
+    totalPlayTime*: float
 
 proc defaultSave*(): SaveData =
   SaveData(fullscreen: false, vsync: true, windowPreset: 1,
            masterVolume: 1.0,
            levelStars: initTable[int, array[3, bool]](),
-           highestCompletedLevel: -1)
+           highestCompletedLevel: -1,
+           totalDeaths: 0,
+           totalPlayTime: 0.0)
 
 proc writeSave*(data: SaveData) =
-  writeFile(SAVE_FILE, data.toJson())
+  ## Persist save data, creating the save directory if needed.
+  createDir(saveDir)
+  writeFile(saveFilePath, data.toJson())
 
 proc loadSave*(): SaveData =
   result = defaultSave()
-  if fileExists(SAVE_FILE):
+  if fileExists(saveFilePath):
     try:
-      result = readFile(SAVE_FILE).fromJson(SaveData)
+      result = readFile(saveFilePath).fromJson(SaveData)
       # Migration: old saves lack windowPreset and vsync fields.
       # jsony deserializes missing int as 0 and missing bool as false.
       # If windowPreset == 0 and fullscreen == false, treat as a migrated
@@ -66,6 +77,15 @@ proc saveHighestLevel*(level: int) =
   if level > data.highestCompletedLevel:
     data.highestCompletedLevel = level
     writeSave(data)
+
+proc saveLevelProgress*(level: int, deaths: int, playTime: float) =
+  ## Persist cumulative deaths and play time when a level is completed.
+  var data = loadSave()
+  if level > data.highestCompletedLevel:
+    data.highestCompletedLevel = level
+  data.totalDeaths = deaths
+  data.totalPlayTime = playTime
+  writeSave(data)
 
 proc hasSaveProgress*(): bool =
   ## Return true when the player has completed at least one level.

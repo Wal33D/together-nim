@@ -25,8 +25,9 @@ const WindowPresets*: array[4, tuple[w, h: int]] = [
   (800, 500), (1120, 700), (1440, 900), (1920, 1200)
 ]
 
-# Save file
-const SAVE_FILE* = "together_save.json"
+# Save file directory name (under home)
+const SaveDirName* = ".together"
+const SaveFileName* = "save.json"
 
 # Timing
 const FIXED_TIMESTEP* = 1.0 / 60.0

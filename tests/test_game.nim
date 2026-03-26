@@ -727,9 +727,9 @@ suite "level select":
     g.levelSelectCol = (g.levelSelectCol + 1) mod 6
     check g.levelSelectCol == 0
 
-  test "highestCompletedLevel defaults to 0":
+  test "highestCompletedLevel defaults to -1":
     var g = newGame()
-    check g.highestCompletedLevel == 0
+    check g.highestCompletedLevel == -1
 
   test "highestCompletedLevel updates on level completion":
     var g = newGame()

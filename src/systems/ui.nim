@@ -1124,7 +1124,7 @@ proc renderCredits(ui: UiRenderer, sk: Silky, window: Window,
                    layout: UiLayout, game: var Game) =
   let
     credW = 440.0'f32
-    credH = 340.0'f32
+    credH = 380.0'f32
     credX = DEFAULT_WIDTH.float32 * 0.5 - credW * 0.5
     credY = DEFAULT_HEIGHT.float32 * 0.5 - credH * 0.5
     pos = layout.p(credX, credY)
@@ -1138,9 +1138,17 @@ proc renderCredits(ui: UiRenderer, sk: Silky, window: Window,
                    pos.y + layout.px(108), rgbx(228, 233, 241, 255))
   drawCenteredText(sk, layout, "Body", "They were love in geometric form.",
                    layout.centerX, pos.y + layout.px(136), rgbx(228, 233, 241, 255))
+  # Stats from save file.
+  let saved = loadSave()
+  let levelsCompleted = saved.highestCompletedLevel + 1
+  let minutes = int(saved.totalPlayTime) div 60
+  let seconds = int(saved.totalPlayTime) mod 60
+  let statsText = &"Levels: {levelsCompleted}    Deaths: {saved.totalDeaths}    Time: {minutes}m {seconds}s"
+  drawCenteredText(sk, layout, "Small", statsText, layout.centerX,
+                   pos.y + layout.px(180), rgbx(200, 210, 228, 255))
   drawCenteredText(sk, layout, "Small", "UI iteration now runs on Windy + Boxy + Silky.",
-                   layout.centerX, pos.y + layout.px(190), rgbx(150, 160, 180, 255))
-  if ui.actionButton(sk, window, layout, credX + 46, credY + 230, credW - 92,
+                   layout.centerX, pos.y + layout.px(210), rgbx(150, 160, 180, 255))
+  if ui.actionButton(sk, window, layout, credX + 46, credY + 270, credW - 92,
                      "Return to Menu", "Back to the title screen.",
                      "credits_menu", rgbx(108, 168, 232, 255)):
     game.state = menu

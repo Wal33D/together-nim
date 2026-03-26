@@ -607,6 +607,7 @@ proc updateMenuBgChars*(game: var Game, dt: float) =
       game.menuBgChars[i].vel.y = -game.menuBgChars[i].vel.y
 
 proc newGame*(): Game =
+  let saved = loadSave()
   result = Game(
     state: menu,
     currentLevel: 0,
@@ -624,7 +625,10 @@ proc newGame*(): Game =
     menuAtmosphere: newMenuAtmosphere(),
     screenEffects: initScreenEffects(),
     dynamicTimeScale: 1.0,
+    totalDeaths: saved.totalDeaths,
+    highestCompletedLevel: saved.highestCompletedLevel,
   )
+  result.elapsedTime = saved.totalPlayTime
   result.initMenuBgChars()
 
 proc actForLevel*(levelIdx: int): int =
@@ -1172,17 +1176,20 @@ proc update*(game: var Game, dt: float) =
             game.earnedStars[1] = true
           if game.secretCollected:
             game.earnedStars[2] = true
-          # Save star progress
+          # Save star progress and cumulative stats.
           var saveData = loadSave()
           if not saveData.levelStars.hasKey(game.currentLevel):
             saveData.levelStars[game.currentLevel] = [false, false, false]
           for si in 0 ..< 3:
             if game.earnedStars[si]:
               saveData.levelStars[game.currentLevel][si] = true
+          if game.currentLevel > saveData.highestCompletedLevel:
+            saveData.highestCompletedLevel = game.currentLevel
+          saveData.totalDeaths = game.totalDeaths
+          saveData.totalPlayTime = game.elapsedTime
           writeSave(saveData)
           if game.currentLevel > game.highestCompletedLevel:
             game.highestCompletedLevel = game.currentLevel
-            saveHighestLevel(game.currentLevel)
           playLevelCompleteFanfare(actForLevel(game.currentLevel))
 
       # Update camera: overview pan or normal follow.
