@@ -667,16 +667,14 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
     base = CHAR_COLORS[idx mod CHAR_COLORS.len]
     selected = idx == ui.menuSpotlight
 
-    # Color brightness pulse via HSL.
+    # Color brightness pulse ±10% using chroma lighten/darken.
     chromaBase = chroma.color(
       base.r.float32 / 255.0,
       base.g.float32 / 255.0,
       base.b.float32 / 255.0)
-    hslBase = chromaBase.hsl
-    pulsedL = clamp(
-      hslBase.l + sin(time + float(idx) * 0.33).float32 * 10.0,
-      0.0'f32, 100.0'f32)
-    pulsedColor = hsl(hslBase.h, hslBase.s, pulsedL).color
+    pulse = sin(menuTime * PI + idx.float * 0.9) * 0.1
+    pulsedColor = if pulse > 0: lighten(chromaBase, pulse)
+                  else: darken(chromaBase, -pulse)
     accent = rgbx(
       clamp(pulsedColor.r * 255.0, 0.0, 255.0).uint8,
       clamp(pulsedColor.g * 255.0, 0.0, 255.0).uint8,
@@ -732,7 +730,7 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
 
   # Hover alpha ramp.
   if hovered or selected:
-    menuCardHoverAlphas[idx] = min(menuCardHoverAlphas[idx] + dt / 0.15, 1.0)
+    menuCardHoverAlphas[idx] = min(menuCardHoverAlphas[idx] + dt / 0.1, 1.0)
   else:
     menuCardHoverAlphas[idx] = max(menuCardHoverAlphas[idx] - dt / 0.15, 0.0)
 
@@ -770,13 +768,14 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
         rgbx(255, 255, 255, uint8(blinkAlpha * 255.0)))
 
   # Hover personality quote and ability name above card.
-  if hovered:
-    drawCenteredText(sk, layout, "Small", CardHoverQuotes[idx],
-                     pos.x + size.x * 0.5, pos.y - layout.px(22),
-                     rgbx(220, 226, 236, 200))
+  if hovered or selected:
+    let quoteAlpha = menuCardHoverAlphas[idx]
     drawCenteredText(sk, layout, "Small", gift,
+                     pos.x + size.x * 0.5, pos.y - layout.px(22),
+                     rgbx(accent.r, accent.g, accent.b, uint8(180.0 * quoteAlpha)))
+    drawCenteredText(sk, layout, "Small", CardHoverQuotes[idx],
                      pos.x + size.x * 0.5, pos.y - layout.px(10),
-                     rgbx(accent.r, accent.g, accent.b, 180))
+                     rgbx(220, 226, 236, uint8(200.0 * quoteAlpha)))
 
 proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
                 layout: UiLayout, game: var Game) =
