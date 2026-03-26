@@ -79,6 +79,15 @@ const
   FootstepMaxInterval* = 0.30   # seconds between steps at low speed
   FootstepSpeedThreshold* = 50.0  # px/s minimum to produce sound
 
+# Death dissolve audio
+const
+  DeathSweepRatio* = 0.60       # Target frequency as ratio of start.
+  DeathDetune* = 3.0            # Hz between the two oscillators.
+  DeathNoiseAmp* = 0.02
+  DeathAttackMs* = 10
+  DeathSustainMs* = 200
+  DeathDecayMs* = 100
+
 # Tonal palettes for per-act ambient music
 type
   TonalPalette* = object

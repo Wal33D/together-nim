@@ -41,6 +41,7 @@ suite "audio system":
     playSound(soundJump)
     playSound(soundLand)
     playSound(soundDeath)
+    playDeathSound()
     playSound(soundLevelComplete)
     playSound(soundCharSwitch)
     playSound(soundExitReached)
