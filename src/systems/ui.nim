@@ -98,6 +98,26 @@ proc charColorIndex(id: string): int =
       return i
   0
 
+proc cardIdleOffset(charIndex: int, t: float): Vec2 =
+  ## Per-character positional idle micro-animation.
+  let phase = float(charIndex) * 0.8
+  case charIndex
+  of 0: vec2(0.0, sin(t * 4.0 + phase) * 3.0)                        # Pip: rapid small vertical bounces.
+  of 1: vec2(sin(t * 1.2 + phase) * 4.0, 0.0)                        # Luca: slow left-right sway.
+  of 2: vec2(0.0, 0.0)                                                 # Bruno: scale only.
+  of 3: vec2(0.0, -abs(sin(t * 2.5 + phase)) * 3.0)                   # Cara: quick upward dart.
+  of 4: vec2(sin(t * 0.5 + phase) * 2.0, 0.0)                        # Felix: very slow drift.
+  of 5: vec2(sin(t * 1.0 + phase) * 3.5, 0.0)                        # Ivy: graceful sine sway.
+  else: vec2(0.0, 0.0)
+
+proc cardIdleScale(charIndex: int, t: float): float =
+  ## Per-character scale idle micro-animation.
+  let phase = float(charIndex) * 0.8
+  case charIndex
+  of 2: 1.0 + sin(t * 0.8 + phase) * 0.015                           # Bruno: slow settle pulse.
+  of 5: 1.0 - sin(t * 1.0 + phase) * 0.008                           # Ivy: slight counter-scale.
+  else: 1.0
+
 proc isCharLocked(idx: int): bool =
   ## Return true when a cast member has not yet been encountered.
   ## Pip (idx 0) is always unlocked.
@@ -647,16 +667,14 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
     base = CHAR_COLORS[idx mod CHAR_COLORS.len]
     selected = idx == ui.menuSpotlight
 
-    # Color brightness pulse via HSL.
+    # Color brightness pulse ±10% using chroma lighten/darken.
     chromaBase = chroma.color(
       base.r.float32 / 255.0,
       base.g.float32 / 255.0,
       base.b.float32 / 255.0)
-    hslBase = chromaBase.hsl
-    pulsedL = clamp(
-      hslBase.l + sin(time + float(idx) * 0.33).float32 * 10.0,
-      0.0'f32, 100.0'f32)
-    pulsedColor = hsl(hslBase.h, hslBase.s, pulsedL).color
+    pulse = sin(menuTime * PI + idx.float * 0.9) * 0.1
+    pulsedColor = if pulse > 0: lighten(chromaBase, pulse)
+                  else: darken(chromaBase, -pulse)
     accent = rgbx(
       clamp(pulsedColor.r * 255.0, 0.0, 255.0).uint8,
       clamp(pulsedColor.g * 255.0, 0.0, 255.0).uint8,
@@ -675,29 +693,20 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
     scaledW = baseSize.x * breathe
     scaledH = baseSize.y * breathe
 
-    # Per-character idle micro-animation offsets (disabled when selected or locked).
-    mt = menuTime.float32
-    idleX =
-      if selected or locked: 0.0'f32
-      else:
-        case idx
-        of 0: sin(mt * 3.7'f32) * 2.0'f32          # Pip: rapid X jitter.
-        of 3: 0.0'f32                                 # Cara: Y only.
-        of 5: sin(mt * 0.7'f32) * 3.0'f32            # Ivy: gentle sway.
-        else: 0.0'f32
-    idleY =
-      if selected or locked: 0.0'f32
-      else:
-        case idx
-        of 1: sin(mt * 0.9'f32) * 1.5'f32            # Luca: approximate tilt as Y shift.
-        of 2: sin(mt * 0.5'f32) * 1.5'f32            # Bruno: slow settle.
-        of 3: sin(mt * 1.1'f32 + 0.5'f32) * 2.0'f32  # Cara: slight upward gaze.
-        else: 0.0'f32
+    # Per-character idle micro-animation offsets and scale (disabled when selected or locked).
+    idleOff =
+      if selected or locked: vec2(0.0, 0.0)
+      else: cardIdleOffset(idx, menuTime)
+    idleScl =
+      if selected or locked: 1.0'f32
+      else: cardIdleScale(idx, menuTime).float32
+    finalW = scaledW * idleScl
+    finalH = scaledH * idleScl
 
     pos = snap(vec2(
-      posBase.x + (baseSize.x - scaledW) * 0.5 + idleX,
-      posBase.y + (baseSize.y - scaledH) * 0.5 + idleY))
-    size = vec2(scaledW, scaledH)
+      posBase.x + (baseSize.x - finalW) * 0.5 + idleOff.x.float32,
+      posBase.y + (baseSize.y - finalH) * 0.5 + idleOff.y.float32))
+    size = vec2(finalW, finalH)
     cardRect = rect(pos.x, pos.y, size.x, size.y)
     hovered = window.mousePos.vec2.overlaps(cardRect)
 
@@ -721,7 +730,7 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
 
   # Hover alpha ramp.
   if hovered or selected:
-    menuCardHoverAlphas[idx] = min(menuCardHoverAlphas[idx] + dt / 0.15, 1.0)
+    menuCardHoverAlphas[idx] = min(menuCardHoverAlphas[idx] + dt / 0.1, 1.0)
   else:
     menuCardHoverAlphas[idx] = max(menuCardHoverAlphas[idx] - dt / 0.15, 0.0)
 
@@ -749,7 +758,7 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
   # Felix (idx 4): thin white blink bar at top 20% of card, every ~3s.
   if idx == 4 and not selected:
     let
-      blinkCycle = mt mod 3.0'f32
+      blinkCycle = menuTime.float32 mod 3.0'f32
       blinkT = blinkCycle - 2.6'f32
     if blinkT >= 0.0 and blinkT <= 0.4:
       let blinkAlpha = sin(blinkT / 0.4'f32 * PI.float32) * 0.3
@@ -759,13 +768,14 @@ proc renderCastCard(ui: UiRenderer, sk: Silky, window: Window, layout: UiLayout,
         rgbx(255, 255, 255, uint8(blinkAlpha * 255.0)))
 
   # Hover personality quote and ability name above card.
-  if hovered:
-    drawCenteredText(sk, layout, "Small", CardHoverQuotes[idx],
-                     pos.x + size.x * 0.5, pos.y - layout.px(22),
-                     rgbx(220, 226, 236, 200))
+  if hovered or selected:
+    let quoteAlpha = menuCardHoverAlphas[idx]
     drawCenteredText(sk, layout, "Small", gift,
+                     pos.x + size.x * 0.5, pos.y - layout.px(22),
+                     rgbx(accent.r, accent.g, accent.b, uint8(180.0 * quoteAlpha)))
+    drawCenteredText(sk, layout, "Small", CardHoverQuotes[idx],
                      pos.x + size.x * 0.5, pos.y - layout.px(10),
-                     rgbx(accent.r, accent.g, accent.b, 180))
+                     rgbx(220, 226, 236, uint8(200.0 * quoteAlpha)))
 
 proc renderMenu(ui: UiRenderer, sk: Silky, window: Window,
                 layout: UiLayout, game: var Game) =

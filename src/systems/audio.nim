@@ -544,8 +544,8 @@ when defined(withAudio):
       # Low thud with quick decay: 100 Hz, 50ms
       addNote(100, 100, 50, 0.5, envDecay)
     of soundDeath:
-      # Descending tone: 400 → 100 Hz, 200ms
-      addNote(400, 100, 200, 0.35)
+      # Handled by playDeathSound; no-op here.
+      discard
     of soundLevelComplete:
       # Ascending arpeggio: 300, 400, 500, 600 Hz, 100ms each
       addNote(300, 300, 100, 0.35)
@@ -635,6 +635,79 @@ when defined(withAudio):
           slot = inst
           break findSlot
       gInstances[0] = inst  # steal oldest slot when full
+    discard pthread_mutex_unlock(addr gAudioMutex)
+
+  proc playDeathSound*() =
+    ## Death dissolve tone — two detuned sines with pitch sweep and noise layer.
+    if not gAudioOpen: return
+
+    let startFreq = 350.0  # Fallback; use JumpFreq constants when available.
+    let endFreq = startFreq * DeathSweepRatio
+    let detuneEnd = (startFreq + DeathDetune) * DeathSweepRatio
+    let sineAmp = 0.04  # Two oscillators summed: 0.04 + 0.04 = 0.08 total.
+
+    template makeDeathInstance(fStart, fEnd: float,
+                               amp: float, wf: NoteWaveform): SoundInstance =
+      var di: SoundInstance
+      di.phase        = 0.0
+      di.noteIndex    = 0
+      di.sampleInNote = 0
+      di.samplesPlayed = 0
+      di.noteCount    = 0
+      di.filterState  = 0.0
+      di.noiseState   = 0xDEADBEEF'u32
+
+      # Attack: ramp up over DeathAttackMs.
+      let atkSamples = (DeathAttackMs * SAMPLE_RATE) div 1000
+      let atkFreqEnd = fStart + (fEnd - fStart) * (float(DeathAttackMs) / float(DeathSustainMs))
+      di.notes[0] = SoundNote(
+        freqStart: fStart, freqEnd: atkFreqEnd,
+        durationSamples: atkSamples,
+        amplitude: amp, envelope: envRampUp, waveform: wf)
+      di.noteCount = 1
+
+      # Sustain: flat envelope with pitch sweep.
+      let susSamples = (DeathSustainMs * SAMPLE_RATE) div 1000
+      di.notes[1] = SoundNote(
+        freqStart: atkFreqEnd, freqEnd: fEnd,
+        durationSamples: susSamples,
+        amplitude: amp, envelope: envFlat, waveform: wf)
+      di.noteCount = 2
+
+      # Decay tail.
+      let decSamples = (DeathDecayMs * SAMPLE_RATE) div 1000
+      di.notes[2] = SoundNote(
+        freqStart: fEnd, freqEnd: fEnd,
+        durationSamples: decSamples,
+        amplitude: amp, envelope: envDecay, waveform: wf)
+      di.noteCount = 3
+
+      di.totalSamples = atkSamples + susSamples + decSamples
+      di.active = true
+      di
+
+    var inst1 = makeDeathInstance(startFreq, endFreq, sineAmp, wfSine)
+    var inst2 = makeDeathInstance(startFreq + DeathDetune, detuneEnd, sineAmp, wfSine)
+    var inst3 = makeDeathInstance(startFreq, endFreq, DeathNoiseAmp, wfNoise)
+
+    discard pthread_mutex_lock(addr gAudioMutex)
+    var placed = 0
+    for slot in gInstances.mitems:
+      if placed >= 3: break
+      if not slot.active:
+        case placed
+        of 0: slot = inst1
+        of 1: slot = inst2
+        of 2: slot = inst3
+        else: discard
+        inc placed
+    # If not enough free slots, steal the first slots.
+    for i in placed..<3:
+      case i
+      of 0: gInstances[0] = inst1
+      of 1: gInstances[1] = inst2
+      of 2: gInstances[2] = inst3
+      else: discard
     discard pthread_mutex_unlock(addr gAudioMutex)
 
   proc playLandingSound*(fallVelocity: float, ability: CharacterAbility) =
@@ -1022,6 +1095,7 @@ else:
   proc initAudio*() = discard
   proc shutdownAudio*() = discard
   proc playSound*(kind: SoundKind) = discard
+  proc playDeathSound*() = discard
   proc playLandingSound*(fallVelocity: float, ability: CharacterAbility) = discard
   proc playFootstepSound*(characterId: string) = discard
   proc playButtonPressSound*(isHeavy: bool) = discard

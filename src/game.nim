@@ -952,7 +952,7 @@ proc update*(game: var Game, dt: float) =
             game.emitDeathParticles(i)
             game.accentDeath(i)
             game.screenEffects.triggerShake(game.camera, 6.0, 0.25)
-            playSound(soundDeath)
+            playDeathSound()
 
       # Landing sound and shake
       if result.landedCharacters.len > 0:
