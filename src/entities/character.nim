@@ -1,7 +1,9 @@
 ## Character entity — the single source of truth for character data
 
-import "../constants"
-import math
+import
+  "../constants",
+  ../systems/animation,
+  math
 
 type
   CharacterAbility* = enum
@@ -65,6 +67,10 @@ type
     invulnTimer*: float                  # seconds remaining of invulnerability; 0 = vulnerable
     lastLandingTime*: float              # game.elapsedTime when this character last landed
     footstepTimer*: float                  # countdown to next footstep sound
+    # Landing squash recovery tween
+    squashRecoveryT*: float                  # <0 = inactive; 0..1 = easeOutElastic progress
+    squashXOrigin*: float                    # squashX at start of recovery
+    squashYOrigin*: float                    # squashY at start of recovery
 
 proc newCharacter*(id: string): Character =
   result.x = 0.0
@@ -116,6 +122,9 @@ proc newCharacter*(id: string): Character =
   result.invulnTimer = 0.0
   result.lastLandingTime = -1.0
   result.footstepTimer = 0.0
+  result.squashRecoveryT = -1.0
+  result.squashXOrigin = 1.0
+  result.squashYOrigin = 1.0
   case id
   of "pip":
     result.width = 24; result.height = 24
@@ -169,8 +178,19 @@ proc jumpForce*(c: Character): float =
 
 proc updateAnimation*(c: var Character, dt: float) =
   # Squash/stretch recovery
-  c.squashX += (1.0 - c.squashX) * 8.0 * dt
-  c.squashY += (1.0 - c.squashY) * 8.0 * dt
+  if c.squashRecoveryT >= 0.0:
+    c.squashRecoveryT += dt / 0.15
+    if c.squashRecoveryT >= 1.0:
+      c.squashX = 1.0
+      c.squashY = 1.0
+      c.squashRecoveryT = -1.0
+    else:
+      let e = easeOutElastic(c.squashRecoveryT)
+      c.squashX = c.squashXOrigin + (1.0 - c.squashXOrigin) * e
+      c.squashY = c.squashYOrigin + (1.0 - c.squashYOrigin) * e
+  else:
+    c.squashX += (1.0 - c.squashX) * 8.0 * dt
+    c.squashY += (1.0 - c.squashY) * 8.0 * dt
 
   # Celebration bounce
   if c.celebrateTimer > 0.0 and not c.celebrating:
@@ -286,6 +306,9 @@ proc triggerLanding*(c: var Character, vy: float = 300.0) =
     return
   c.squashX = 1.0 + 0.3 * intensity
   c.squashY = 1.0 - 0.3 * intensity
+  c.squashXOrigin = c.squashX
+  c.squashYOrigin = c.squashY
+  c.squashRecoveryT = 0.0
   c.landingTimer = 0.15
 
 proc triggerJump*(c: var Character, isDoubleJump: bool = false) =
