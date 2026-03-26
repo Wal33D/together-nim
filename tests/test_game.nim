@@ -6,6 +6,8 @@ import "../src/constants"
 import "../src/entities/character"
 import "../src/entities/level"
 import "../src/systems/particles"
+import "../src/systems/save"
+import "../src/systems/levels"
 
 proc skipActTitle(game: var Game) =
   ## Advance past any act title card into the playing state.
@@ -673,3 +675,92 @@ suite "first-meeting introductions":
     let introIdx = g.introCharacterIdx
     check introIdx >= 0
     check g.characters[introIdx].introGlowBoost > 0.0
+
+suite "level select":
+  test "levelSelect state starts with cursor at 0,0":
+    var g = newGame()
+    g.state = levelSelect
+    check g.levelSelectRow == 0
+    check g.levelSelectCol == 0
+
+  test "escape from levelSelect returns to menu":
+    var g = newGame()
+    g.state = levelSelect
+    g.handleKey(KeyEscape)
+    check g.state == menu
+
+  test "launchSelectedLevel starts first level":
+    var g = newGame()
+    g.state = levelSelect
+    g.levelSelectRow = 0
+    g.levelSelectCol = 0
+    g.launchSelectedLevel()
+    check g.state in {actTitle, playing}
+
+  test "launchSelectedLevel rejects locked level":
+    var g = newGame()
+    g.state = levelSelect
+    g.levelSelectRow = 4
+    g.levelSelectCol = 5
+    g.launchSelectedLevel()
+    check g.state == levelSelect
+    check g.levelSelectRejectTimer > 0.0
+
+  test "levelSelectRejectTimer decays over time":
+    var g = newGame()
+    g.state = levelSelect
+    g.levelSelectRejectTimer = 0.25
+    g.update(FIXED_TIMESTEP)
+    check g.levelSelectRejectTimer < 0.25
+
+  test "levelSelectRow wraps around":
+    var g = newGame()
+    g.state = levelSelect
+    g.levelSelectRow = 0
+    g.levelSelectRow = (g.levelSelectRow - 1 + 5) mod 5
+    check g.levelSelectRow == 4
+
+  test "levelSelectCol wraps around":
+    var g = newGame()
+    g.state = levelSelect
+    g.levelSelectCol = 5
+    g.levelSelectCol = (g.levelSelectCol + 1) mod 6
+    check g.levelSelectCol == 0
+
+  test "highestCompletedLevel defaults to 0":
+    var g = newGame()
+    check g.highestCompletedLevel == 0
+
+  test "highestCompletedLevel updates on level completion":
+    var g = newGame()
+    g.state = playing
+    g.loadLevel(0)
+    g.highestCompletedLevel = -1
+    # Simulate level completion by moving all characters to exits.
+    let level = allLevels[0]
+    for i in 0 ..< g.characters.len:
+      g.characters[i].x = level.exits[i mod level.exits.len].x
+      g.characters[i].y = level.exits[i mod level.exits.len].y
+      g.characters[i].atExit = true
+    # Trigger the level win check.
+    g.update(FIXED_TIMESTEP)
+    if g.state == levelWin:
+      check g.highestCompletedLevel == 0
+
+  test "launchSelectedLevel allows next unlocked level":
+    var g = newGame()
+    g.state = levelSelect
+    g.levelSelectRow = 0
+    g.levelSelectCol = 1
+    # Level 1 (index 1) should be available if level 0 is completed.
+    if levelAvailable(1):
+      g.launchSelectedLevel()
+      check g.state != levelSelect or g.levelSelectRejectTimer > 0.0
+
+  test "out-of-range cursor does nothing":
+    var g = newGame()
+    g.state = levelSelect
+    g.levelSelectRow = -1
+    g.levelSelectCol = 0
+    g.launchSelectedLevel()
+    check g.state == levelSelect

@@ -47,6 +47,30 @@ suite "gamepad system":
     handleControllerButton(g, ButtonStart, true)
     check g.state == playing
 
+  test "A button selects level in level select":
+    var g = newGame()
+    g.state = levelSelect
+    g.levelSelectRow = 0
+    g.levelSelectCol = 0
+    handleControllerButton(g, ButtonA, true)
+    check g.state in {actTitle, playing}
+
+  test "B button returns to menu from level select":
+    var g = newGame()
+    g.state = levelSelect
+    handleControllerButton(g, ButtonB, true)
+    check g.state == menu
+
+  test "D-pad does not directly move level select cursor":
+    var g = newGame()
+    g.state = levelSelect
+    let prevRow = g.levelSelectRow
+    let prevCol = g.levelSelectCol
+    handleControllerButton(g, ButtonDpadLeft, true)
+    handleControllerButton(g, ButtonDpadUp, true)
+    check g.levelSelectRow == prevRow
+    check g.levelSelectCol == prevCol
+
   test "B button restarts level":
     var g = newGame()
     g.startGame()

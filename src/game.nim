@@ -82,6 +82,7 @@ type
     levelSelectRow*: int
     levelSelectCol*: int
     levelSelectRejectTimer*: float
+    highestCompletedLevel*: int
     wonTimer*: float
     wonThankYouShown*: bool
     totalDeaths*: int
@@ -829,7 +830,9 @@ proc handleKey*(game: var Game, button: windy.Button) =
   of settings:
     discard
   of levelSelect:
-    if button == KeyEscape:
+    if button == KeyEnter:
+      game.launchSelectedLevel()
+    elif button == KeyEscape:
       game.state = menu
       playSound(soundMenuBack)
   of storyBeat:
@@ -1177,6 +1180,9 @@ proc update*(game: var Game, dt: float) =
             if game.earnedStars[si]:
               saveData.levelStars[game.currentLevel][si] = true
           writeSave(saveData)
+          if game.currentLevel > game.highestCompletedLevel:
+            game.highestCompletedLevel = game.currentLevel
+            saveHighestLevel(game.currentLevel)
           playLevelCompleteFanfare(actForLevel(game.currentLevel))
 
       # Update camera: overview pan or normal follow.

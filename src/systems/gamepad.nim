@@ -145,7 +145,9 @@ proc handleControllerButton*(game: var Game, button: uint8, isDown: bool) =
       game.releaseJump()
 
   of ButtonB:
-    if isDown and game.state != settings:
+    if isDown and game.state == levelSelect:
+      game.handleKey(KeyEscape)
+    elif isDown and game.state != settings:
       game.handleKey(KeyR)
 
   of ButtonStart:

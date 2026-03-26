@@ -101,3 +101,23 @@ suite "save system":
     check s.vsync == true
     check s.windowPreset == 1
     check s.masterVolume == 1.0
+
+  test "defaultSave has highestCompletedLevel of -1":
+    let s = defaultSave()
+    check s.highestCompletedLevel == -1
+
+  test "saveHighestLevel persists level":
+    saveHighestLevel(5)
+    let loaded = loadSave()
+    check loaded.highestCompletedLevel == 5
+
+  test "saveHighestLevel only increases":
+    saveHighestLevel(10)
+    saveHighestLevel(3)
+    let loaded = loadSave()
+    check loaded.highestCompletedLevel == 10
+
+  test "migration from old save without highestCompletedLevel":
+    writeFile(SAVE_FILE, """{"fullscreen":false,"vsync":true,"windowPreset":1,"masterVolume":1.0}""")
+    let loaded = loadSave()
+    check loaded.highestCompletedLevel == 0

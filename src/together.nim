@@ -322,6 +322,7 @@ proc main() =
   g.vsyncEnabled = savedData.vsync
 
   g.settingsWindowPreset = presetIdx
+  g.highestCompletedLevel = savedData.highestCompletedLevel
 
   var accumulator = 0.0
   var lastTime = epochTime()

@@ -12,11 +12,13 @@ type
     windowPreset*: int
     masterVolume*: float
     levelStars*: Table[int, array[3, bool]]
+    highestCompletedLevel*: int
 
 proc defaultSave*(): SaveData =
   SaveData(fullscreen: false, vsync: true, windowPreset: 1,
            masterVolume: 1.0,
-           levelStars: initTable[int, array[3, bool]]())
+           levelStars: initTable[int, array[3, bool]](),
+           highestCompletedLevel: -1)
 
 proc writeSave*(data: SaveData) =
   writeFile(SAVE_FILE, data.toJson())
@@ -57,6 +59,13 @@ proc saveMasterVolume*(vol: float) =
   var data = loadSave()
   data.masterVolume = clamp(vol, 0.0, 1.0)
   writeSave(data)
+
+proc saveHighestLevel*(level: int) =
+  ## Persist the highest completed level index.
+  var data = loadSave()
+  if level > data.highestCompletedLevel:
+    data.highestCompletedLevel = level
+    writeSave(data)
 
 proc hasSaveProgress*(): bool =
   ## Return true when the player has completed at least one level.
